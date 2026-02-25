@@ -20,10 +20,15 @@ export default function AppShell() {
         sx={{
           flexGrow: 1,
           p: 3,
+          display: "flex",
+          flexDirection: "column",
+          minHeight: 0,
         }}
       >
         <Toolbar />
-        <Outlet />
+        <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+          <Outlet />
+        </Box>
       </Box>
     </Box>
   );
