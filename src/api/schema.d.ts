@@ -4,6 +4,30 @@
  */
 
 export interface paths {
+    "/v1/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List accounts
+         * @description Returns a paginated list of accounts.
+         */
+        get: operations["list-accounts"];
+        put?: never;
+        /**
+         * Create account
+         * @description Creates a new account.
+         */
+        post: operations["create-account"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/transaction": {
         parameters: {
             query?: never;
@@ -14,8 +38,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Create a transaction
-         * @description Creates a new transaction with the given account, category, amount, name, and optional date.
+         * Create transaction
+         * @description Creates a new transaction.
          */
         post: operations["create-transaction"];
         delete?: never;
@@ -48,30 +72,59 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        CreateTransactionInputBody: {
+        Account: {
+            /** @description Current decimal balance */
+            balance: string;
+            /** @description RFC3339 creation timestamp */
+            createdAt: string;
+            /** @description Account UUID */
+            id: string;
+            /** @description Account name */
+            name: string;
+            /** @description Initial decimal balance when account was created */
+            startingBalance: string;
+            /** @description Account sub-type */
+            subType: string;
+            /**
+             * Format: int64
+             * @description Account type: 0=Cash, 1=Credit Cards, 2=Investments, 3=Loans, 4=Assets
+             */
+            type: number;
+        };
+        CreateAccountBody: {
             /**
              * Format: uri
              * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/CreateTransactionInputBody.json
+             * @example https://example.com/schemas/CreateAccountBody.json
              */
             readonly $schema?: string;
+            /** @description Account name */
+            name: string;
+            /** @description Starting balance as decimal string */
+            startingBalance: string;
+            /** @description Account sub-type */
+            subType: string;
             /**
-             * Format: uuid
-             * @description Account UUID
+             * Format: int64
+             * @description Account type (0=Cash, 1=CreditCards, 2=Investments, 3=Loans, 4=Assets)
              */
+            type: number;
+        };
+        CreateTransactionBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/CreateTransactionBody.json
+             */
+            readonly $schema?: string;
+            /** @description Account UUID */
             accountID: string;
-            /** @description Decimal amount (e.g. '12.50') */
+            /** @description Decimal amount */
             amount: string;
-            /**
-             * Format: uuid
-             * @description Category UUID
-             */
+            /** @description Category UUID */
             categoryID: string;
-            /**
-             * Format: date-time
-             * @description RFC3339 date, defaults to now
-             */
-            transactionDate?: string;
+            /** @description RFC3339 transaction date, defaults to now */
+            transactionDate: string;
             /** @description Name of the transaction */
             transactionName: string;
         };
@@ -122,47 +175,29 @@ export interface components {
              */
             type: string;
         };
-        Transaction: {
+        ListAccountsResponseBody: {
             /**
              * Format: uri
              * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/Transaction.json
+             * @example https://example.com/schemas/ListAccountsResponseBody.json
              */
             readonly $schema?: string;
-            /** @description Account UUID */
-            accountID: string;
-            /** @description Decimal amount */
-            amount: string;
-            /** @description Category UUID */
-            categoryID: string;
-            /**
-             * Format: date-time
-             * @description RFC3339 creation timestamp
-             */
-            createdAt: string;
-            /** @description Transaction UUID */
-            id: string;
-            /** @description RFC3339 transaction date */
-            transactionDate: string;
-            /** @description Name of the transaction */
-            transactionName: string;
+            /** @description Page of accounts */
+            accounts: components["schemas"]["Account"][] | null;
+            /** @description Cursor to fetch the next page, absent on the last page */
+            nextCursor?: components["schemas"]["ListAccountsResponseBodyNextCursorStruct"];
         };
-        ListTransactionsCursor: {
+        ListAccountsResponseBodyNextCursorStruct: {
             /**
              * Format: int64
-             * @description Numeric offset position for the next page
-             */
-            position: number;
-            /**
-             * Format: int64
-             * @description Page size used for this cursor
+             * @description Page size
              */
             limit: number;
             /**
-             * Format: date-time
-             * @description Upper bound on created_at locked in from the first page
+             * Format: int64
+             * @description Offset for next page
              */
-            maxCreationTime: string;
+            position: number;
         };
         ListTransactionsBody: {
             /**
@@ -174,6 +209,23 @@ export interface components {
             /** @description Cursor from a previous response to fetch the next page */
             cursor?: components["schemas"]["ListTransactionsCursor"];
         };
+        ListTransactionsCursor: {
+            /**
+             * Format: int64
+             * @description Page size used for this cursor
+             */
+            limit: number;
+            /**
+             * Format: date-time
+             * @description Upper bound on created_at locked in from the first page
+             */
+            maxCreationTime: string;
+            /**
+             * Format: int64
+             * @description Numeric offset position for the next page
+             */
+            position: number;
+        };
         ListTransactionsResponseBody: {
             /**
              * Format: uri
@@ -181,10 +233,26 @@ export interface components {
              * @example https://example.com/schemas/ListTransactionsResponseBody.json
              */
             readonly $schema?: string;
-            /** @description Page of transactions */
-            transactions: components["schemas"]["Transaction"][];
             /** @description Cursor to fetch the next page, absent on the last page */
             nextCursor?: components["schemas"]["ListTransactionsCursor"];
+            /** @description Page of transactions */
+            transactions: components["schemas"]["Transaction"][] | null;
+        };
+        Transaction: {
+            /** @description Account UUID */
+            accountID: string;
+            /** @description Decimal amount */
+            amount: string;
+            /** @description Category UUID */
+            categoryID: string;
+            /** @description RFC3339 creation timestamp */
+            createdAt: string;
+            /** @description Transaction UUID */
+            id: string;
+            /** @description RFC3339 transaction date */
+            transactionDate: string;
+            /** @description Name of the transaction */
+            transactionName: string;
         };
     };
     responses: never;
@@ -195,6 +263,71 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    "list-accounts": {
+        parameters: {
+            query?: {
+                /** @description Offset for pagination */
+                position?: number;
+                /** @description Page size, default 20 */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListAccountsResponseBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "create-account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAccountBody"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "create-transaction": {
         parameters: {
             query?: never;
@@ -204,18 +337,16 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateTransactionInputBody"];
+                "application/json": components["schemas"]["CreateTransactionBody"];
             };
         };
         responses: {
-            /** @description OK */
-            200: {
+            /** @description No Content */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["Transaction"];
-                };
+                content?: never;
             };
             /** @description Error */
             default: {

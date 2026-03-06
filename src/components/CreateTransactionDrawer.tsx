@@ -1,14 +1,20 @@
 import { useState } from "react";
-import Box from "@mui/material/Box";
-import Drawer from "@mui/material/Drawer";
-import Typography from "@mui/material/Typography";
-import TextField from "@mui/material/TextField";
-import Button from "@mui/material/Button";
-import IconButton from "@mui/material/IconButton";
-import Alert from "@mui/material/Alert";
-import CircularProgress from "@mui/material/CircularProgress";
-import Close from "@mui/icons-material/Close";
+import {
+  Drawer,
+  Box,
+  Stack,
+  Group,
+  Title,
+  ActionIcon,
+  TextInput,
+  Select,
+  Button,
+  Alert,
+  Loader,
+} from "@mantine/core";
+import { IconX } from "@tabler/icons-react";
 import { useCreateTransaction, type CreateTransactionInput } from "../hooks/useTransactions";
+import { useAllAccounts } from "../hooks/useAccounts";
 
 interface CreateTransactionDrawerProps {
   open: boolean;
@@ -19,16 +25,17 @@ const DRAWER_WIDTH = 400;
 
 export default function CreateTransactionDrawer({ open, onClose }: CreateTransactionDrawerProps) {
   const [transactionName, setTransactionName] = useState("");
-  const [accountID, setAccountID] = useState("");
+  const [accountID, setAccountID] = useState<string | null>(null);
   const [categoryID, setCategoryID] = useState("");
   const [amount, setAmount] = useState("");
   const [transactionDate, setTransactionDate] = useState("");
 
   const createTransaction = useCreateTransaction();
+  const { accounts } = useAllAccounts();
 
   const resetForm = () => {
     setTransactionName("");
-    setAccountID("");
+    setAccountID(null);
     setCategoryID("");
     setAmount("");
     setTransactionDate("");
@@ -42,17 +49,17 @@ export default function CreateTransactionDrawer({ open, onClose }: CreateTransac
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!accountID) return;
 
     const body: CreateTransactionInput = {
       transactionName,
       accountID,
       categoryID,
       amount,
+      transactionDate: transactionDate
+        ? new Date(transactionDate).toISOString()
+        : new Date().toISOString(),
     };
-
-    if (transactionDate) {
-      body.transactionDate = new Date(transactionDate).toISOString();
-    }
 
     createTransaction.mutate(body, {
       onSuccess: () => {
@@ -63,108 +70,96 @@ export default function CreateTransactionDrawer({ open, onClose }: CreateTransac
 
   const isFormValid = transactionName && accountID && categoryID && amount;
 
+  const accountOptions = accounts.map((account) => ({
+    value: account.id,
+    label: account.name,
+  }));
+
   return (
     <Drawer
-      anchor="right"
-      open={open}
+      position="right"
+      opened={open}
       onClose={handleClose}
-      ModalProps={{ keepMounted: true }}
-      sx={{
-        "& .MuiDrawer-paper": {
-          width: DRAWER_WIDTH,
-          boxSizing: "border-box",
-        },
-      }}
+      title={null}
+      withCloseButton={false}
+      size={DRAWER_WIDTH}
+      styles={{ body: { height: "100%", display: "flex", flexDirection: "column" } }}
     >
       <Box
         component="form"
         onSubmit={handleSubmit}
-        sx={{
+        style={{
           display: "flex",
           flexDirection: "column",
           height: "100%",
         }}
       >
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            p: 2,
-            borderBottom: 1,
-            borderColor: "divider",
-          }}
-        >
-          <Typography variant="h6">New Transaction</Typography>
-          <IconButton onClick={handleClose} edge="end">
-            <Close />
-          </IconButton>
-        </Box>
+        <Group justify="space-between" mb="md" pb="md" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
+          <Title order={4} c="teal.7">New Transaction</Title>
+          <ActionIcon variant="subtle" onClick={handleClose} aria-label="close">
+            <IconX size={20} />
+          </ActionIcon>
+        </Group>
 
-        <Box sx={{ flex: 1, p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+        <Stack gap="md" style={{ flex: 1 }} mb="md">
           {createTransaction.isError && (
-            <Alert severity="error">{createTransaction.error.message}</Alert>
+            <Alert color="red" title="Error">
+              {createTransaction.error.message}
+            </Alert>
           )}
 
-          <TextField
+          <TextInput
             label="Transaction Name"
             value={transactionName}
             onChange={(e) => setTransactionName(e.target.value)}
             required
-            fullWidth
             autoFocus
           />
 
-          <TextField
-            label="Account ID"
+          <Select
+            label="Account"
             value={accountID}
-            onChange={(e) => setAccountID(e.target.value)}
+            onChange={setAccountID}
+            data={accountOptions}
+            placeholder="Select an account"
             required
-            fullWidth
-            placeholder="UUID"
-            helperText="Enter the account UUID"
+            searchable
           />
 
-          <TextField
+          <TextInput
             label="Category ID"
             value={categoryID}
             onChange={(e) => setCategoryID(e.target.value)}
-            required
-            fullWidth
             placeholder="UUID"
-            helperText="Enter the category UUID"
+            description="Enter the category UUID"
+            required
           />
 
-          <TextField
+          <TextInput
             label="Amount"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            required
-            fullWidth
             placeholder="0.00"
-            helperText="Decimal amount (e.g. 12.50)"
+            description="Decimal amount (e.g. 12.50)"
+            required
           />
 
-          <TextField
+          <TextInput
             label="Transaction Date"
             type="date"
             value={transactionDate}
             onChange={(e) => setTransactionDate(e.target.value)}
-            fullWidth
-            slotProps={{
-              inputLabel: { shrink: true },
-            }}
-            helperText="Optional, defaults to today"
+            description="Optional, defaults to today"
           />
-        </Box>
+        </Stack>
 
-        <Box sx={{ p: 2, borderTop: 1, borderColor: "divider" }}>
+        <Box pt="md" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
           <Button
             type="submit"
-            variant="contained"
             fullWidth
+            color="teal"
             disabled={!isFormValid || createTransaction.isPending}
-            startIcon={createTransaction.isPending ? <CircularProgress size={20} /> : null}
+            leftSection={createTransaction.isPending ? <Loader size="sm" /> : null}
           >
             {createTransaction.isPending ? "Creating..." : "Create Transaction"}
           </Button>

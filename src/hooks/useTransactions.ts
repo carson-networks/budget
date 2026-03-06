@@ -3,7 +3,7 @@ import { api } from "../api/client";
 import type { components } from "../api/schema";
 
 export type Transaction = components["schemas"]["Transaction"];
-export type CreateTransactionInput = components["schemas"]["CreateTransactionInputBody"];
+export type CreateTransactionInput = components["schemas"]["CreateTransactionBody"];
 type ListTransactionsCursor = components["schemas"]["ListTransactionsCursor"];
 
 export function useTransactions() {
@@ -28,8 +28,9 @@ export function useTransactions() {
 export function useAllTransactions() {
   const query = useTransactions();
 
-  const transactions =
-    query.data?.pages.flatMap((page) => page.transactions) ?? [];
+  const transactions = (
+    query.data?.pages.flatMap((page) => page.transactions ?? []) ?? []
+  ).filter((t): t is Transaction => t != null);
 
   return {
     ...query,
