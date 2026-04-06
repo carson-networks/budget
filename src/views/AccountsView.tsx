@@ -9,9 +9,13 @@ import {
   ActionIcon,
   Paper,
   Title,
+  Group,
+  Button,
+  Tooltip,
 } from "@mantine/core";
-import { IconPlus } from "@tabler/icons-react";
+import { IconPlus, IconRefresh } from "@tabler/icons-react";
 import { useAllAccounts } from "../hooks/useAccounts";
+import { useSyncAccounts } from "../hooks/usePlaid";
 import CreateAccountDrawer from "../components/CreateAccountDrawer";
 
 const ACCOUNT_TYPE_LABELS: Record<number, string> = {
@@ -35,6 +39,20 @@ export default function AccountsView() {
   const { accounts, isLoading, error } = useAllAccounts();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [page, setPage] = useState(1);
+  const syncAccounts = useSyncAccounts();
+  const [syncMessage, setSyncMessage] = useState<{ color: "teal" | "red"; text: string } | null>(null);
+
+  const handleSync = () => {
+    setSyncMessage(null);
+    syncAccounts.mutate(undefined, {
+      onSuccess: () => {
+        setSyncMessage({ color: "teal", text: "Sync complete." });
+      },
+      onError: (err) => {
+        setSyncMessage({ color: "red", text: err.message });
+      },
+    });
+  };
   const [pageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const rows = useMemo(
@@ -91,9 +109,27 @@ export default function AccountsView() {
         flexDirection: "column",
       }}
     >
-      <Title order={4} mb="md" c="dark.6">
-        Accounts
-      </Title>
+      {syncMessage && (
+        <Alert color={syncMessage.color} withCloseButton onClose={() => setSyncMessage(null)} mb="sm">
+          {syncMessage.text}
+        </Alert>
+      )}
+
+      <Group justify="space-between" mb="md">
+        <Title order={4} c="dark.6">Accounts</Title>
+        <Tooltip label="Sync linked bank accounts">
+          <Button
+            variant="light"
+            color="teal"
+            size="xs"
+            leftSection={syncAccounts.isPending ? <Loader size={14} /> : <IconRefresh size={14} />}
+            onClick={handleSync}
+            disabled={syncAccounts.isPending}
+          >
+            {syncAccounts.isPending ? "Syncing..." : "Sync"}
+          </Button>
+        </Tooltip>
+      </Group>
       <Paper shadow="sm" radius="md" p={0} style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
         <Box style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
           <Table striped highlightOnHover withTableBorder withColumnBorders>

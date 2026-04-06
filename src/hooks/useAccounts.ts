@@ -1,9 +1,14 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "../api/client";
-import type { components } from "../api/schema";
+import { accountClient } from "../api/connect";
+import { connectErrorMessage } from "../api/connectError";
+import type { MessageInitShape } from "@bufbuild/protobuf";
+import {
+  type Account,
+  CreateAccountRequestSchema,
+} from "../gen/account/v1/account_pb.js";
 
-export type Account = components["schemas"]["Account"];
-export type CreateAccountInput = components["schemas"]["CreateAccountBody"];
+export type { Account };
+export type CreateAccountInput = MessageInitShape<typeof CreateAccountRequestSchema>;
 
 const PAGE_SIZE = 50;
 
@@ -11,19 +16,18 @@ export function useAccounts() {
   return useInfiniteQuery({
     queryKey: ["accounts"],
     queryFn: async ({ pageParam }) => {
-      const { data, error } = await api.GET("/v1/accounts", {
-        params: {
-          query: pageParam ?? { limit: PAGE_SIZE },
-        },
-      });
-
-      if (error) {
-        throw new Error(error.detail ?? "Failed to fetch accounts");
+      try {
+        return await accountClient.listAccounts({
+          cursor: {
+            position: pageParam?.position ?? 0,
+            limit: pageParam?.limit ?? PAGE_SIZE,
+          },
+        });
+      } catch (e) {
+        throw new Error(connectErrorMessage(e, "Failed to load accounts"));
       }
-
-      return data;
     },
-    initialPageParam: undefined as { position?: number; limit?: number } | undefined,
+    initialPageParam: undefined as { position: number; limit: number } | undefined,
     getNextPageParam: (lastPage) => {
       const cursor = lastPage.nextCursor;
       if (!cursor) return undefined;
@@ -50,9 +54,10 @@ export function useCreateAccount() {
 
   return useMutation({
     mutationFn: async (body: CreateAccountInput) => {
-      const { error } = await api.POST("/v1/accounts", { body });
-      if (error) {
-        throw new Error(error.detail ?? "Failed to create account");
+      try {
+        await accountClient.createAccount(body);
+      } catch (e) {
+        throw new Error(connectErrorMessage(e, "Failed to create account"));
       }
     },
     onSuccess: () => {
