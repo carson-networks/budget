@@ -1,41 +1,63 @@
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "../api/client";
-import type { components } from "../api/schema";
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { timestampFromDate } from "@bufbuild/protobuf/wkt";
+import { transactionClient } from "../api/connect";
+import { connectErrorMessage } from "../api/connectError";
+import type { ListTransactionsCursor } from "../gen/transaction/v1/transaction_pb.js";
+import type { Transaction } from "../gen/transaction/v1/transaction_pb.js";
 
-export type Transaction = components["schemas"]["Transaction"];
-export type CreateTransactionInput = components["schemas"]["CreateTransactionBody"];
-type ListTransactionsCursor = components["schemas"]["ListTransactionsCursor"];
+export type { Transaction };
+
+/** Form payload from the UI; converted to a protobuf request in the mutation. */
+export type CreateTransactionInput = {
+  transactionName: string;
+  accountId: string;
+  categoryId: string;
+  amount: string;
+  /** ISO 8601 datetime string */
+  transactionDateIso: string;
+};
 
 export function useTransactions() {
   return useInfiniteQuery({
     queryKey: ["transactions"],
     queryFn: async ({ pageParam }) => {
-      const { data, error } = await api.POST("/v1/transaction/list", {
-        body: pageParam ? { cursor: pageParam } : {},
-      });
-
-      if (error) {
-        throw new Error(error.detail ?? "Failed to fetch transactions");
+      try {
+        return await transactionClient.listTransactions({
+          cursor: pageParam,
+        });
+      } catch (e) {
+        throw new Error(connectErrorMessage(e, "Failed to load transactions"));
       }
-
-      return data;
     },
     initialPageParam: undefined as ListTransactionsCursor | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
 }
 
+async function loadTransactionPage(cursor?: ListTransactionsCursor) {
+  try {
+    return await transactionClient.listTransactions({
+      cursor,
+    });
+  } catch (e) {
+    throw new Error(connectErrorMessage(e, "Failed to load transactions"));
+  }
+}
+
 export function useAllTransactions() {
-  const query = useTransactions();
-
-  const transactions = (
-    query.data?.pages.flatMap((page) => page.transactions ?? []) ?? []
-  ).filter((t): t is Transaction => t != null);
-
-  return {
-    ...query,
-    transactions,
-  };
+  return useQuery({
+    queryKey: ["transactions", "all"],
+    queryFn: async (): Promise<Transaction[]> => {
+      const all: Transaction[] = [];
+      let cursor: ListTransactionsCursor | undefined;
+      do {
+        const page = await loadTransactionPage(cursor);
+        all.push(...(page.transactions ?? []));
+        cursor = page.nextCursor ?? undefined;
+      } while (cursor !== undefined);
+      return all;
+    },
+  });
 }
 
 export function useCreateTransaction() {
@@ -43,14 +65,20 @@ export function useCreateTransaction() {
 
   return useMutation({
     mutationFn: async (body: CreateTransactionInput) => {
-      const { data, error } = await api.POST("/v1/transaction", { body });
-      if (error) {
-        throw new Error(error.detail ?? "Failed to create transaction");
+      try {
+        await transactionClient.createTransaction({
+          accountId: body.accountId,
+          categoryId: body.categoryId,
+          amount: body.amount,
+          transactionName: body.transactionName,
+          transactionDate: timestampFromDate(new Date(body.transactionDateIso)),
+        });
+      } catch (e) {
+        throw new Error(connectErrorMessage(e, "Failed to create transaction"));
       }
-      return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"], exact: false });
     },
   });
 }

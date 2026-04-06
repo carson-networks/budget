@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Drawer,
   Box,
@@ -11,10 +11,13 @@ import {
   Button,
   Alert,
   Loader,
+  Text,
 } from "@mantine/core";
 import { IconX } from "@tabler/icons-react";
 import { useCreateTransaction, type CreateTransactionInput } from "../hooks/useTransactions";
 import { useAllAccounts } from "../hooks/useAccounts";
+import { useAllCategories } from "../hooks/useCategories";
+import { categoryNameById, formatCategoryDisplayName } from "../util/categoryTree";
 
 interface CreateTransactionDrawerProps {
   open: boolean;
@@ -25,18 +28,31 @@ const DRAWER_WIDTH = 400;
 
 export default function CreateTransactionDrawer({ open, onClose }: CreateTransactionDrawerProps) {
   const [transactionName, setTransactionName] = useState("");
-  const [accountID, setAccountID] = useState<string | null>(null);
-  const [categoryID, setCategoryID] = useState("");
+  const [accountId, setAccountId] = useState<string | null>(null);
+  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
   const [transactionDate, setTransactionDate] = useState("");
 
   const createTransaction = useCreateTransaction();
   const { accounts } = useAllAccounts();
+  const { categories } = useAllCategories();
+
+  const categoryNameMap = useMemo(() => categoryNameById(categories), [categories]);
+
+  const categoryOptions = useMemo(() => {
+    const leaf = categories.filter((c) => !c.isParent && !c.isDisabled);
+    return leaf
+      .map((c) => ({
+        value: c.id,
+        label: formatCategoryDisplayName(c, categoryNameMap),
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [categories, categoryNameMap]);
 
   const resetForm = () => {
     setTransactionName("");
-    setAccountID(null);
-    setCategoryID("");
+    setAccountId(null);
+    setCategoryId(null);
     setAmount("");
     setTransactionDate("");
     createTransaction.reset();
@@ -49,16 +65,18 @@ export default function CreateTransactionDrawer({ open, onClose }: CreateTransac
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!accountID) return;
+    if (!accountId || !categoryId) return;
+
+    const transactionDateIso = transactionDate
+      ? new Date(`${transactionDate}T12:00:00`).toISOString()
+      : new Date().toISOString();
 
     const body: CreateTransactionInput = {
       transactionName,
-      accountID,
-      categoryID,
+      accountId,
+      categoryId,
       amount,
-      transactionDate: transactionDate
-        ? new Date(transactionDate).toISOString()
-        : new Date().toISOString(),
+      transactionDateIso,
     };
 
     createTransaction.mutate(body, {
@@ -68,7 +86,7 @@ export default function CreateTransactionDrawer({ open, onClose }: CreateTransac
     });
   };
 
-  const isFormValid = transactionName && accountID && categoryID && amount;
+  const isFormValid = transactionName && accountId && categoryId && amount;
 
   const accountOptions = accounts.map((account) => ({
     value: account.id,
@@ -118,22 +136,34 @@ export default function CreateTransactionDrawer({ open, onClose }: CreateTransac
 
           <Select
             label="Account"
-            value={accountID}
-            onChange={setAccountID}
+            value={accountId}
+            onChange={setAccountId}
             data={accountOptions}
             placeholder="Select an account"
             required
             searchable
           />
 
-          <TextInput
-            label="Category ID"
-            value={categoryID}
-            onChange={(e) => setCategoryID(e.target.value)}
-            placeholder="UUID"
-            description="Enter the category UUID"
+          <Select
+            label="Category"
+            value={categoryId}
+            onChange={setCategoryId}
+            data={categoryOptions}
+            placeholder={
+              categoryOptions.length > 0
+                ? "Select a category"
+                : "Create a leaf category under a group first"
+            }
             required
+            searchable
+            disabled={categoryOptions.length === 0}
           />
+          {categoryOptions.length === 0 && (
+            <Text size="sm" c="dimmed">
+              Transactions must use a subcategory (not a group). Add leaf categories under
+              Categories in the sidebar if this list is empty.
+            </Text>
+          )}
 
           <TextInput
             label="Amount"

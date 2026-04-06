@@ -9,7 +9,13 @@ import {
   NavLink,
   Box,
 } from "@mantine/core";
-import { IconReceipt, IconBuildingBank, IconUser } from "@tabler/icons-react";
+import {
+  IconReceipt,
+  IconBuildingBank,
+  IconFolders,
+  IconWallet,
+  IconUser,
+} from "@tabler/icons-react";
 
 export default function AppShell() {
   const [opened, setOpened] = useState(true);
@@ -74,6 +80,22 @@ export default function AppShell() {
             leftSection={<IconBuildingBank size={20} />}
             active={location.pathname === "/accounts"}
             onClick={() => handleNavigate("/accounts")}
+            variant="light"
+            color="teal"
+          />
+          <NavLink
+            label="Categories"
+            leftSection={<IconFolders size={20} />}
+            active={location.pathname === "/categories"}
+            onClick={() => handleNavigate("/categories")}
+            variant="light"
+            color="teal"
+          />
+          <NavLink
+            label="Budget"
+            leftSection={<IconWallet size={20} />}
+            active={location.pathname === "/budget"}
+            onClick={() => handleNavigate("/budget")}
             variant="light"
             color="teal"
           />

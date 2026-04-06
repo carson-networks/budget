@@ -9,10 +9,13 @@ import {
   ActionIcon,
   Paper,
   Title,
+  Text,
 } from "@mantine/core";
 import { IconPlus } from "@tabler/icons-react";
 import { useAllTransactions } from "../hooks/useTransactions";
 import { useAllAccounts } from "../hooks/useAccounts";
+import { useAllCategories } from "../hooks/useCategories";
+import { displayNameForCategoryId } from "../util/categoryTree";
 import CreateTransactionDrawer from "../components/CreateTransactionDrawer";
 
 const DEFAULT_PAGE_SIZE = 25;
@@ -25,8 +28,9 @@ function formatCurrency(value: string): string {
 }
 
 export default function TransactionsView() {
-  const { transactions, isLoading, error } = useAllTransactions();
+  const { data: transactions = [], isLoading, error } = useAllTransactions();
   const { accounts } = useAllAccounts();
+  const { categories } = useAllCategories();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -41,11 +45,11 @@ export default function TransactionsView() {
       transactions.map((t) => ({
         id: t.id,
         transactionName: t.transactionName,
-        accountName: accountNameById.get(t.accountID) ?? t.accountID,
-        categoryID: t.categoryID,
+        accountName: accountNameById.get(t.accountId) ?? t.accountId,
+        categoryDisplay: displayNameForCategoryId(t.categoryId ?? "", categories),
         amount: t.amount,
       })),
-    [transactions, accountNameById]
+    [transactions, accountNameById, categories]
   );
 
   const paginatedRows = useMemo(() => {
@@ -119,7 +123,11 @@ export default function TransactionsView() {
                   </Table.Td>
                   <Table.Td>{row.transactionName}</Table.Td>
                   <Table.Td>{row.accountName}</Table.Td>
-                  <Table.Td>{row.categoryID}</Table.Td>
+                  <Table.Td>
+                    <Text size="sm" lineClamp={2}>
+                      {row.categoryDisplay}
+                    </Text>
+                  </Table.Td>
                   <Table.Td fw={500}>{formatCurrency(row.amount)}</Table.Td>
                 </Table.Tr>
               ))}
