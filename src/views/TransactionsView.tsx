@@ -41,8 +41,8 @@ export default function TransactionsView() {
       transactions.map((t) => ({
         id: t.id,
         transactionName: t.transactionName,
-        accountName: accountNameById.get(t.accountID) ?? t.accountID,
-        categoryID: t.categoryID,
+        accountName: accountNameById.get(t.accountId) ?? t.accountId,
+        categoryID: t.categoryId ?? "",
         amount: t.amount,
       })),
     [transactions, accountNameById]

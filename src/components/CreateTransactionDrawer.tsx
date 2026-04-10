@@ -53,8 +53,8 @@ export default function CreateTransactionDrawer({ open, onClose }: CreateTransac
 
     const body: CreateTransactionInput = {
       transactionName,
-      accountID,
-      categoryID,
+      accountId: accountID,
+      categoryId: categoryID,
       amount,
       transactionDate: transactionDate
         ? new Date(transactionDate).toISOString()
