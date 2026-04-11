@@ -10,7 +10,8 @@
       "depNameTemplate": "budget-server-proto",
       "packageNameTemplate": "carson-networks/budget-server",
       "datasourceTemplate": "github-releases",
-      "extractVersionTemplate": "^v(?<version>.*)$"
+      "extractVersionTemplate": "^v(?<version>.*)$",
+      "autoReplaceStringTemplate": "git_repo: https://github.com/carson-networks/budget-server.git\n    tag: v{{{newVersion}}}"
     }
   ],
   "packageRules": [
