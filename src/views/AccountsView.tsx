@@ -11,15 +11,13 @@ import {
   Title,
 } from "@mantine/core";
 import { IconPlus } from "@tabler/icons-react";
-import { useAllAccounts } from "../hooks/useAccounts";
+import { useAllAccounts, AccountType } from "../hooks/useAccounts";
 import CreateAccountDrawer from "../components/CreateAccountDrawer";
 
-const ACCOUNT_TYPE_LABELS: Record<number, string> = {
-  0: "Cash",
-  1: "Credit Cards",
-  2: "Investments",
-  3: "Loans",
-  4: "Assets",
+const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
+  [AccountType.UNSPECIFIED]: "Unspecified",
+  [AccountType.CASH]: "Cash",
+  [AccountType.CREDIT_CARDS]: "Credit Cards",
 };
 
 const DEFAULT_PAGE_SIZE = 25;

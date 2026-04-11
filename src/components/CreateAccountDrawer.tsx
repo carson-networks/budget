@@ -13,7 +13,11 @@ import {
   Loader,
 } from "@mantine/core";
 import { IconX } from "@tabler/icons-react";
-import { useCreateAccount, type CreateAccountInput } from "../hooks/useAccounts";
+import {
+  useCreateAccount,
+  AccountType,
+  type CreateAccountInput,
+} from "../hooks/useAccounts";
 
 interface CreateAccountDrawerProps {
   open: boolean;
@@ -23,16 +27,13 @@ interface CreateAccountDrawerProps {
 const DRAWER_WIDTH = 400;
 
 const ACCOUNT_TYPES = [
-  { value: "0", label: "Cash" },
-  { value: "1", label: "Credit Cards" },
-  { value: "2", label: "Investments" },
-  { value: "3", label: "Loans" },
-  { value: "4", label: "Assets" },
+  { value: String(AccountType.CASH), label: "Cash" },
+  { value: String(AccountType.CREDIT_CARDS), label: "Credit Cards" },
 ];
 
 export default function CreateAccountDrawer({ open, onClose }: CreateAccountDrawerProps) {
   const [name, setName] = useState("");
-  const [type, setType] = useState<string | null>("0");
+  const [type, setType] = useState<string | null>(String(AccountType.CASH));
   const [subType, setSubType] = useState("");
   const [startingBalance, setStartingBalance] = useState("");
 
@@ -40,7 +41,7 @@ export default function CreateAccountDrawer({ open, onClose }: CreateAccountDraw
 
   const resetForm = () => {
     setName("");
-    setType("0");
+    setType(String(AccountType.CASH));
     setSubType("");
     setStartingBalance("");
     createAccount.reset();
@@ -57,7 +58,7 @@ export default function CreateAccountDrawer({ open, onClose }: CreateAccountDraw
 
     const body: CreateAccountInput = {
       name,
-      type: Number(type),
+      type: Number(type) as AccountType,
       subType,
       startingBalance,
     };

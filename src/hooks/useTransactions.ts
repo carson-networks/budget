@@ -1,27 +1,54 @@
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "../api/client";
-import type { components } from "../api/schema";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+  type InfiniteData,
+} from "@tanstack/react-query";
+import { timestampFromDate } from "@bufbuild/protobuf/wkt";
+import { transactionClient } from "../api/connect";
+import { connectErrorMessage } from "../api/errors";
+import type {
+  ListTransactionsCursor,
+  ListTransactionsResponse,
+  Transaction,
+} from "../gen/transaction/v1/transaction_pb.js";
 
-export type Transaction = components["schemas"]["Transaction"];
-export type CreateTransactionInput = components["schemas"]["CreateTransactionBody"];
-type ListTransactionsCursor = components["schemas"]["ListTransactionsCursor"];
+export type { Transaction };
+
+export type CreateTransactionInput = {
+  transactionName: string;
+  accountId: string;
+  categoryId: string;
+  amount: string;
+  /** ISO date string */
+  transactionDate: string;
+};
+
+const PAGE_SIZE = 50;
 
 export function useTransactions() {
-  return useInfiniteQuery({
+  return useInfiniteQuery<
+    ListTransactionsResponse,
+    Error,
+    InfiniteData<ListTransactionsResponse>,
+    string[],
+    ListTransactionsCursor | undefined
+  >({
     queryKey: ["transactions"],
     queryFn: async ({ pageParam }) => {
-      const { data, error } = await api.POST("/v1/transaction/list", {
-        body: pageParam ? { cursor: pageParam } : {},
-      });
-
-      if (error) {
-        throw new Error(error.detail ?? "Failed to fetch transactions");
+      try {
+        return await transactionClient.listTransactions({
+          cursor:
+            pageParam === undefined
+              ? { position: 0, limit: PAGE_SIZE }
+              : pageParam,
+        });
+      } catch (e) {
+        throw new Error(connectErrorMessage(e));
       }
-
-      return data;
     },
-    initialPageParam: undefined as ListTransactionsCursor | undefined,
-    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    initialPageParam: undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 }
 
@@ -43,11 +70,17 @@ export function useCreateTransaction() {
 
   return useMutation({
     mutationFn: async (body: CreateTransactionInput) => {
-      const { data, error } = await api.POST("/v1/transaction", { body });
-      if (error) {
-        throw new Error(error.detail ?? "Failed to create transaction");
+      try {
+        return await transactionClient.createTransaction({
+          accountId: body.accountId,
+          categoryId: body.categoryId,
+          amount: body.amount,
+          transactionName: body.transactionName,
+          transactionDate: timestampFromDate(new Date(body.transactionDate)),
+        });
+      } catch (e) {
+        throw new Error(connectErrorMessage(e));
       }
-      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });

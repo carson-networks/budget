@@ -1,0 +1,40 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "enabledManagers": ["custom.regex"],
+  "constraints": {
+    "node": "^24.0.0"
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["buf.gen.yaml"],
+      "matchStrings": [
+        "[ \\t]*-\\s+git_repo:\\s+https://github\\.com/carson-networks/budget-server\\.git\\r?\\n[ \\t]+tag:\\s*(?<currentValue>v\\d+\\.\\d+\\.\\d+)"
+      ],
+      "depNameTemplate": "budget-server-proto",
+      "packageNameTemplate": "carson-networks/budget-server",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "budget-server proto release tags",
+      "matchDepNames": ["budget-server-proto"],
+      "labels": ["proto"],
+      "commitMessageTopic": "budget-server proto",
+      "ignoreUnstable": true
+    }
+  ],
+  "postUpgradeTasks": {
+    "commands": [
+      "corepack enable",
+      "pnpm install --frozen-lockfile",
+      "pnpm run generate"
+    ],
+    "executionMode": "branch",
+    "installTools": {
+      "node": {}
+    }
+  }
+}

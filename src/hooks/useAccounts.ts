@@ -1,34 +1,53 @@
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "../api/client";
-import type { components } from "../api/schema";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+  type InfiniteData,
+} from "@tanstack/react-query";
+import { accountClient } from "../api/connect";
+import { connectErrorMessage } from "../api/errors";
+import type {
+  Account,
+  ListAccountsCursor,
+  ListAccountsResponse,
+} from "../gen/account/v1/account_pb.js";
+import { AccountType } from "../gen/account/v1/account_pb.js";
 
-export type Account = components["schemas"]["Account"];
-export type CreateAccountInput = components["schemas"]["CreateAccountBody"];
+export type { Account };
+export { AccountType };
+
+export type CreateAccountInput = {
+  name: string;
+  type: AccountType;
+  subType: string;
+  startingBalance: string;
+};
 
 const PAGE_SIZE = 50;
 
 export function useAccounts() {
-  return useInfiniteQuery({
+  return useInfiniteQuery<
+    ListAccountsResponse,
+    Error,
+    InfiniteData<ListAccountsResponse>,
+    string[],
+    ListAccountsCursor | undefined
+  >({
     queryKey: ["accounts"],
     queryFn: async ({ pageParam }) => {
-      const { data, error } = await api.GET("/v1/accounts", {
-        params: {
-          query: pageParam ?? { limit: PAGE_SIZE },
-        },
-      });
-
-      if (error) {
-        throw new Error(error.detail ?? "Failed to fetch accounts");
+      try {
+        return await accountClient.listAccounts({
+          cursor:
+            pageParam === undefined
+              ? { position: 0, limit: PAGE_SIZE }
+              : pageParam,
+        });
+      } catch (e) {
+        throw new Error(connectErrorMessage(e));
       }
-
-      return data;
     },
-    initialPageParam: undefined as { position?: number; limit?: number } | undefined,
-    getNextPageParam: (lastPage) => {
-      const cursor = lastPage.nextCursor;
-      if (!cursor) return undefined;
-      return { position: cursor.position, limit: cursor.limit };
-    },
+    initialPageParam: undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 }
 
@@ -50,9 +69,15 @@ export function useCreateAccount() {
 
   return useMutation({
     mutationFn: async (body: CreateAccountInput) => {
-      const { error } = await api.POST("/v1/accounts", { body });
-      if (error) {
-        throw new Error(error.detail ?? "Failed to create account");
+      try {
+        await accountClient.createAccount({
+          name: body.name,
+          type: body.type,
+          subType: body.subType,
+          startingBalance: body.startingBalance,
+        });
+      } catch (e) {
+        throw new Error(connectErrorMessage(e));
       }
     },
     onSuccess: () => {
