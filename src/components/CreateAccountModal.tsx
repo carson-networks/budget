@@ -1,43 +1,42 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
-  Drawer,
+  Modal,
   Box,
   Stack,
-  Group,
-  Title,
-  ActionIcon,
   TextInput,
   Select,
   Button,
   Alert,
   Loader,
+  Title,
 } from "@mantine/core";
-import { IconX } from "@tabler/icons-react";
 import {
   useCreateAccount,
   AccountType,
   type CreateAccountInput,
 } from "../hooks/useAccounts";
 
-interface CreateAccountDrawerProps {
+interface CreateAccountModalProps {
   open: boolean;
   onClose: () => void;
 }
-
-const DRAWER_WIDTH = 400;
 
 const ACCOUNT_TYPES = [
   { value: String(AccountType.CASH), label: "Cash" },
   { value: String(AccountType.CREDIT_CARDS), label: "Credit Cards" },
 ];
 
-export default function CreateAccountDrawer({ open, onClose }: CreateAccountDrawerProps) {
+export default function CreateAccountModal({ open, onClose }: CreateAccountModalProps) {
   const [name, setName] = useState("");
   const [type, setType] = useState<string | null>(String(AccountType.CASH));
   const [subType, setSubType] = useState("");
   const [startingBalance, setStartingBalance] = useState("");
 
   const createAccount = useCreateAccount();
+
+  useEffect(() => {
+    if (!open) createAccount.reset();
+  }, [open, createAccount]);
 
   const resetForm = () => {
     setName("");
@@ -73,32 +72,23 @@ export default function CreateAccountDrawer({ open, onClose }: CreateAccountDraw
   const isFormValid = name && type !== null && subType && startingBalance;
 
   return (
-    <Drawer
-      position="right"
+    <Modal
       opened={open}
       onClose={handleClose}
-      title={null}
-      withCloseButton={false}
-      size={DRAWER_WIDTH}
-      styles={{ body: { height: "100%", display: "flex", flexDirection: "column" } }}
+      title={
+        <Title order={4} component="span" c="brand.7" fw={600}>
+          New Account
+        </Title>
+      }
+      centered
+      size={440}
     >
       <Box
         component="form"
         onSubmit={handleSubmit}
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          height: "100%",
-        }}
+        style={{ display: "flex", flexDirection: "column" }}
       >
-        <Group justify="space-between" mb="md" pb="md" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
-          <Title order={4} c="teal.7">New Account</Title>
-          <ActionIcon variant="subtle" onClick={handleClose} aria-label="close">
-            <IconX size={20} />
-          </ActionIcon>
-        </Group>
-
-        <Stack gap="md" style={{ flex: 1 }} mb="md">
+        <Stack gap="md" mb="md">
           {createAccount.isError && (
             <Alert color="red" title="Error">
               {createAccount.error.message}
@@ -139,18 +129,16 @@ export default function CreateAccountDrawer({ open, onClose }: CreateAccountDraw
           />
         </Stack>
 
-        <Box pt="md" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
-          <Button
-            type="submit"
-            fullWidth
-            color="teal"
-            disabled={!isFormValid || createAccount.isPending}
-            leftSection={createAccount.isPending ? <Loader size="sm" /> : null}
-          >
-            {createAccount.isPending ? "Creating..." : "Create Account"}
-          </Button>
-        </Box>
+        <Button
+          type="submit"
+          fullWidth
+          color="brand"
+          disabled={!isFormValid || createAccount.isPending}
+          leftSection={createAccount.isPending ? <Loader size="sm" /> : null}
+        >
+          {createAccount.isPending ? "Creating..." : "Create Account"}
+        </Button>
       </Box>
-    </Drawer>
+    </Modal>
   );
 }

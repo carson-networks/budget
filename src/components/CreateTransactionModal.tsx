@@ -1,29 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
-  Drawer,
+  Modal,
   Box,
   Stack,
-  Group,
-  Title,
-  ActionIcon,
   TextInput,
   Select,
   Button,
   Alert,
   Loader,
+  Title,
 } from "@mantine/core";
-import { IconX } from "@tabler/icons-react";
 import { useCreateTransaction, type CreateTransactionInput } from "../hooks/useTransactions";
 import { useAllAccounts } from "../hooks/useAccounts";
 
-interface CreateTransactionDrawerProps {
+interface CreateTransactionModalProps {
   open: boolean;
   onClose: () => void;
 }
 
-const DRAWER_WIDTH = 400;
-
-export default function CreateTransactionDrawer({ open, onClose }: CreateTransactionDrawerProps) {
+export default function CreateTransactionModal({ open, onClose }: CreateTransactionModalProps) {
   const [transactionName, setTransactionName] = useState("");
   const [accountID, setAccountID] = useState<string | null>(null);
   const [categoryID, setCategoryID] = useState("");
@@ -32,6 +27,10 @@ export default function CreateTransactionDrawer({ open, onClose }: CreateTransac
 
   const createTransaction = useCreateTransaction();
   const { accounts } = useAllAccounts();
+
+  useEffect(() => {
+    if (!open) createTransaction.reset();
+  }, [open, createTransaction]);
 
   const resetForm = () => {
     setTransactionName("");
@@ -76,32 +75,23 @@ export default function CreateTransactionDrawer({ open, onClose }: CreateTransac
   }));
 
   return (
-    <Drawer
-      position="right"
+    <Modal
       opened={open}
       onClose={handleClose}
-      title={null}
-      withCloseButton={false}
-      size={DRAWER_WIDTH}
-      styles={{ body: { height: "100%", display: "flex", flexDirection: "column" } }}
+      title={
+        <Title order={4} component="span" c="brand.7" fw={600}>
+          New Transaction
+        </Title>
+      }
+      centered
+      size={440}
     >
       <Box
         component="form"
         onSubmit={handleSubmit}
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          height: "100%",
-        }}
+        style={{ display: "flex", flexDirection: "column" }}
       >
-        <Group justify="space-between" mb="md" pb="md" style={{ borderBottom: "1px solid var(--mantine-color-default-border)" }}>
-          <Title order={4} c="teal.7">New Transaction</Title>
-          <ActionIcon variant="subtle" onClick={handleClose} aria-label="close">
-            <IconX size={20} />
-          </ActionIcon>
-        </Group>
-
-        <Stack gap="md" style={{ flex: 1 }} mb="md">
+        <Stack gap="md" mb="md">
           {createTransaction.isError && (
             <Alert color="red" title="Error">
               {createTransaction.error.message}
@@ -153,18 +143,16 @@ export default function CreateTransactionDrawer({ open, onClose }: CreateTransac
           />
         </Stack>
 
-        <Box pt="md" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}>
-          <Button
-            type="submit"
-            fullWidth
-            color="teal"
-            disabled={!isFormValid || createTransaction.isPending}
-            leftSection={createTransaction.isPending ? <Loader size="sm" /> : null}
-          >
-            {createTransaction.isPending ? "Creating..." : "Create Transaction"}
-          </Button>
-        </Box>
+        <Button
+          type="submit"
+          fullWidth
+          color="brand"
+          disabled={!isFormValid || createTransaction.isPending}
+          leftSection={createTransaction.isPending ? <Loader size="sm" /> : null}
+        >
+          {createTransaction.isPending ? "Creating..." : "Create Transaction"}
+        </Button>
       </Box>
-    </Drawer>
+    </Modal>
   );
 }

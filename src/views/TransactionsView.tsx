@@ -11,11 +11,15 @@ import {
   Title,
 } from "@mantine/core";
 import { IconPlus } from "@tabler/icons-react";
-import { useAllTransactions } from "../hooks/useTransactions";
+import { useAllTransactions, type Transaction } from "../hooks/useTransactions";
 import { useAllAccounts } from "../hooks/useAccounts";
-import CreateTransactionDrawer from "../components/CreateTransactionDrawer";
+import CreateTransactionModal from "../components/CreateTransactionModal";
+import EditTransactionModal from "../components/EditTransactionModal";
 
 const DEFAULT_PAGE_SIZE = 25;
+
+/** Mantine `ActionIcon` `size="md"` height — matches Categories/Accounts settings column. */
+const TABLE_LEADING_CELL_HEIGHT_PX = 28;
 
 function formatCurrency(value: string): string {
   return new Intl.NumberFormat("en-US", {
@@ -27,7 +31,8 @@ function formatCurrency(value: string): string {
 export default function TransactionsView() {
   const { transactions, isLoading, error } = useAllTransactions();
   const { accounts } = useAllAccounts();
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editTransaction, setEditTransaction] = useState<Transaction | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(DEFAULT_PAGE_SIZE);
 
@@ -65,7 +70,7 @@ export default function TransactionsView() {
           justifyContent: "center",
         }}
       >
-        <Loader color="teal" />
+        <Loader color="brand" />
       </Box>
     );
   }
@@ -92,12 +97,25 @@ export default function TransactionsView() {
       <Title order={4} mb="md" c="dark.6">
         Transactions
       </Title>
-      <Paper shadow="sm" radius="md" p={0} style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      <Paper
+        shadow="sm"
+        radius="md"
+        p={0}
+        style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}
+      >
         <Box style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
-          <Table striped highlightOnHover withTableBorder withColumnBorders>
+          <Table
+            striped
+            highlightOnHover
+            withTableBorder
+            withColumnBorders
+            verticalSpacing="xs"
+            horizontalSpacing="xs"
+            fz="sm"
+          >
             <Table.Thead>
               <Table.Tr>
-                <Table.Th style={{ width: 60 }} />
+                <Table.Th style={{ width: 48 }} />
                 <Table.Th>Transaction</Table.Th>
                 <Table.Th>Account</Table.Th>
                 <Table.Th>Category</Table.Th>
@@ -106,21 +124,49 @@ export default function TransactionsView() {
             </Table.Thead>
             <Table.Tbody>
               {paginatedRows.map((row) => (
-                <Table.Tr key={row.id}>
-                  <Table.Td>
+                <Table.Tr
+                  key={row.id}
+                  style={{ cursor: "pointer" }}
+                  onClick={() =>
+                    setEditTransaction(
+                      transactions.find((t) => t.id === row.id) ?? null,
+                    )
+                  }
+                >
+                  <Table.Td
+                    style={{ verticalAlign: "middle", textAlign: "center" }}
+                  >
                     <Box
                       style={{
-                        width: 40,
-                        height: 40,
-                        backgroundColor: "var(--mantine-color-teal-1)",
-                        borderRadius: 8,
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        minHeight: TABLE_LEADING_CELL_HEIGHT_PX,
                       }}
-                    />
+                    >
+                      <Box
+                        style={{
+                          width: 24,
+                          height: 24,
+                          backgroundColor: "var(--mantine-color-brand-1)",
+                          borderRadius: 5,
+                          flexShrink: 0,
+                        }}
+                      />
+                    </Box>
                   </Table.Td>
-                  <Table.Td>{row.transactionName}</Table.Td>
-                  <Table.Td>{row.accountName}</Table.Td>
-                  <Table.Td>{row.categoryID}</Table.Td>
-                  <Table.Td fw={500}>{formatCurrency(row.amount)}</Table.Td>
+                  <Table.Td style={{ verticalAlign: "middle" }}>
+                    {row.transactionName}
+                  </Table.Td>
+                  <Table.Td style={{ verticalAlign: "middle" }}>
+                    {row.accountName}
+                  </Table.Td>
+                  <Table.Td style={{ verticalAlign: "middle" }}>
+                    {row.categoryID}
+                  </Table.Td>
+                  <Table.Td fw={500} style={{ verticalAlign: "middle" }}>
+                    {formatCurrency(row.amount)}
+                  </Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>
@@ -134,7 +180,7 @@ export default function TransactionsView() {
             value={page}
             onChange={setPage}
             size="sm"
-            color="teal"
+            color="brand"
           />
           </Box>
         )}
@@ -144,17 +190,29 @@ export default function TransactionsView() {
         <ActionIcon
           size="xl"
           radius="xl"
-          color="teal"
+          color="brand"
           aria-label="add transaction"
-          onClick={() => setDrawerOpen(true)}
+          onClick={() => setCreateModalOpen(true)}
         >
           <IconPlus size={24} />
         </ActionIcon>
       </Affix>
 
-      <CreateTransactionDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
+      <CreateTransactionModal
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+      />
+
+      <EditTransactionModal
+        transaction={editTransaction}
+        accountLabel={
+          editTransaction
+            ? accountNameById.get(editTransaction.accountId) ??
+              editTransaction.accountId
+            : ""
+        }
+        opened={editTransaction !== null}
+        onClose={() => setEditTransaction(null)}
       />
     </Box>
   );

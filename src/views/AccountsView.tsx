@@ -4,23 +4,23 @@ import {
   Loader,
   Alert,
   Table,
-  Pagination,
   Affix,
   ActionIcon,
   Paper,
   Title,
+  Text,
 } from "@mantine/core";
-import { IconPlus } from "@tabler/icons-react";
-import { useAllAccounts, AccountType } from "../hooks/useAccounts";
-import CreateAccountDrawer from "../components/CreateAccountDrawer";
+import { IconPlus, IconSettings } from "@tabler/icons-react";
+import { useAllAccounts, AccountType, type Account } from "../hooks/useAccounts";
+import { groupAccountsByType } from "../utils/accountSegments";
+import CreateAccountModal from "../components/CreateAccountModal";
+import EditAccountModal from "../components/EditAccountModal";
 
 const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
   [AccountType.UNSPECIFIED]: "Unspecified",
   [AccountType.CASH]: "Cash",
   [AccountType.CREDIT_CARDS]: "Credit Cards",
 };
-
-const DEFAULT_PAGE_SIZE = 25;
 
 function formatCurrency(value: string): string {
   return new Intl.NumberFormat("en-US", {
@@ -29,31 +29,76 @@ function formatCurrency(value: string): string {
   }).format(parseFloat(value));
 }
 
+type AccountsTableProps = {
+  accounts: Account[];
+  onRowSettings: (account: Account) => void;
+};
+
+function AccountsSubTable({ accounts, onRowSettings }: AccountsTableProps) {
+  return (
+    <Table
+      highlightOnHover
+      withTableBorder
+      withColumnBorders
+      verticalSpacing="xs"
+      horizontalSpacing="xs"
+      fz="sm"
+      style={{ tableLayout: "fixed", width: "100%" }}
+    >
+      <Table.Thead>
+        <Table.Tr>
+          <Table.Th style={{ width: 48 }} />
+          <Table.Th>Name</Table.Th>
+          <Table.Th style={{ width: 140 }}>Sub Type</Table.Th>
+          <Table.Th style={{ width: 130 }}>Balance</Table.Th>
+          <Table.Th style={{ width: 140 }}>Starting Balance</Table.Th>
+        </Table.Tr>
+      </Table.Thead>
+      <Table.Tbody>
+        {accounts.map((row) => (
+          <Table.Tr key={row.id}>
+            <Table.Td
+              style={{ verticalAlign: "middle", textAlign: "center" }}
+            >
+              <Box
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <ActionIcon
+                  variant="subtle"
+                  color="gray"
+                  size="md"
+                  aria-label={`Settings for ${row.name}`}
+                  onClick={() => onRowSettings(row)}
+                >
+                  <IconSettings size={18} />
+                </ActionIcon>
+              </Box>
+            </Table.Td>
+            <Table.Td style={{ verticalAlign: "middle" }}>{row.name}</Table.Td>
+            <Table.Td style={{ verticalAlign: "middle" }}>{row.subType}</Table.Td>
+            <Table.Td fw={500} style={{ verticalAlign: "middle" }}>
+              {formatCurrency(row.balance)}
+            </Table.Td>
+            <Table.Td style={{ verticalAlign: "middle" }}>
+              {formatCurrency(row.startingBalance)}
+            </Table.Td>
+          </Table.Tr>
+        ))}
+      </Table.Tbody>
+    </Table>
+  );
+}
+
 export default function AccountsView() {
   const { accounts, isLoading, error } = useAllAccounts();
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [settingsAccount, setSettingsAccount] = useState<Account | null>(null);
 
-  const rows = useMemo(
-    () =>
-      accounts.map((a) => ({
-        id: a.id,
-        name: a.name,
-        type: a.type,
-        subType: a.subType,
-        balance: a.balance,
-        startingBalance: a.startingBalance,
-      })),
-    [accounts]
-  );
-
-  const paginatedRows = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return rows.slice(start, start + pageSize);
-  }, [rows, page, pageSize]);
-
-  const totalPages = Math.ceil(rows.length / pageSize) || 1;
+  const segments = useMemo(() => groupAccountsByType(accounts), [accounts]);
 
   if (isLoading) {
     return (
@@ -65,7 +110,7 @@ export default function AccountsView() {
           justifyContent: "center",
         }}
       >
-        <Loader color="teal" />
+        <Loader color="brand" />
       </Box>
     );
   }
@@ -92,73 +137,65 @@ export default function AccountsView() {
       <Title order={4} mb="md" c="dark.6">
         Accounts
       </Title>
-      <Paper shadow="sm" radius="md" p={0} style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-        <Box style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
-          <Table striped highlightOnHover withTableBorder withColumnBorders>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th style={{ width: 60 }} />
-                <Table.Th>Name</Table.Th>
-                <Table.Th>Type</Table.Th>
-                <Table.Th>Sub Type</Table.Th>
-                <Table.Th>Balance</Table.Th>
-                <Table.Th>Starting Balance</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {paginatedRows.map((row) => (
-                <Table.Tr key={row.id}>
-                  <Table.Td>
-                    <Box
-                      style={{
-                        width: 40,
-                        height: 40,
-                        backgroundColor: "var(--mantine-color-teal-1)",
-                        borderRadius: 8,
-                      }}
-                    />
-                  </Table.Td>
-                  <Table.Td>{row.name}</Table.Td>
-                  <Table.Td>
-                    {ACCOUNT_TYPE_LABELS[row.type] ?? String(row.type)}
-                  </Table.Td>
-                  <Table.Td>{row.subType}</Table.Td>
-                  <Table.Td fw={500}>{formatCurrency(row.balance)}</Table.Td>
-                  <Table.Td>{formatCurrency(row.startingBalance)}</Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Box>
 
-        {rows.length > 0 && (
-          <Box py="md" style={{ display: "flex", justifyContent: "center", borderTop: "1px solid var(--mantine-color-default-border)" }}>
-            <Pagination
-            total={totalPages}
-            value={page}
-            onChange={setPage}
-            size="sm"
-            color="teal"
-          />
-          </Box>
-        )}
-      </Paper>
+      <Box style={{ flex: 1, minHeight: 0, overflow: "auto", paddingRight: 2 }}>
+        {accounts.length === 0 ? (
+          <Text size="sm" c="dimmed">
+            No accounts yet. Use the + button to add one.
+          </Text>
+        ) : null}
+        {segments.map((segment) => (
+          <Paper
+            key={segment.type}
+            shadow="sm"
+            radius="md"
+            mb="md"
+            p={0}
+            withBorder
+            style={{ overflow: "hidden" }}
+          >
+            <Box
+              px="md"
+              py="sm"
+              style={{
+                backgroundColor: "var(--mantine-color-gray-0)",
+                borderBottom: "1px solid var(--mantine-color-default-border)",
+              }}
+            >
+              <Text fw={700} size="sm">
+                {ACCOUNT_TYPE_LABELS[segment.type] ?? String(segment.type)}
+              </Text>
+            </Box>
+
+            <AccountsSubTable
+              accounts={segment.accounts}
+              onRowSettings={setSettingsAccount}
+            />
+          </Paper>
+        ))}
+      </Box>
 
       <Affix position={{ bottom: 24, right: 24 }}>
         <ActionIcon
           size="xl"
           radius="xl"
-          color="teal"
+          color="brand"
           aria-label="add account"
-          onClick={() => setDrawerOpen(true)}
+          onClick={() => setCreateModalOpen(true)}
         >
           <IconPlus size={24} />
         </ActionIcon>
       </Affix>
 
-      <CreateAccountDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
+      <CreateAccountModal
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+      />
+
+      <EditAccountModal
+        account={settingsAccount}
+        opened={settingsAccount !== null}
+        onClose={() => setSettingsAccount(null)}
       />
     </Box>
   );
