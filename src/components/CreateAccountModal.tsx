@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Modal,
   Box,
@@ -9,12 +9,20 @@ import {
   Alert,
   Loader,
   Title,
+  Text,
 } from "@mantine/core";
+import type { PlaidLinkOnSuccessMetadata } from "react-plaid-link";
 import {
   useCreateAccount,
   AccountType,
   type CreateAccountInput,
 } from "../hooks/useAccounts";
+import {
+  ACCOUNT_SYNC_OPTIONS,
+  PLAID_ACCOUNT_SUB_TYPE,
+  type AccountSyncProviderId,
+} from "../constants/accountSyncIntegrations";
+import { PlaidConnectButton } from "./PlaidConnectButton";
 
 interface CreateAccountModalProps {
   open: boolean;
@@ -26,11 +34,38 @@ const ACCOUNT_TYPES = [
   { value: String(AccountType.CREDIT_CARDS), label: "Credit Cards" },
 ];
 
+const SYNC_SELECT_DATA = ACCOUNT_SYNC_OPTIONS.map((o) => ({
+  value: o.id,
+  label: o.available ? o.label : `${o.label} (coming soon)`,
+  disabled: !o.available,
+}));
+
+function buildPlaidAccountBody(
+  nameInput: string,
+  metadata: PlaidLinkOnSuccessMetadata,
+): CreateAccountInput {
+  const resolvedName =
+    nameInput.trim() ||
+    metadata.accounts[0]?.name ||
+    metadata.institution?.name ||
+    "Linked account";
+  return {
+    name: resolvedName,
+    type: AccountType.CASH,
+    subType: PLAID_ACCOUNT_SUB_TYPE,
+    startingBalance: "0",
+    sync: { provider: "plaid", plaidLinkCompleted: true },
+  };
+}
+
 export default function CreateAccountModal({ open, onClose }: CreateAccountModalProps) {
   const [name, setName] = useState("");
   const [type, setType] = useState<string | null>(String(AccountType.CASH));
   const [subType, setSubType] = useState("");
   const [startingBalance, setStartingBalance] = useState("");
+  const [syncProvider, setSyncProvider] = useState<AccountSyncProviderId>("manual");
+  const [plaidLinkCompleted, setPlaidLinkCompleted] = useState(false);
+  const lastPlaidMetadataRef = useRef<PlaidLinkOnSuccessMetadata | null>(null);
 
   const createAccount = useCreateAccount();
 
@@ -38,30 +73,45 @@ export default function CreateAccountModal({ open, onClose }: CreateAccountModal
     if (!open) createAccount.reset();
   }, [open, createAccount]);
 
-  const resetForm = () => {
+  const handleClose = useCallback(() => {
     setName("");
     setType(String(AccountType.CASH));
     setSubType("");
     setStartingBalance("");
+    setSyncProvider("manual");
+    setPlaidLinkCompleted(false);
+    lastPlaidMetadataRef.current = null;
     createAccount.reset();
-  };
-
-  const handleClose = () => {
-    resetForm();
     onClose();
-  };
+  }, [onClose, createAccount]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (type === null) return;
+    if (syncProvider === "manual") {
+      if (type === null) return;
+      if (!name.trim() || !subType || !startingBalance) return;
 
-    const body: CreateAccountInput = {
-      name,
-      type: Number(type) as AccountType,
-      subType,
-      startingBalance,
-    };
+      const manualType = Number(type) as AccountType;
+      const body: CreateAccountInput = {
+        name: name.trim(),
+        type: manualType,
+        subType,
+        startingBalance,
+        sync: { provider: "manual" },
+      };
 
+      createAccount.mutate(body, {
+        onSuccess: () => {
+          handleClose();
+        },
+      });
+      return;
+    }
+
+    const meta = lastPlaidMetadataRef.current;
+    if (!meta || !plaidLinkCompleted) return;
+
+    const body = buildPlaidAccountBody(name, meta);
     createAccount.mutate(body, {
       onSuccess: () => {
         handleClose();
@@ -69,7 +119,37 @@ export default function CreateAccountModal({ open, onClose }: CreateAccountModal
     });
   };
 
-  const isFormValid = name && type !== null && subType && startingBalance;
+  const isManualFormValid =
+    !!name.trim() &&
+    type !== null &&
+    !!subType &&
+    !!startingBalance;
+
+  const showCreateAccountButton =
+    syncProvider === "manual" ||
+    (syncProvider === "plaid" && createAccount.isError && plaidLinkCompleted);
+
+  const selectedSyncMeta = ACCOUNT_SYNC_OPTIONS.find((o) => o.id === syncProvider);
+  const showManualAccountFields = syncProvider === "manual";
+
+  const handlePlaidLinked = useCallback(
+    (_publicToken: string, metadata: PlaidLinkOnSuccessMetadata) => {
+      lastPlaidMetadataRef.current = metadata;
+      setPlaidLinkCompleted(true);
+
+      const body = buildPlaidAccountBody(name, metadata);
+      if (!name.trim()) {
+        setName(body.name);
+      }
+
+      createAccount.mutate(body, {
+        onSuccess: () => {
+          handleClose();
+        },
+      });
+    },
+    [name, createAccount, handleClose],
+  );
 
   return (
     <Modal
@@ -81,7 +161,7 @@ export default function CreateAccountModal({ open, onClose }: CreateAccountModal
         </Title>
       }
       centered
-      size={440}
+      size={520}
     >
       <Box
         component="form"
@@ -99,45 +179,114 @@ export default function CreateAccountModal({ open, onClose }: CreateAccountModal
             label="Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            required
+            required={syncProvider === "manual"}
+            description={
+              syncProvider === "plaid"
+                ? "Optional — defaults to your linked account or institution name"
+                : undefined
+            }
             autoFocus
           />
 
+          <Text size="sm" c="dimmed">
+            Bank and data connections can only be chosen while you create this account.
+          </Text>
+
           <Select
-            label="Type"
-            value={type}
-            onChange={setType}
-            data={ACCOUNT_TYPES}
-            required
+            label="Integrations"
+            placeholder="Choose integration"
+            value={syncProvider}
+            onChange={(v) => {
+              const next = (v ?? "manual") as AccountSyncProviderId;
+              setSyncProvider(next);
+              if (next !== "plaid") {
+                setPlaidLinkCompleted(false);
+                lastPlaidMetadataRef.current = null;
+              }
+            }}
+            data={SYNC_SELECT_DATA}
+            allowDeselect={false}
+            comboboxProps={{ withinPortal: true }}
           />
 
-          <TextInput
-            label="Sub Type"
-            value={subType}
-            onChange={(e) => setSubType(e.target.value)}
-            placeholder="e.g. Checking, Savings"
-            required
-          />
+          {selectedSyncMeta &&
+            syncProvider !== "manual" &&
+            (selectedSyncMeta.description || selectedSyncMeta.selectedHelp) && (
+              <Alert color="gray" variant="light">
+                <Text size="sm" fw={500} mb={4}>
+                  {selectedSyncMeta.label}
+                </Text>
+                {selectedSyncMeta.description ? (
+                  <Text size="sm" c="dimmed">
+                    {selectedSyncMeta.description}
+                  </Text>
+                ) : null}
+                {selectedSyncMeta.selectedHelp ? (
+                  <Text size="sm" mt={selectedSyncMeta.description ? "sm" : 0}>
+                    {selectedSyncMeta.selectedHelp}
+                  </Text>
+                ) : null}
+              </Alert>
+            )}
 
-          <TextInput
-            label="Starting Balance"
-            value={startingBalance}
-            onChange={(e) => setStartingBalance(e.target.value)}
-            placeholder="0.00"
-            description="Decimal amount (e.g. 0.00 or -500.00)"
-            required
-          />
+          {syncProvider === "plaid" && (
+            <PlaidConnectButton
+              active={syncProvider === "plaid"}
+              linked={plaidLinkCompleted}
+              onLinked={handlePlaidLinked}
+              disabled={createAccount.isPending}
+            />
+          )}
+
+          {showManualAccountFields && (
+            <>
+              <Select
+                label="Type"
+                value={type}
+                onChange={setType}
+                data={ACCOUNT_TYPES}
+                required
+                comboboxProps={{ withinPortal: true }}
+              />
+
+              <TextInput
+                label="Sub Type"
+                value={subType}
+                onChange={(e) => setSubType(e.target.value)}
+                placeholder="e.g. Checking, Savings"
+                required
+              />
+
+              <TextInput
+                label="Starting Balance"
+                value={startingBalance}
+                onChange={(e) => setStartingBalance(e.target.value)}
+                placeholder="0.00"
+                description="Decimal amount (e.g. 0.00 or -500.00)"
+                required
+              />
+            </>
+          )}
         </Stack>
 
-        <Button
-          type="submit"
-          fullWidth
-          color="brand"
-          disabled={!isFormValid || createAccount.isPending}
-          leftSection={createAccount.isPending ? <Loader size="sm" /> : null}
-        >
-          {createAccount.isPending ? "Creating..." : "Create Account"}
-        </Button>
+        {showCreateAccountButton ? (
+          <Button
+            type="submit"
+            fullWidth
+            color="brand"
+            disabled={
+              createAccount.isPending ||
+              (syncProvider === "manual" && !isManualFormValid)
+            }
+            leftSection={createAccount.isPending ? <Loader size="sm" /> : null}
+          >
+            {createAccount.isPending
+              ? "Creating..."
+              : syncProvider === "plaid" && createAccount.isError
+                ? "Try again"
+                : "Create Account"}
+          </Button>
+        ) : null}
       </Box>
     </Modal>
   );

@@ -18,7 +18,10 @@ import type {
   ListTransactionsResponse,
   Transaction,
 } from "../gen/transaction/v1/transaction_pb.js";
-import { ListTransactionsResponseSchema } from "../gen/transaction/v1/transaction_pb.js";
+import {
+  ListTransactionsResponseSchema,
+  TransactionSchema,
+} from "../gen/transaction/v1/transaction_pb.js";
 
 export type { Transaction };
 
@@ -29,6 +32,11 @@ export type CreateTransactionInput = {
   amount: string;
   /** ISO date string */
   transactionDate: string;
+};
+
+export type UpdateTransactionCategoryInput = {
+  transactionId: string;
+  categoryId: string;
 };
 
 const PAGE_SIZE = 50;
@@ -128,6 +136,58 @@ export function useCreateTransaction() {
                 }),
                 ...rest,
               ],
+            };
+          },
+        );
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    },
+  });
+}
+
+export function useUpdateTransactionCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (body: UpdateTransactionCategoryInput) => {
+      if (isFakeBudgetData()) {
+        return;
+      }
+      try {
+        await transactionClient.updateTransactionCategory({
+          transactionId: body.transactionId,
+          categoryId: body.categoryId,
+        });
+      } catch (e) {
+        throw new Error(connectErrorMessage(e));
+      }
+    },
+    onSuccess: (_data, variables) => {
+      if (isFakeBudgetData()) {
+        queryClient.setQueryData(
+          ["transactions"],
+          (old: InfiniteData<ListTransactionsResponse> | undefined) => {
+            if (!old?.pages.length) return old;
+            return {
+              ...old,
+              pages: old.pages.map((page) =>
+                create(ListTransactionsResponseSchema, {
+                  transactions: (page.transactions ?? []).map((t) => {
+                    if (t.id !== variables.transactionId) return t;
+                    return create(TransactionSchema, {
+                      id: t.id,
+                      accountId: t.accountId,
+                      categoryId: variables.categoryId,
+                      amount: t.amount,
+                      transactionName: t.transactionName,
+                      transactionDate: t.transactionDate,
+                      createdAt: t.createdAt,
+                    });
+                  }),
+                  nextCursor: page.nextCursor,
+                }),
+              ),
             };
           },
         );

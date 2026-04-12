@@ -26,6 +26,7 @@ import {
   formatYearMonthLabel,
   type YearMonth,
 } from "../utils/monthRange";
+import { effectiveBudgetForMonth } from "../utils/budgetEffective";
 import { transactionYearMonth } from "../utils/transactionMonthBuckets";
 import { BudgetCellInput } from "../components/BudgetCellInput";
 
@@ -67,14 +68,14 @@ export default function BudgetMonthView() {
   );
 
   const budgetByCategoryId = useMemo(() => {
+    const sparse = budgetsResponse?.budgets ?? [];
     const m = new Map<string, string>();
-    for (const b of budgetsResponse?.budgets ?? []) {
-      if (b.year === selectedMonth.year && b.month === selectedMonth.month) {
-        m.set(b.categoryId, b.amount);
-      }
+    for (const c of visibleCategories) {
+      const amt = effectiveBudgetForMonth(sparse, c.id, selectedMonth);
+      if (amt !== undefined) m.set(c.id, amt);
     }
     return m;
-  }, [budgetsResponse, selectedMonth]);
+  }, [budgetsResponse, selectedMonth, visibleCategories]);
 
   const actualByCategoryId = useMemo(() => {
     const m = new Map<string, number>();

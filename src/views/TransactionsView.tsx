@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Box,
   Loader,
@@ -9,12 +9,23 @@ import {
   ActionIcon,
   Paper,
   Title,
+  Select,
 } from "@mantine/core";
 import { IconPlus } from "@tabler/icons-react";
-import { useAllTransactions, type Transaction } from "../hooks/useTransactions";
+import {
+  useAllTransactions,
+  useUpdateTransactionCategory,
+  type Transaction,
+} from "../hooks/useTransactions";
 import { useAllAccounts } from "../hooks/useAccounts";
+import { useAllCategories } from "../hooks/useCategories";
 import CreateTransactionModal from "../components/CreateTransactionModal";
 import EditTransactionModal from "../components/EditTransactionModal";
+import {
+  buildTransactionCategorySelectData,
+  countSelectableTransactionCategories,
+  isSelectableTransactionCategory,
+} from "../utils/transactionCategorySelectData";
 
 const DEFAULT_PAGE_SIZE = 25;
 
@@ -31,6 +42,8 @@ function formatCurrency(value: string): string {
 export default function TransactionsView() {
   const { transactions, isLoading, error } = useAllTransactions();
   const { accounts } = useAllAccounts();
+  const { categories } = useAllCategories();
+  const updateCategory = useUpdateTransactionCategory();
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editTransaction, setEditTransaction] = useState<Transaction | null>(null);
   const [page, setPage] = useState(1);
@@ -41,24 +54,24 @@ export default function TransactionsView() {
     [accounts]
   );
 
-  const rows = useMemo(
-    () =>
-      transactions.map((t) => ({
-        id: t.id,
-        transactionName: t.transactionName,
-        accountName: accountNameById.get(t.accountId) ?? t.accountId,
-        categoryID: t.categoryId ?? "",
-        amount: t.amount,
-      })),
-    [transactions, accountNameById]
+  const categorySelectData = useMemo(
+    () => buildTransactionCategorySelectData(categories),
+    [categories],
   );
 
-  const paginatedRows = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return rows.slice(start, start + pageSize);
-  }, [rows, page, pageSize]);
+  useEffect(() => {
+    setEditTransaction((current) => {
+      if (!current) return null;
+      return transactions.find((t) => t.id === current.id) ?? null;
+    });
+  }, [transactions]);
 
-  const totalPages = Math.ceil(rows.length / pageSize) || 1;
+  const paginatedTransactions = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return transactions.slice(start, start + pageSize);
+  }, [transactions, page, pageSize]);
+
+  const totalPages = Math.ceil(transactions.length / pageSize) || 1;
 
   if (isLoading) {
     return (
@@ -103,6 +116,17 @@ export default function TransactionsView() {
         p={0}
         style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}
       >
+        {updateCategory.isError && (
+          <Alert
+            color="red"
+            title="Could not update category"
+            mb={0}
+            onClose={() => updateCategory.reset()}
+            withCloseButton
+          >
+            {updateCategory.error.message}
+          </Alert>
+        )}
         <Box style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
           <Table
             striped
@@ -118,62 +142,94 @@ export default function TransactionsView() {
                 <Table.Th style={{ width: 48 }} />
                 <Table.Th>Transaction</Table.Th>
                 <Table.Th>Account</Table.Th>
-                <Table.Th>Category</Table.Th>
+                <Table.Th style={{ minWidth: 150, maxWidth: 250 }}>Category</Table.Th>
                 <Table.Th>Amount</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {paginatedRows.map((row) => (
-                <Table.Tr
-                  key={row.id}
-                  style={{ cursor: "pointer" }}
-                  onClick={() =>
-                    setEditTransaction(
-                      transactions.find((t) => t.id === row.id) ?? null,
-                    )
-                  }
-                >
-                  <Table.Td
-                    style={{ verticalAlign: "middle", textAlign: "center" }}
+              {paginatedTransactions.map((txn) => {
+                const accountName =
+                  accountNameById.get(txn.accountId) ?? txn.accountId;
+                const currentId = txn.categoryId;
+                const currentIsSelectable = isSelectableTransactionCategory(
+                  categories,
+                  currentId,
+                );
+
+                return (
+                  <Table.Tr
+                    key={txn.id}
+                    style={{ cursor: "pointer" }}
+                    onClick={() => setEditTransaction(txn)}
                   >
-                    <Box
-                      style={{
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        minHeight: TABLE_LEADING_CELL_HEIGHT_PX,
-                      }}
+                    <Table.Td
+                      style={{ verticalAlign: "middle", textAlign: "center" }}
                     >
                       <Box
                         style={{
-                          width: 24,
-                          height: 24,
-                          backgroundColor: "var(--mantine-color-brand-1)",
-                          borderRadius: 5,
-                          flexShrink: 0,
+                          display: "flex",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          minHeight: TABLE_LEADING_CELL_HEIGHT_PX,
                         }}
+                      >
+                        <Box
+                          style={{
+                            width: 24,
+                            height: 24,
+                            backgroundColor: "var(--mantine-color-brand-1)",
+                            borderRadius: 5,
+                            flexShrink: 0,
+                          }}
+                        />
+                      </Box>
+                    </Table.Td>
+                    <Table.Td style={{ verticalAlign: "middle" }}>
+                      {txn.transactionName}
+                    </Table.Td>
+                    <Table.Td style={{ verticalAlign: "middle" }}>
+                      {accountName}
+                    </Table.Td>
+                    <Table.Td
+                      style={{
+                        verticalAlign: "middle",
+                        minWidth: 150,
+                        maxWidth: 250,
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Select
+                        size="xs"
+                        placeholder="Pick category"
+                        data={categorySelectData}
+                        value={currentIsSelectable ? currentId! : null}
+                        onChange={(id) => {
+                          if (!id || id === currentId) return;
+                          updateCategory.mutate({
+                            transactionId: txn.id,
+                            categoryId: id,
+                          });
+                        }}
+                        disabled={
+                          updateCategory.isPending ||
+                          countSelectableTransactionCategories(categories) === 0
+                        }
+                        searchable
+                        nothingFoundMessage="No categories"
+                        comboboxProps={{ withinPortal: true }}
                       />
-                    </Box>
-                  </Table.Td>
-                  <Table.Td style={{ verticalAlign: "middle" }}>
-                    {row.transactionName}
-                  </Table.Td>
-                  <Table.Td style={{ verticalAlign: "middle" }}>
-                    {row.accountName}
-                  </Table.Td>
-                  <Table.Td style={{ verticalAlign: "middle" }}>
-                    {row.categoryID}
-                  </Table.Td>
-                  <Table.Td fw={500} style={{ verticalAlign: "middle" }}>
-                    {formatCurrency(row.amount)}
-                  </Table.Td>
-                </Table.Tr>
-              ))}
+                    </Table.Td>
+                    <Table.Td fw={500} style={{ verticalAlign: "middle" }}>
+                      {formatCurrency(txn.amount)}
+                    </Table.Td>
+                  </Table.Tr>
+                );
+              })}
             </Table.Tbody>
           </Table>
         </Box>
 
-        {rows.length > 0 && (
+        {transactions.length > 0 && (
           <Box py="md" style={{ display: "flex", justifyContent: "center", borderTop: "1px solid var(--mantine-color-default-border)" }}>
             <Pagination
             total={totalPages}

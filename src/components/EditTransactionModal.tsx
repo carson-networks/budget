@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Modal,
   Box,
@@ -8,13 +8,21 @@ import {
   Title,
   Group,
   Alert,
+  Select,
 } from "@mantine/core";
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 import {
   useDeleteTransaction,
+  useUpdateTransactionCategory,
   type Transaction,
 } from "../hooks/useTransactions";
+import { useAllCategories } from "../hooks/useCategories";
 import { isFakeBudgetData } from "../data/fakeData";
+import {
+  buildTransactionCategorySelectData,
+  countSelectableTransactionCategories,
+  isSelectableTransactionCategory,
+} from "../utils/transactionCategorySelectData";
 
 interface EditTransactionModalProps {
   transaction: Transaction | null;
@@ -37,13 +45,26 @@ export default function EditTransactionModal({
   onClose,
 }: EditTransactionModalProps) {
   const deleteTransaction = useDeleteTransaction();
+  const updateCategory = useUpdateTransactionCategory();
+  const { categories } = useAllCategories();
   const [deleteArmed, setDeleteArmed] = useState(false);
 
   const handleModalClose = () => {
     setDeleteArmed(false);
     deleteTransaction.reset();
+    updateCategory.reset();
     onClose();
   };
+
+  const categorySelectData = useMemo(
+    () => buildTransactionCategorySelectData(categories),
+    [categories],
+  );
+
+  const categoryNameById = useMemo(
+    () => new Map(categories.map((c) => [c.id, c.name])),
+    [categories],
+  );
 
   const canDelete = isFakeBudgetData();
   const txDate = transaction?.transactionDate
@@ -53,6 +74,15 @@ export default function EditTransactionModal({
         day: "numeric",
       })
     : "—";
+
+  const currentCategoryId = transaction?.categoryId;
+  const currentCategoryLabel = currentCategoryId
+    ? categoryNameById.get(currentCategoryId) ?? currentCategoryId
+    : "—";
+  const currentIsSelectable = isSelectableTransactionCategory(
+    categories,
+    currentCategoryId,
+  );
 
   return (
     <Modal
@@ -74,6 +104,11 @@ export default function EditTransactionModal({
                 {deleteTransaction.error.message}
               </Alert>
             )}
+            {updateCategory.isError && (
+              <Alert color="red" title="Error">
+                {updateCategory.error.message}
+              </Alert>
+            )}
 
             <div>
               <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
@@ -91,7 +126,31 @@ export default function EditTransactionModal({
               <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
                 Category
               </Text>
-              <Text size="sm">{transaction.categoryId ?? "—"}</Text>
+              <Select
+                mt={4}
+                placeholder="Pick category"
+                data={categorySelectData}
+                value={currentIsSelectable ? currentCategoryId! : null}
+                onChange={(id) => {
+                  if (!id || id === currentCategoryId) return;
+                  updateCategory.mutate({
+                    transactionId: transaction.id,
+                    categoryId: id,
+                  });
+                }}
+                disabled={
+                  updateCategory.isPending ||
+                  countSelectableTransactionCategories(categories) === 0
+                }
+                searchable
+                nothingFoundMessage="No categories"
+              />
+              {currentCategoryId && !currentIsSelectable && (
+                <Text size="xs" c="orange" mt={6}>
+                  Current assignment ({currentCategoryLabel}) is a parent or unavailable; choose a
+                  subcategory.
+                </Text>
+              )}
             </div>
             <div>
               <Text size="xs" c="dimmed" tt="uppercase" fw={600}>

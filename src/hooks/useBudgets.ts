@@ -10,13 +10,10 @@ import { connectErrorMessage } from "../api/errors";
 import {
   buildFakeBudgetsForCategories,
   isFakeBudgetData,
+  recordFakeBudgetOverride,
 } from "../data/fakeData";
 import { BudgetSchema, type Budget } from "../gen/budget/v1/budget_pb.js";
-import {
-  type YearMonth,
-  maxYearMonth,
-  monthsBetweenInclusive,
-} from "../utils/monthRange";
+import { compareYearMonth, type YearMonth } from "../utils/monthRange";
 import { useAllCategories } from "./useCategories";
 
 export type SetBudgetVariables = {
@@ -84,58 +81,52 @@ function patchSingleMonthInResponse(
   };
 }
 
-function patchCategoryFromMonthForwardInResponse(
+/**
+ * Matches server: delete explicit rows for this category strictly after the
+ * anchor month, then upsert the anchor (carry-forward fills later months in UI).
+ */
+function patchSparseFutureOverwrite(
   old: unknown,
   vars: SetBudgetVariables,
-  range: CachedBudgetRange,
 ): unknown {
   if (!old || typeof old !== "object" || !("budgets" in old)) return old;
   const response = old as { budgets: Budget[] };
-
-  const rangeStart: YearMonth = { year: range.startYear, month: range.startMonth };
-  const rangeEnd: YearMonth = { year: range.endYear, month: range.endMonth };
   const anchor: YearMonth = { year: vars.year, month: vars.month };
-  const sliceStart = maxYearMonth(anchor, rangeStart);
-  const monthsToSet = monthsBetweenInclusive(sliceStart, rangeEnd);
-
-  const key = (categoryId: string, y: number, m: number) =>
-    `${categoryId}|${y}|${m}`;
-
-  const idxByKey = new Map<string, number>();
-  response.budgets.forEach((b, i) => {
-    idxByKey.set(key(b.categoryId, b.year, b.month), i);
+  const budgets = response.budgets.filter((b) => {
+    if (b.categoryId !== vars.categoryId) return true;
+    const bm: YearMonth = { year: b.year, month: b.month };
+    return compareYearMonth(bm, anchor) <= 0;
   });
-
-  const budgets = [...response.budgets];
-  for (const ym of monthsToSet) {
-    const k = key(vars.categoryId, ym.year, ym.month);
-    const i = idxByKey.get(k);
-    if (i !== undefined) {
-      budgets[i] = { ...budgets[i], amount: vars.amount };
-    } else {
-      budgets.push(
-        create(BudgetSchema, {
-          categoryId: vars.categoryId,
-          year: ym.year,
-          month: ym.month,
-          amount: vars.amount,
-        }),
-      );
-    }
+  const idx = budgets.findIndex(
+    (b) =>
+      b.categoryId === vars.categoryId &&
+      b.year === vars.year &&
+      b.month === vars.month,
+  );
+  if (idx >= 0) {
+    budgets[idx] = { ...budgets[idx], amount: vars.amount };
+  } else {
+    budgets.push(
+      create(BudgetSchema, {
+        categoryId: vars.categoryId,
+        year: vars.year,
+        month: vars.month,
+        amount: vars.amount,
+      }),
+    );
   }
-
   return { ...response, budgets };
 }
 
 function applyBudgetPatchToQueryData(
   old: unknown,
   vars: SetBudgetVariables,
-  range: CachedBudgetRange,
+  _range: CachedBudgetRange,
 ): unknown {
   if (!vars.overwriteFutureMonths) {
     return patchSingleMonthInResponse(old, vars);
   }
-  return patchCategoryFromMonthForwardInResponse(old, vars, range);
+  return patchSparseFutureOverwrite(old, vars);
 }
 
 export type BudgetRange = {
@@ -220,15 +211,20 @@ export function useSetBudget() {
       }
     },
     onSuccess: (_data, vars) => {
-      for (const query of queryClient.getQueryCache().findAll({
-        queryKey: ["budgets"],
-        exact: false,
-      })) {
-        const range = parseBudgetQueryRange(query.queryKey);
-        if (!range) continue;
-        queryClient.setQueryData(query.queryKey, (old) =>
-          applyBudgetPatchToQueryData(old, vars, range),
-        );
+      if (isFakeBudgetData()) {
+        recordFakeBudgetOverride(vars);
+        for (const query of queryClient.getQueryCache().findAll({
+          queryKey: ["budgets"],
+          exact: false,
+        })) {
+          const range = parseBudgetQueryRange(query.queryKey);
+          if (!range) continue;
+          queryClient.setQueryData(query.queryKey, (old) =>
+            applyBudgetPatchToQueryData(old, vars, range),
+          );
+        }
+      } else {
+        void queryClient.invalidateQueries({ queryKey: ["budgets"] });
       }
     },
     onError: () => {

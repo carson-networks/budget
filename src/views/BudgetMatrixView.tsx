@@ -28,6 +28,7 @@ import {
   buildCategorySegments,
   sortCategorySegmentsForDisplay,
 } from "../utils/categorySegments";
+import { buildEffectiveBudgetKeyMap } from "../utils/budgetEffective";
 import {
   addMonths,
   currentYearMonth,
@@ -159,14 +160,11 @@ export default function BudgetMatrixView() {
     [visibleCategories],
   );
 
-  const budgetByKey = useMemo(() => {
-    const m = new Map<string, string>();
+  const effectiveBudgetByKey = useMemo(() => {
     const list = budgetsResponse?.budgets ?? [];
-    for (const b of list) {
-      m.set(`${b.categoryId}|${b.year}|${b.month}`, b.amount);
-    }
-    return m;
-  }, [budgetsResponse]);
+    const ids = visibleCategories.map((c) => c.id);
+    return buildEffectiveBudgetKeyMap(list, ids, months);
+  }, [budgetsResponse, visibleCategories, months]);
 
   const actualsByYearMonth = useMemo(
     () => buildActualsByYearMonth(transactions),
@@ -183,7 +181,7 @@ export default function BudgetMatrixView() {
         rollUpBudgetByType(
           visibleCategories,
           (id) => {
-            const raw = budgetByKey.get(`${id}|${ym.year}|${ym.month}`);
+            const raw = effectiveBudgetByKey.get(`${id}|${ym.year}|${ym.month}`);
             if (raw === undefined) return undefined;
             const n = parseFloat(raw);
             return Number.isNaN(n) ? undefined : n;
@@ -193,7 +191,7 @@ export default function BudgetMatrixView() {
       );
     }
     return map;
-  }, [months, visibleCategories, budgetByKey, actualsByYearMonth]);
+  }, [months, visibleCategories, effectiveBudgetByKey, actualsByYearMonth]);
 
   const budgetsReady = !!budgetsResponse;
   const showFullLoader =
@@ -526,7 +524,7 @@ export default function BudgetMatrixView() {
                       </td>
                       {months.map((ym) => {
                         const key = `${root.id}|${ym.year}|${ym.month}`;
-                        const raw = budgetByKey.get(key);
+                        const raw = effectiveBudgetByKey.get(key);
                         const actualNum = actualsByYearMonth
                           .get(yearMonthKey(ym))
                           ?.get(root.id);
@@ -618,7 +616,7 @@ export default function BudgetMatrixView() {
                         </td>
                         {months.map((ym) => {
                           const key = `${row.id}|${ym.year}|${ym.month}`;
-                          const raw = budgetByKey.get(key);
+                          const raw = effectiveBudgetByKey.get(key);
                           const actualNum = actualsByYearMonth
                             .get(yearMonthKey(ym))
                             ?.get(row.id);

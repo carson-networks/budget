@@ -23,6 +23,7 @@ import {
 } from "../gen/account/v1/account_pb.js";
 import type { ListTransactionsResponse } from "../gen/transaction/v1/transaction_pb.js";
 import { ListTransactionsResponseSchema } from "../gen/transaction/v1/transaction_pb.js";
+import type { AccountSyncSelection } from "../constants/accountSyncIntegrations";
 
 export type { Account };
 export { AccountType };
@@ -32,6 +33,8 @@ export type CreateAccountInput = {
   type: AccountType;
   subType: string;
   startingBalance: string;
+  /** Sync is only offered in the create-account UI; preserved for future API use. */
+  sync: AccountSyncSelection;
 };
 
 const PAGE_SIZE = 50;

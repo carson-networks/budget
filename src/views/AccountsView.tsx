@@ -13,6 +13,7 @@ import {
 import { IconPlus, IconSettings } from "@tabler/icons-react";
 import { useAllAccounts, AccountType, type Account } from "../hooks/useAccounts";
 import { groupAccountsByType } from "../utils/accountSegments";
+import { accountSyncTypeLabel } from "../utils/accountSyncDisplay";
 import CreateAccountModal from "../components/CreateAccountModal";
 import EditAccountModal from "../components/EditAccountModal";
 
@@ -49,6 +50,7 @@ function AccountsSubTable({ accounts, onRowSettings }: AccountsTableProps) {
         <Table.Tr>
           <Table.Th style={{ width: 48 }} />
           <Table.Th>Name</Table.Th>
+          <Table.Th style={{ width: 100 }}>Integration</Table.Th>
           <Table.Th style={{ width: 140 }}>Sub Type</Table.Th>
           <Table.Th style={{ width: 130 }}>Balance</Table.Th>
           <Table.Th style={{ width: 140 }}>Starting Balance</Table.Th>
@@ -79,6 +81,9 @@ function AccountsSubTable({ accounts, onRowSettings }: AccountsTableProps) {
               </Box>
             </Table.Td>
             <Table.Td style={{ verticalAlign: "middle" }}>{row.name}</Table.Td>
+            <Table.Td style={{ verticalAlign: "middle" }}>
+              {accountSyncTypeLabel(row)}
+            </Table.Td>
             <Table.Td style={{ verticalAlign: "middle" }}>{row.subType}</Table.Td>
             <Table.Td fw={500} style={{ verticalAlign: "middle" }}>
               {formatCurrency(row.balance)}

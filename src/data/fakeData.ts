@@ -16,7 +16,11 @@ import {
 } from "../gen/category/v1/category_pb.js";
 import { BudgetSchema, type Budget } from "../gen/budget/v1/budget_pb.js";
 import type { YearMonth } from "../utils/monthRange";
-import { monthsBetweenInclusive } from "../utils/monthRange";
+import { addMonths, monthsBetweenInclusive } from "../utils/monthRange";
+
+const FAKE_BUDGET_OVERRIDES_KEY = "budget-app-fake-budget-overrides-v1";
+/** How far forward recurring fake budgets are written (months from anchor). */
+const FAKE_BUDGET_FORWARD_SPAN_MONTHS = 600;
 
 /** Set `VITE_USE_FAKE_DATA=false` in `.env` to call the real API. */
 export function isFakeBudgetData(): boolean {
@@ -346,5 +350,70 @@ export function buildFakeBudgetsForCategories(
       );
     }
   }
-  return out;
+  return applyFakeBudgetOverrides(out);
+}
+
+function loadFakeBudgetOverrideMap(): Record<string, string> {
+  if (typeof localStorage === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(FAKE_BUDGET_OVERRIDES_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object") return {};
+    return parsed as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
+function saveFakeBudgetOverrideMap(map: Record<string, string>): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(FAKE_BUDGET_OVERRIDES_KEY, JSON.stringify(map));
+  } catch {
+    // quota / private mode
+  }
+}
+
+function fakeBudgetStorageKey(
+  categoryId: string,
+  year: number,
+  month: number,
+): string {
+  return `${categoryId}|${year}|${month}`;
+}
+
+/** Merge saved user edits (including recurring months) onto generated fake budgets. */
+export function applyFakeBudgetOverrides(budgets: Budget[]): Budget[] {
+  const map = loadFakeBudgetOverrideMap();
+  if (Object.keys(map).length === 0) return budgets;
+  return budgets.map((b) => {
+    const k = fakeBudgetStorageKey(b.categoryId, b.year, b.month);
+    const amt = map[k];
+    if (amt === undefined) return b;
+    return { ...b, amount: amt };
+  });
+}
+
+/** Persist a fake-data budget edit so it survives reload (and recurring months). */
+export function recordFakeBudgetOverride(input: {
+  categoryId: string;
+  year: number;
+  month: number;
+  amount: string;
+  overwriteFutureMonths: boolean;
+}): void {
+  const map = loadFakeBudgetOverrideMap();
+  const anchor: YearMonth = { year: input.year, month: input.month };
+  if (!input.overwriteFutureMonths) {
+    map[fakeBudgetStorageKey(input.categoryId, input.year, input.month)] =
+      input.amount;
+  } else {
+    const end = addMonths(anchor, FAKE_BUDGET_FORWARD_SPAN_MONTHS);
+    for (const ym of monthsBetweenInclusive(anchor, end)) {
+      map[fakeBudgetStorageKey(input.categoryId, ym.year, ym.month)] =
+        input.amount;
+    }
+  }
+  saveFakeBudgetOverrideMap(map);
 }

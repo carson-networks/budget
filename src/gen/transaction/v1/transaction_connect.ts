@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CreateTransactionRequest, CreateTransactionResponse, GetTransactionTotalsRequest, GetTransactionTotalsResponse, ListTransactionsRequest, ListTransactionsResponse } from "./transaction_pb.js";
+import { CreateTransactionRequest, CreateTransactionResponse, GetTransactionTotalsRequest, GetTransactionTotalsResponse, ListTransactionsRequest, ListTransactionsResponse, UpdateTransactionCategoryRequest, UpdateTransactionCategoryResponse } from "./transaction_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -37,6 +37,15 @@ export const TransactionService = {
       name: "CreateTransaction",
       I: CreateTransactionRequest,
       O: CreateTransactionResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc transaction.v1.TransactionService.UpdateTransactionCategory
+     */
+    updateTransactionCategory: {
+      name: "UpdateTransactionCategory",
+      I: UpdateTransactionCategoryRequest,
+      O: UpdateTransactionCategoryResponse,
       kind: MethodKind.Unary,
     },
   }
