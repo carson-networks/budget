@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
   AppShell as MantineAppShell,
@@ -8,26 +8,92 @@ import {
   ActionIcon,
   NavLink,
   Box,
+  Tooltip,
+  rem,
 } from "@mantine/core";
-import { IconReceipt, IconBuildingBank, IconUser } from "@tabler/icons-react";
+import { useMediaQuery } from "@mantine/hooks";
+import {
+  IconLayoutGrid,
+  IconReceipt,
+  IconBuildingBank,
+  IconCategory,
+  IconUser,
+} from "@tabler/icons-react";
+
+const NAV_ITEMS = [
+  { path: "/budget", label: "Budget", icon: IconLayoutGrid },
+  { path: "/transactions", label: "Transactions", icon: IconReceipt },
+  { path: "/accounts", label: "Accounts", icon: IconBuildingBank },
+  { path: "/categories", label: "Categories", icon: IconCategory },
+] as const;
+
+const NAV_EXPANDED_PX = 260;
+const NAV_COLLAPSED_PX = 72;
+
+/** Below `sm`: mobile drawer. At `sm+`: desktop rail toggles width only (icons stay). */
+const MOBILE_MAX = "(max-width: 47.99em)";
+
+type SidebarNavItemProps = {
+  label: string;
+  icon: ReactNode;
+  active: boolean;
+  onClick: () => void;
+  showLabels: boolean;
+};
+
+function SidebarNavItem({
+  label,
+  icon,
+  active,
+  onClick,
+  showLabels,
+}: SidebarNavItemProps) {
+  return (
+    <Tooltip label={label} position="right" offset={8} disabled={showLabels}>
+      <NavLink
+        aria-label={!showLabels ? label : undefined}
+        label={label}
+        leftSection={icon}
+        active={active}
+        onClick={onClick}
+        variant="light"
+        color="brand"
+        styles={{
+          root: {
+            justifyContent: showLabels ? undefined : "center",
+            borderRadius: rem(8),
+          },
+          body: showLabels ? undefined : { display: "none" },
+          section: showLabels ? undefined : { marginInlineEnd: 0 },
+        }}
+      />
+    </Tooltip>
+  );
+}
 
 export default function AppShell() {
   const [opened, setOpened] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobile = useMediaQuery(MOBILE_MAX);
+
+  const showNavLabels = isMobile || opened;
 
   const handleNavigate = (path: string) => {
     navigate(path);
-    setOpened(false);
+    if (isMobile) setOpened(false);
   };
 
   return (
     <MantineAppShell
       header={{ height: 64 }}
       navbar={{
-        width: 260,
+        width: {
+          base: "100%",
+          sm: opened ? NAV_EXPANDED_PX : NAV_COLLAPSED_PX,
+        },
         breakpoint: "sm",
-        collapsed: { mobile: !opened, desktop: !opened },
+        collapsed: { mobile: !opened, desktop: false },
       }}
       padding="md"
       styles={{
@@ -47,36 +113,36 @@ export default function AppShell() {
               opened={opened}
               onClick={() => setOpened((o) => !o)}
               size="sm"
-              aria-label="open navigation menu"
+              aria-label={
+                isMobile
+                  ? "Toggle navigation menu"
+                  : opened
+                    ? "Collapse sidebar"
+                    : "Expand sidebar"
+              }
             />
-            <Title order={3} fw={700} c="teal.7">
+            <Title order={3} fw={700} c="brand.7">
               Budget
             </Title>
           </Group>
-          <ActionIcon variant="light" size="lg" color="teal" aria-label="account">
+          <ActionIcon variant="light" size="lg" color="brand" aria-label="account">
             <IconUser size={20} />
           </ActionIcon>
         </Group>
       </MantineAppShell.Header>
 
-      <MantineAppShell.Navbar p="md">
+      <MantineAppShell.Navbar p={{ base: "md", sm: opened ? "md" : "xs" }}>
         <MantineAppShell.Section grow>
-          <NavLink
-            label="Transactions"
-            leftSection={<IconReceipt size={20} />}
-            active={location.pathname === "/transactions"}
-            onClick={() => handleNavigate("/transactions")}
-            variant="light"
-            color="teal"
-          />
-          <NavLink
-            label="Accounts"
-            leftSection={<IconBuildingBank size={20} />}
-            active={location.pathname === "/accounts"}
-            onClick={() => handleNavigate("/accounts")}
-            variant="light"
-            color="teal"
-          />
+          {NAV_ITEMS.map(({ path, label, icon: Icon }) => (
+            <SidebarNavItem
+              key={path}
+              label={label}
+              icon={<Icon size={20} />}
+              active={location.pathname === path}
+              onClick={() => handleNavigate(path)}
+              showLabels={showNavLabels}
+            />
+          ))}
         </MantineAppShell.Section>
       </MantineAppShell.Navbar>
 

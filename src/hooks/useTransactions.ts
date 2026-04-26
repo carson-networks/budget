@@ -1,3 +1,4 @@
+import { create } from "@bufbuild/protobuf";
 import {
   useInfiniteQuery,
   useMutation,
@@ -7,10 +8,19 @@ import {
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { transactionClient } from "../api/connect";
 import { connectErrorMessage } from "../api/errors";
+import {
+  FAKE_TRANSACTIONS,
+  isFakeBudgetData,
+  makeFakeTransaction,
+} from "../data/fakeData";
 import type {
   ListTransactionsCursor,
   ListTransactionsResponse,
   Transaction,
+} from "../gen/transaction/v1/transaction_pb.js";
+import {
+  ListTransactionsResponseSchema,
+  TransactionSchema,
 } from "../gen/transaction/v1/transaction_pb.js";
 
 export type { Transaction };
@@ -24,9 +34,14 @@ export type CreateTransactionInput = {
   transactionDate: string;
 };
 
+type UpdateTransactionCategoryInput = {
+  transactionId: string;
+  categoryId: string;
+};
+
 const PAGE_SIZE = 50;
 
-export function useTransactions() {
+function useTransactions() {
   return useInfiniteQuery<
     ListTransactionsResponse,
     Error,
@@ -36,6 +51,15 @@ export function useTransactions() {
   >({
     queryKey: ["transactions"],
     queryFn: async ({ pageParam }) => {
+      if (isFakeBudgetData()) {
+        if (pageParam !== undefined) {
+          return create(ListTransactionsResponseSchema, { transactions: [] });
+        }
+        return create(ListTransactionsResponseSchema, {
+          transactions: [...FAKE_TRANSACTIONS],
+          nextCursor: undefined,
+        });
+      }
       try {
         return await transactionClient.listTransactions({
           cursor:
@@ -70,6 +94,9 @@ export function useCreateTransaction() {
 
   return useMutation({
     mutationFn: async (body: CreateTransactionInput) => {
+      if (isFakeBudgetData()) {
+        return;
+      }
       try {
         return await transactionClient.createTransaction({
           accountId: body.accountId,
@@ -82,8 +109,121 @@ export function useCreateTransaction() {
         throw new Error(connectErrorMessage(e));
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      if (isFakeBudgetData()) {
+        const transaction = makeFakeTransaction(variables);
+        queryClient.setQueryData(
+          ["transactions"],
+          (old: InfiniteData<ListTransactionsResponse> | undefined) => {
+            if (!old?.pages.length) {
+              return {
+                pages: [
+                  create(ListTransactionsResponseSchema, {
+                    transactions: [transaction],
+                    nextCursor: undefined,
+                  }),
+                ],
+                pageParams: [undefined],
+              };
+            }
+            const [first, ...rest] = old.pages;
+            return {
+              ...old,
+              pages: [
+                create(ListTransactionsResponseSchema, {
+                  transactions: [transaction, ...(first.transactions ?? [])],
+                  nextCursor: first.nextCursor,
+                }),
+                ...rest,
+              ],
+            };
+          },
+        );
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    },
+  });
+}
+
+export function useUpdateTransactionCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (body: UpdateTransactionCategoryInput) => {
+      if (isFakeBudgetData()) {
+        return;
+      }
+      try {
+        await transactionClient.updateTransactionCategory({
+          transactionId: body.transactionId,
+          categoryId: body.categoryId,
+        });
+      } catch (e) {
+        throw new Error(connectErrorMessage(e));
+      }
+    },
+    onSuccess: (_data, variables) => {
+      if (isFakeBudgetData()) {
+        queryClient.setQueryData(
+          ["transactions"],
+          (old: InfiniteData<ListTransactionsResponse> | undefined) => {
+            if (!old?.pages.length) return old;
+            return {
+              ...old,
+              pages: old.pages.map((page) =>
+                create(ListTransactionsResponseSchema, {
+                  transactions: (page.transactions ?? []).map((t) => {
+                    if (t.id !== variables.transactionId) return t;
+                    return create(TransactionSchema, {
+                      id: t.id,
+                      accountId: t.accountId,
+                      categoryId: variables.categoryId,
+                      amount: t.amount,
+                      transactionName: t.transactionName,
+                      transactionDate: t.transactionDate,
+                      createdAt: t.createdAt,
+                    });
+                  }),
+                  nextCursor: page.nextCursor,
+                }),
+              ),
+            };
+          },
+        );
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    },
+  });
+}
+
+export function useDeleteTransaction() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      void id;
+      if (!isFakeBudgetData()) {
+        throw new Error("Deleting transactions is not supported by the server yet.");
+      }
+    },
+    onSuccess: (_data, id) => {
+      queryClient.setQueryData(
+        ["transactions"],
+        (old: InfiniteData<ListTransactionsResponse> | undefined) => {
+          if (!old?.pages.length) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page) =>
+              create(ListTransactionsResponseSchema, {
+                transactions: (page.transactions ?? []).filter((t) => t.id !== id),
+                nextCursor: page.nextCursor,
+              }),
+            ),
+          };
+        },
+      );
     },
   });
 }
