@@ -20,6 +20,13 @@ import {
   IconUser,
 } from "@tabler/icons-react";
 
+const NAV_ITEMS = [
+  { path: "/budget", label: "Budget", icon: IconLayoutGrid },
+  { path: "/transactions", label: "Transactions", icon: IconReceipt },
+  { path: "/accounts", label: "Accounts", icon: IconBuildingBank },
+  { path: "/categories", label: "Categories", icon: IconCategory },
+] as const;
+
 const NAV_EXPANDED_PX = 260;
 const NAV_COLLAPSED_PX = 72;
 
@@ -126,34 +133,16 @@ export default function AppShell() {
 
       <MantineAppShell.Navbar p={{ base: "md", sm: opened ? "md" : "xs" }}>
         <MantineAppShell.Section grow>
-          <SidebarNavItem
-            label="Budget"
-            icon={<IconLayoutGrid size={20} />}
-            active={location.pathname === "/budget"}
-            onClick={() => handleNavigate("/budget")}
-            showLabels={showNavLabels}
-          />
-          <SidebarNavItem
-            label="Transactions"
-            icon={<IconReceipt size={20} />}
-            active={location.pathname === "/transactions"}
-            onClick={() => handleNavigate("/transactions")}
-            showLabels={showNavLabels}
-          />
-          <SidebarNavItem
-            label="Accounts"
-            icon={<IconBuildingBank size={20} />}
-            active={location.pathname === "/accounts"}
-            onClick={() => handleNavigate("/accounts")}
-            showLabels={showNavLabels}
-          />
-          <SidebarNavItem
-            label="Categories"
-            icon={<IconCategory size={20} />}
-            active={location.pathname === "/categories"}
-            onClick={() => handleNavigate("/categories")}
-            showLabels={showNavLabels}
-          />
+          {NAV_ITEMS.map(({ path, label, icon: Icon }) => (
+            <SidebarNavItem
+              key={path}
+              label={label}
+              icon={<Icon size={20} />}
+              active={location.pathname === path}
+              onClick={() => handleNavigate(path)}
+              showLabels={showNavLabels}
+            />
+          ))}
         </MantineAppShell.Section>
       </MantineAppShell.Navbar>
 

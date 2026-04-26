@@ -1,9 +1,9 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import AppShell from "./components/AppShell";
-import BudgetView from "./views/BudgetView";
-import TransactionsView from "./views/TransactionsView";
-import AccountsView from "./views/AccountsView";
-import CategoriesView from "./views/CategoriesView";
+import BudgetView from "./components/BudgetView/BudgetView";
+import TransactionsView from "./components/TransactionsView/View";
+import AccountsView from "./components/AccountsView/AccountView";
+import CategoriesView from "./components/CategoriesView/View";
 
 function App() {
   return (

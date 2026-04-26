@@ -384,7 +384,7 @@ function fakeBudgetStorageKey(
 }
 
 /** Merge saved user edits (including recurring months) onto generated fake budgets. */
-export function applyFakeBudgetOverrides(budgets: Budget[]): Budget[] {
+function applyFakeBudgetOverrides(budgets: Budget[]): Budget[] {
   const map = loadFakeBudgetOverrideMap();
   if (Object.keys(map).length === 0) return budgets;
   return budgets.map((b) => {

@@ -16,7 +16,7 @@ import { BudgetSchema, type Budget } from "../gen/budget/v1/budget_pb.js";
 import { compareYearMonth, type YearMonth } from "../utils/monthRange";
 import { useAllCategories } from "./useCategories";
 
-export type SetBudgetVariables = {
+type SetBudgetVariables = {
   categoryId: string;
   year: number;
   month: number;
@@ -121,7 +121,6 @@ function patchSparseFutureOverwrite(
 function applyBudgetPatchToQueryData(
   old: unknown,
   vars: SetBudgetVariables,
-  _range: CachedBudgetRange,
 ): unknown {
   if (!vars.overwriteFutureMonths) {
     return patchSingleMonthInResponse(old, vars);
@@ -129,7 +128,7 @@ function applyBudgetPatchToQueryData(
   return patchSparseFutureOverwrite(old, vars);
 }
 
-export type BudgetRange = {
+type BudgetRange = {
   startYear: number;
   startMonth: number;
   endYear: number;
@@ -217,10 +216,9 @@ export function useSetBudget() {
           queryKey: ["budgets"],
           exact: false,
         })) {
-          const range = parseBudgetQueryRange(query.queryKey);
-          if (!range) continue;
+          if (!parseBudgetQueryRange(query.queryKey)) continue;
           queryClient.setQueryData(query.queryKey, (old) =>
-            applyBudgetPatchToQueryData(old, vars, range),
+            applyBudgetPatchToQueryData(old, vars),
           );
         }
       } else {

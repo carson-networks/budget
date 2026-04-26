@@ -34,7 +34,7 @@ export type CreateCategoryInput = {
   categoryType: CategoryType;
 };
 
-export type UpdateCategoryInput = {
+type UpdateCategoryInput = {
   id: string;
   name: string;
   isDisabled: boolean;
@@ -44,7 +44,7 @@ export type UpdateCategoryInput = {
 
 const PAGE_SIZE = 50;
 
-export function useCategories() {
+function useCategories() {
   return useInfiniteQuery<
     ListCategoriesResponse,
     Error,

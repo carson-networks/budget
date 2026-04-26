@@ -39,10 +39,6 @@ export function compareYearMonth(a: YearMonth, b: YearMonth): number {
   return a.month - b.month;
 }
 
-export function maxYearMonth(a: YearMonth, b: YearMonth): YearMonth {
-  return compareYearMonth(a, b) >= 0 ? a : b;
-}
-
 export function formatYearMonthLabel(ym: YearMonth): string {
   return new Date(ym.year, ym.month - 1, 1).toLocaleString("en-US", {
     month: "short",

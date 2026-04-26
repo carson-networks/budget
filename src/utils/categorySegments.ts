@@ -11,26 +11,6 @@ export type CategorySegment = {
   descendantRows: CategoryRow[];
 };
 
-/** One row in budget / category matrix UIs (parent group + indented children). */
-export type CategoryMatrixRow = {
-  category: Category;
-  depth: number;
-  isGroupHeader: boolean;
-};
-
-export function flattenCategorySegmentRows(
-  segments: CategorySegment[],
-): CategoryMatrixRow[] {
-  const out: CategoryMatrixRow[] = [];
-  for (const seg of segments) {
-    out.push({ category: seg.root, depth: 0, isGroupHeader: true });
-    for (const { category, depth } of seg.descendantRows) {
-      out.push({ category, depth, isGroupHeader: false });
-    }
-  }
-  return out;
-}
-
 /**
  * Groups categories under each root (no `parentCategoryId`, or parent missing from set).
  * Each segment is ordered depth-first; siblings sorted by name.

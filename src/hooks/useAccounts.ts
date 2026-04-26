@@ -39,7 +39,7 @@ export type CreateAccountInput = {
 
 const PAGE_SIZE = 50;
 
-export function useAccounts() {
+function useAccounts() {
   return useInfiniteQuery<
     ListAccountsResponse,
     Error,

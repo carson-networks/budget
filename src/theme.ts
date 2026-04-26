@@ -1,6 +1,6 @@
 import { createTheme, type MantineColorsTuple } from "@mantine/core";
 
-export const myColor: MantineColorsTuple = [
+const brand: MantineColorsTuple = [
   "#ecefff",
   "#d5dafb",
   "#a9b1f1",
@@ -15,7 +15,7 @@ export const myColor: MantineColorsTuple = [
 
 export const theme = createTheme({
   colors: {
-    brand: myColor,
+    brand,
   },
   primaryColor: "brand",
   defaultRadius: "md",

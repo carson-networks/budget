@@ -34,14 +34,14 @@ export type CreateTransactionInput = {
   transactionDate: string;
 };
 
-export type UpdateTransactionCategoryInput = {
+type UpdateTransactionCategoryInput = {
   transactionId: string;
   categoryId: string;
 };
 
 const PAGE_SIZE = 50;
 
-export function useTransactions() {
+function useTransactions() {
   return useInfiniteQuery<
     ListTransactionsResponse,
     Error,
