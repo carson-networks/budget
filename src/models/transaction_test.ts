@@ -3,7 +3,7 @@ import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import type {
   GetTransactionTotalsResponse,
   Transaction as WireTransaction,
-} from "../network/types.js";
+} from "../connectRPC/types";
 import {
   mapGetTransactionTotalsResponse,
   mapTransaction,

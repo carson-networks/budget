@@ -3,7 +3,7 @@ import type {
   Transaction as WireTransaction,
   TransactionTotalsCategory as WireTxnTotalsCat,
   TransactionTotalsMonth as WireTxnTotalsMonth,
-} from "../network/types.js";
+} from "../connectRPC/types";
 import { optionalDateFromTimestamp } from "./timestamp.js";
 
 export type Transaction = {

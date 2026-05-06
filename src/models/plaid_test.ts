@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AccountType, type SyncAccount as WireSyncAccount } from "../network/types.js";
+import { AccountType, type SyncAccount as WireSyncAccount } from "../connectRPC/types";
 import { AccountKind } from "./account.js";
 import { mapPlaidSyncAccount } from "./plaid.js";
 

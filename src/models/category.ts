@@ -1,4 +1,4 @@
-import type { Category as WireCategory } from "../network/types.js";
+import type { Category as WireCategory } from "../connectRPC/types";
 import { optionalDateFromTimestamp } from "./timestamp.js";
 
 export enum CategoryKind {

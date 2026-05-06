@@ -1,4 +1,4 @@
-import type { SyncAccount as WireSyncAccount } from "../network/types.js";
+import type { SyncAccount as WireSyncAccount } from "../connectRPC/types";
 import type { AccountKind } from "./account.js";
 
 export type PlaidSyncAccount = {

@@ -6,7 +6,7 @@ import tseslint from "typescript-eslint";
 import { defineConfig, globalIgnores } from "eslint/config";
 
 export default defineConfig([
-  globalIgnores(["dist", "src/gen"]),
+  globalIgnores(["dist", "**/connectRPC/gen/**"]),
   {
     files: ["**/*.{ts,tsx}"],
     extends: [
@@ -22,25 +22,7 @@ export default defineConfig([
   },
   {
     files: ["src/**/*.{ts,tsx}"],
-    ignores: ["src/domain/**", "src/gen/**"],
-    rules: {
-      "no-restricted-imports": [
-        "error",
-        {
-          patterns: [
-            {
-              regex: String.raw`\/network\/`,
-              message:
-                "Only src/domain/ may import src/network/ (see .agents/best-practices.md).",
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    files: ["src/**/*.{ts,tsx}"],
-    ignores: ["src/api/**", "src/network/**", "src/gen/**"],
+    ignores: ["src/connectRPC/**", "src/gen/**"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -49,7 +31,7 @@ export default defineConfig([
             {
               regex: String.raw`\/gen\/`,
               message:
-                "Import protobuf types through src/network/types from domain, or use api clients in hooks (see .agents/best-practices.md).",
+                "Import protobuf-generated modules only through src/connectRPC/ (see .agents/best-practices.md).",
             },
           ],
         },

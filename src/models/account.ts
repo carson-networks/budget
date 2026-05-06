@@ -1,4 +1,4 @@
-import type { Account as WireAccount } from "../network/types.js";
+import type { Account as WireAccount } from "../connectRPC/types";
 import { optionalDateFromTimestamp } from "./timestamp.js";
 
 export enum AccountKind {
