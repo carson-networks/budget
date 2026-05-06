@@ -6,7 +6,7 @@
 
 ESLint enforces this with `no-restricted-imports`:
 
-- **`src/domain/`** is the **only** module tree that may import **`src/network/`** (path segment `network/` in the import specifier). Everyone else uses **`domain/`** mappers and types instead of touching wire protobuf shapes directly.
+- **`src/domain/`** is the **only** module tree that may import **`src/network/`** (path segment `network/` in the import specifier). Everyone else uses **`domain/`** types and **`map*`** functions (same module as the domain model) instead of touching wire protobuf shapes directly.
 - **`src/api/`** and **`src/network/`** may import **`src/gen/`**. All other source files (including **`src/hooks/`**) must not import **`gen/`**—use **`api/`** clients and **`domain/`** helpers.
 
 ## Anti-patterns

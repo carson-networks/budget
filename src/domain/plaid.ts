@@ -1,5 +1,5 @@
 import type { SyncAccount as WireSyncAccount } from "../network/types.js";
-import { AccountKind } from "./account.js";
+import type { AccountKind } from "./account.js";
 
 export type PlaidSyncAccount = {
   plaidAccountId: string;

@@ -55,9 +55,10 @@ src/
     plaid/v1/
     transaction/v1/
 
-  domain/                       # UI types, wire→domain mappers (imports network/ only)
+  domain/                       # UI-facing models + wire→domain mappers; only subtree that imports network/
+    account.ts … plaid.ts       # types, enums, and map* for each area
     timestamp.ts                # protobuf Timestamp → Date helpers
-    ...
+    index.ts                    # re-exports types + map* for hooks / UI
 
   network/                      # wire re-exports from gen/; imported only by domain/
     types.ts                    # protobuf messages & schemas for hooks (via domain mappers)

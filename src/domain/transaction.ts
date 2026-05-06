@@ -1,8 +1,8 @@
 import type {
+  GetTransactionTotalsResponse as WireGetTxnTotalsResponse,
   Transaction as WireTransaction,
   TransactionTotalsCategory as WireTxnTotalsCat,
   TransactionTotalsMonth as WireTxnTotalsMonth,
-  GetTransactionTotalsResponse as WireGetTxnTotalsResponse,
 } from "../network/types.js";
 import { optionalDateFromTimestamp } from "./timestamp.js";
 
