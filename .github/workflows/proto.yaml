@@ -17,4 +17,4 @@ jobs:
         run: pnpm generate
 
       - name: Check working tree
-        run: git diff --exit-code src/gen
+        run: git diff --exit-code src/connectRPC
