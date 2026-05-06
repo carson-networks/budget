@@ -28,17 +28,21 @@ into client stores.
 4. **Prefer query key composition over `useEffect`.** If a piece of client state
   should trigger a refetch, include it in the query key. TanStack Query handles
    the rest.
-5. **The `network/` layer insulates the app from generated code.** Components and
-  hooks import types and schemas from `src/network/`, not from `src/gen/`
-   directly. This lets the proto schema evolve without cascading changes through
-   UI code.
-6. **Colocate constants and utilities with the code that owns them.** Do not use a
+5. **Wire types stay in `network/` and `gen/`.** Only **`src/api/`** and
+   **`src/network/`** import **`src/gen/`**. **`src/domain/`** is the sole consumer
+   of **`src/network/`** (wire message types and schemas for mapping). **`src/hooks/`**
+   use **`src/api/`** clients and **`src/domain/`** mappers/types only—not `gen/` or
+   `network/` imports. Components use **`domain/`** for types and data via hooks.
+6. **`domain/` is what client code imports.** Types, `map*` functions (wire → domain),
+   and pure helpers live under **`src/domain/`**. Hooks call ConnectRPC through **`api/`**,
+   map responses with **`domain/`** helpers, and expose domain-shaped data through TanStack Query.
+7. **Colocate constants and utilities with the code that owns them.** Do not use a
   top-level `constants/` directory. Shared literals (enums, lookup tables,
-   labels) live next to the components, hooks, or `network/` modules that consume
+   labels) live next to the components, hooks, or `domain/` modules that consume
    them. The same applies to small pure helpers: keep them beside their primary
    caller (e.g. `components/BudgetView/monthRange.ts`) rather than a global
-   `utils/` junk drawer. Extract to `network/` only when the helper is shared
-   across features and is not wire-specific.
+   `utils/` junk drawer. Promote shared logic into `domain/` when it is
+   cross-cutting and not wire-specific.
 
 ## Project Structure
 
@@ -51,19 +55,22 @@ src/
     plaid/v1/
     transaction/v1/
 
-  network/                      # re-exports from gen/ plus network-layer logic
-    types.ts                    # canonical type re-exports for the rest of the app
-    budgets.ts                  # budget carry-forward, set-budget operations
-    budgetRollups.ts            # rollup computation
+  domain/                       # UI types, wire→domain mappers (imports network/ only)
+    timestamp.ts                # protobuf Timestamp → Date helpers
+    ...
+
+  network/                      # wire re-exports from gen/; imported only by domain/
+    types.ts                    # protobuf messages & schemas for hooks (via domain mappers)
+    budgets.ts                  # RPC-oriented helpers (mapping, carry-forward, …)
+    budgetRollups.ts            # rollup computation over wire or domain shapes
     categories.ts               # category tree utilities
     transactions.ts             # transaction grouping/filtering helpers
     yearMonth.ts                # year/month comparison helpers
 
   api/                          # transport, clients, cache utilities
     connect.ts                  # creates ConnectRPC clients per service
-    runtime.ts                  # demo-mode flag (VITE_USE_FAKE_DATA)
+    runtime.ts                  # demo mode via URL `?mock=true` (isFakeDataMode)
     cacheHelpers.ts             # generic infinite-query cache patch utilities
-    errors.ts                   # ConnectError message extraction
     mockTransport.ts            # in-memory mock transport for demo mode
     mockStore.ts                # seed data for mock transport
     mockData.ts                 # fixture generation
@@ -87,7 +94,7 @@ src/
 ```
 
 Until the tree matches this spec, any legacy top-level `constants/` or `utils/`
-folders should be merged into the owning feature or `network/` incrementally.
+folders should be merged into the owning feature or `domain/` incrementally.
 
 ## State Ownership Rules
 
@@ -180,13 +187,16 @@ function CreateAccountModal() {
                          └──────────────┘
 ```
 
-1. Components read server data from TanStack Query hooks and client data from
+1. Hooks map RPC responses (and prepare mutation payloads) between wire types and
+   **`domain/`** models; components read **domain** data from TanStack Query hooks,
+   not raw protobuf messages.
+2. Components read server data from TanStack Query hooks and client data from
   Zustand selectors.
-2. User actions either update Zustand (client state change) or call a mutation
+3. User actions either update Zustand (client state change) or call a mutation
   hook (server state change).
-3. When Zustand state that is part of a query key changes, TanStack Query
+4. When Zustand state that is part of a query key changes, TanStack Query
   refetches automatically.
-4. Mutations optimistically patch the query cache, then invalidate to
+5. Mutations optimistically patch the query cache, then invalidate to
   reconcile.
 
 ## ConnectRPC Client Layer
@@ -209,9 +219,11 @@ export const accountClient = createClient(AccountService, transport);
 ```
 
 Hooks in `src/hooks/` wrap these clients with TanStack Query's `useQuery`,
-`useInfiniteQuery`, and `useMutation`. The transport is resolved once at module
-init time and supports swapping to a mock transport for demo mode via the
-`VITE_USE_FAKE_DATA` env var.
+`useInfiniteQuery`, and `useMutation`. They map RPC request and response
+messages to **`domain/`** types before surfacing data to components. The
+transport is resolved once at module init time and supports swapping to a mock
+transport for demo mode when the URL includes `?mock=true` (see
+`src/api/runtime.ts`).
 
 ## Cache Management Patterns
 
@@ -241,51 +253,11 @@ consistent.
 
 ## Anti-Patterns to Avoid
 
-### Do not sync server data into Zustand
-
-```tsx
-// BAD: creates two sources of truth
-const { data } = useAllAccounts();
-useEffect(() => {
-  if (data) accountStore.setAccounts(data);
-}, [data]);
-// The Zustand store now holds a stale copy whenever TanStack Query
-// refetches in the background.
-
-// GOOD: read server data directly from the query hook
-const { accounts, isLoading } = useAllAccounts();
-```
-
-### Do not put RPC calls inside Zustand actions
-
-```tsx
-// BAD: store action calls the server
-const useAccountStore = create((set) => ({
-  accounts: [],
-  fetchAccounts: async () => {
-    const res = await accountClient.listAccounts({});
-    set({ accounts: res.accounts });
-  },
-}));
-// This bypasses TanStack Query's caching, deduplication, and retry logic.
-
-// GOOD: keep RPC calls in hooks, keep Zustand for client state only
-```
-
-### Do not use `useEffect` to derive state
-
-```tsx
-// BAD: effect to compute a filtered list
-useEffect(() => {
-  setFilteredTodos(todos.filter(t => t.status === status));
-}, [todos, status]);
-
-// GOOD: compute inline or with useMemo
-const filteredTodos = useMemo(
-  () => todos.filter(t => t.status === status),
-  [todos, status],
-);
-```
+Keep UI and hooks free of direct `src/gen/` and `src/network/` imports (see import
+rules in **`.agents/best-practices.md`**). Avoid mirroring server data in Zustand,
+keep RPCs in TanStack Query hooks, and derive lists with `useMemo` (or inline)
+instead of `useEffect`. Full examples live in **`.agents/best-practices.md`**;
+ESLint enforces the import boundaries there.
 
 ## Decision Record
 
@@ -295,8 +267,8 @@ const filteredTodos = useMemo(
 | TanStack Query for server state, Zustand for client state | Each library is purpose-built for its role. Combining them via query keys avoids `useEffect` synchronization and keeps a single source of truth per data category.                                                      |
 | `createClient()` over `@connectrpc/connect-query` codegen | The app was built with direct `createClient()` calls wrapped in custom TanStack Query hooks. This gives full control over query keys, pagination, and cache patching without depending on an additional codegen step.   |
 | Optimistic cache patches + invalidation                   | Immediate UI feedback on mutations; server reconciliation on the next fetch. Avoids loading spinners for common write operations.                                                                                       |
-| `network/types.ts` as the import boundary                 | Insulates the app from proto codegen churn. Renaming a proto field only requires updating `network/types.ts` and the affected hook, not every component.                                                                |
+| `domain/` as the UI import boundary                       | Components and hooks depend on stable domain APIs; only `domain/` imports `network/` (protobuf churn stays in `network/` + domain mappers).                                                                 |
 | Exhaustive pagination via auto-fetching                   | The current data sets are small enough that loading all pages upfront is acceptable. This simplifies component logic (flat array vs. paged iteration) at the cost of additional initial requests.                       |
-| No top-level `constants/` or catch-all `utils/`           | Constants and small pure helpers live next to the modules that use them, so imports stay local and ownership is obvious. Promote shared logic into `network/` when it is cross-cutting and not tied to a single screen. |
+| No top-level `constants/` or catch-all `utils/`           | Constants and small pure helpers live next to the modules that use them, so imports stay local and ownership is obvious. Promote shared logic into `domain/` when it is cross-cutting and not tied to a single screen. |
 
 
