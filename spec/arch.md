@@ -81,7 +81,6 @@ src/
   test/
     setup.ts                    # Vitest + RTL global setup
 
-  MantineAppRoot.tsx
   App.tsx
   main.tsx
   theme.ts
@@ -134,7 +133,7 @@ Client state is anything the server does not know about: UI preferences, filter
 selections, which row is being edited. When a Zustand value should influence
 what data is fetched, it feeds into a query key.
 
-The shell uses `stores/useShellStore.ts` for layout chrome: `sidebarOpen` (header burger / `AppShell` layout) and `colorSchemePreference` (light / dark / system). **`persistence/shell/`** holds the typed disk slice (**`ShellPersistedState`**) and **`storage.ts`** (`createJSONStorage` over `localStorage`). **`stores/shellPersistOptions.ts`** supplies **`createShellStorePersistOptions<T extends ShellPersistedState>()`** (`PersistOptions<T, ShellPersistedState>`) so the Zustand `persist` wiring lives next to the store. `colorSchemePreference` is **persisted** with `zustand/middleware` `persist` (hydrated from `localStorage` on startup) and mapped in `MantineAppRoot.tsx` to Mantine’s `defaultColorScheme="auto"` or `forceColorScheme` for fixed light/dark. There are no async actions and no server data—small focused client stores only.
+The shell uses `stores/useShellStore.ts` for layout chrome: `sidebarOpen` (header burger / `AppShell` layout) and `colorSchemePreference` (light / dark / system). **`persistence/shell/`** holds the typed disk slice (**`ShellPersistedState`**) and **`storage.ts`** (`createJSONStorage` over `localStorage`). **`stores/shellPersistOptions.ts`** supplies **`createShellStorePersistOptions<T extends ShellPersistedState>()`** (`PersistOptions<T, ShellPersistedState>`) so the Zustand `persist` wiring lives next to the store. `colorSchemePreference` is **persisted** with `zustand/middleware` `persist` (hydrated from `localStorage` on startup) and mapped in `App.tsx` to Mantine’s `defaultColorScheme="auto"` or `forceColorScheme` for fixed light/dark. There are no async actions and no server data—small focused client stores only.
 
 ```tsx
 // Example: a filter store drives query parameters

@@ -1,7 +1,7 @@
 import { MantineProvider } from "@mantine/core";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { useShellStore } from "../../stores/shell/useShellStore";
 import { theme } from "../../theme.js";
 import { AppHeader } from "./AppHeader.js";
@@ -13,7 +13,7 @@ describe("AppHeader", () => {
     useShellStore.setState({ sidebarOpen: true });
   });
 
-  it("renders brand title and account menu trigger", () => {
+  it("renders brand title and desktop sidebar control", () => {
     render(
       <MantineProvider theme={theme} forceColorScheme="dark">
         <AppHeader isMobile={false} />
@@ -22,67 +22,9 @@ describe("AppHeader", () => {
     expect(
       screen.getByRole("heading", { level: 3, name: "Budget" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Account" })).toBeInTheDocument();
-  });
-
-  it("lists appearance options under an Appearance submenu", async () => {
-    const user = userEvent.setup();
-    render(
-      <MantineProvider theme={theme} forceColorScheme="dark">
-        <AppHeader isMobile={false} />
-      </MantineProvider>,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Account" }));
-
-    // Mantine keeps the portaled dropdown at display:none in jsdom until
-    // layout runs; include hidden nodes so menu items are queryable.
-    const menuOpts = { hidden: true } as const;
-
-    const appearance = await screen.findByRole("menuitem", {
-      name: "Appearance",
-      ...menuOpts,
-    });
-    expect(appearance).toBeInTheDocument();
-    await user.hover(appearance);
-
     expect(
-      await screen.findByRole("menuitem", { name: "Light", ...menuOpts }),
+      screen.getByRole("button", { name: "Collapse sidebar" }),
     ).toBeInTheDocument();
-    expect(
-      await screen.findByRole("menuitem", { name: "Dark", ...menuOpts }),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByRole("menuitem", { name: "System", ...menuOpts }),
-    ).toBeInTheDocument();
-  });
-
-  it("invokes setColorSchemePreference from the Appearance submenu", async () => {
-    const user = userEvent.setup();
-    const setColorSchemePreference = vi.spyOn(
-      useShellStore.getState(),
-      "setColorSchemePreference",
-    );
-    render(
-      <MantineProvider theme={theme} forceColorScheme="dark">
-        <AppHeader isMobile={false} />
-      </MantineProvider>,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Account" }));
-    const appearance = await screen.findByRole("menuitem", {
-      name: "Appearance",
-      hidden: true,
-    });
-    await user.hover(appearance);
-    await user.click(
-      await screen.findByRole("menuitem", {
-        name: "Dark",
-        hidden: true,
-      }),
-    );
-
-    expect(setColorSchemePreference).toHaveBeenCalledWith("dark");
   });
 
   it("uses the mobile burger aria-label when isMobile", () => {
@@ -109,5 +51,21 @@ describe("AppHeader", () => {
       screen.getByRole("button", { name: "Collapse sidebar" }),
     );
     expect(useShellStore.getState().sidebarOpen).toBe(false);
+  });
+
+  it("toggles the shell store when the mobile burger is clicked", async () => {
+    const user = userEvent.setup();
+    useShellStore.setState({ sidebarOpen: false });
+    render(
+      <MantineProvider theme={theme} forceColorScheme="dark">
+        <AppHeader isMobile />
+      </MantineProvider>,
+    );
+
+    expect(useShellStore.getState().sidebarOpen).toBe(false);
+    await user.click(
+      screen.getByRole("button", { name: "Toggle navigation menu" }),
+    );
+    expect(useShellStore.getState().sidebarOpen).toBe(true);
   });
 });

@@ -3,7 +3,6 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it } from "vitest";
 import App from "./App.js";
-import { MantineAppRoot } from "./MantineAppRoot.js";
 import { useShellStore } from "./stores/shell/useShellStore.js";
 
 describe("App routes", () => {
@@ -18,11 +17,9 @@ describe("App routes", () => {
     });
     return render(
       <QueryClientProvider client={client}>
-        <MantineAppRoot>
-          <MemoryRouter initialEntries={[initialPath]}>
-            <App />
-          </MemoryRouter>
-        </MantineAppRoot>
+        <MemoryRouter initialEntries={[initialPath]}>
+          <App />
+        </MemoryRouter>
       </QueryClientProvider>,
     );
   }
