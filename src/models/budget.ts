@@ -1,4 +1,4 @@
-import type { Budget as WireBudget } from "../network/types.js";
+import type { Budget as WireBudget } from "../connectRPC/types";
 
 export type Budget = {
   categoryId: string;

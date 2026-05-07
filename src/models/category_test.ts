@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CategoryType, type Category as WireCategory } from "../network/types.js";
+import { CategoryType, type Category as WireCategory } from "../connectRPC/types";
 import { CategoryKind, mapCategory } from "./category.js";
 
 describe("mapCategory", () => {

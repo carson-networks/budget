@@ -1,7 +1,7 @@
 name: Proto codegen
 
 on:
-  pull_request:
+  push:
 
 jobs:
   generate:
@@ -17,4 +17,4 @@ jobs:
         run: pnpm generate
 
       - name: Check working tree
-        run: git diff --exit-code src/gen
+        run: git diff --exit-code src/connectRPC

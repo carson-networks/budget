@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
-import { AccountType, type Account as WireAccount } from "../network/types.js";
+import { AccountType, type Account as WireAccount } from "../connectRPC/types";
 import { AccountKind, mapAccount } from "./account.js";
 
 describe("mapAccount", () => {

@@ -7,7 +7,7 @@ export type {
   ListAccountsResponse,
   SyncAccountsRequest,
   SyncAccountsResponse,
-} from "../gen/account/v1/account_pb.js";
+} from "./gen/account/v1/account_pb.js";
 export {
   AccountSchema,
   AccountTypeSchema,
@@ -18,8 +18,8 @@ export {
   ListAccountsResponseSchema,
   SyncAccountsRequestSchema,
   SyncAccountsResponseSchema,
-} from "../gen/account/v1/account_pb.js";
-export { AccountType } from "../gen/account/v1/account_pb.js";
+} from "./gen/account/v1/account_pb.js";
+export { AccountType } from "./gen/account/v1/account_pb.js";
 
 export type {
   Budget,
@@ -27,14 +27,14 @@ export type {
   ListBudgetsResponse,
   SetBudgetRequest,
   SetBudgetResponse,
-} from "../gen/budget/v1/budget_pb.js";
+} from "./gen/budget/v1/budget_pb.js";
 export {
   BudgetSchema,
   ListBudgetsRequestSchema,
   ListBudgetsResponseSchema,
   SetBudgetRequestSchema,
   SetBudgetResponseSchema,
-} from "../gen/budget/v1/budget_pb.js";
+} from "./gen/budget/v1/budget_pb.js";
 
 export type {
   Category,
@@ -45,7 +45,7 @@ export type {
   ListCategoriesResponse,
   UpdateCategoryRequest,
   UpdateCategoryResponse,
-} from "../gen/category/v1/category_pb.js";
+} from "./gen/category/v1/category_pb.js";
 export {
   CategorySchema,
   CategoryTypeSchema,
@@ -56,8 +56,8 @@ export {
   ListCategoriesResponseSchema,
   UpdateCategoryRequestSchema,
   UpdateCategoryResponseSchema,
-} from "../gen/category/v1/category_pb.js";
-export { CategoryType } from "../gen/category/v1/category_pb.js";
+} from "./gen/category/v1/category_pb.js";
+export { CategoryType } from "./gen/category/v1/category_pb.js";
 
 export type {
   CreateLinkTokenRequest,
@@ -65,14 +65,14 @@ export type {
   ExchangeTokenRequest,
   ExchangeTokenResponse,
   SyncAccount,
-} from "../gen/plaid/v1/plaid_pb.js";
+} from "./gen/plaid/v1/plaid_pb.js";
 export {
   CreateLinkTokenRequestSchema,
   CreateLinkTokenResponseSchema,
   ExchangeTokenRequestSchema,
   ExchangeTokenResponseSchema,
   SyncAccountSchema,
-} from "../gen/plaid/v1/plaid_pb.js";
+} from "./gen/plaid/v1/plaid_pb.js";
 
 export type {
   CreateTransactionRequest,
@@ -85,7 +85,7 @@ export type {
   Transaction,
   TransactionTotalsCategory,
   TransactionTotalsMonth,
-} from "../gen/transaction/v1/transaction_pb.js";
+} from "./gen/transaction/v1/transaction_pb.js";
 export {
   CreateTransactionRequestSchema,
   CreateTransactionResponseSchema,
@@ -97,4 +97,4 @@ export {
   TransactionSchema,
   TransactionTotalsCategorySchema,
   TransactionTotalsMonthSchema,
-} from "../gen/transaction/v1/transaction_pb.js";
+} from "./gen/transaction/v1/transaction_pb.js";

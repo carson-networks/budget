@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Budget as WireBudget } from "../network/types.js";
+import type { Budget as WireBudget } from "../connectRPC/types";
 import { mapBudget } from "./budget.js";
 
 describe("mapBudget", () => {
