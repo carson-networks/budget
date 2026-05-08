@@ -64,9 +64,19 @@ src/
 
   models/                       # UI-facing models + wire→model mappers; imports connectRPC/ only
     account.ts … plaid.ts       # types, enums, and map* for each area
+    accountIntegration.ts       # Plaid vs manual detection via stored sub_type encoding
+    money.ts                    # display helpers for amounts (e.g. formatCurrency)
     timestamp.ts                # protobuf Timestamp → Date helpers
     index.ts                    # re-exports types + map* for hooks / UI
     *_test.ts                   # colocated model tests
+
+  hooks/                        # TanStack Query wrappers over connectRPC clients + models mappers
+    useAccounts.ts              # list/create accounts; exchange Plaid token
+    usePlaidLinkToken.ts       # Plaid Link token (createLinkToken)
+    plaidWire.ts               # Plaid Link metadata → ExchangeTokenRequest
+    useTransactions.ts        # (planned) list transactions
+    cachePatches.ts             # infinite-query cache helpers for mutations
+    *.test.ts
 
   persistence/                  # client-side storage adapters (typed disk slices)
     shell/
@@ -94,15 +104,27 @@ src/
       SidebarNavItem.tsx
       navItems.ts
       *.test.tsx
+    Account/                      # accounts feature: views + modals colocated
+      AccountsView/
+      AccountTransactionsView/    # (planned) per-account transactions route
+      CreateManualAccountModal/
+      CreateConnectedAccountModal/
+      EditAccountModal/
+    shared/                       # cross-feature presentation primitives (shells, layout)
+      SectionCard.tsx
+      FloatingCreateButton.tsx
+      ViewShell.tsx
+      ViewLoadingState.tsx
+      ViewErrorAlert.tsx
+      DeleteConfirmBar.tsx        # (planned, edit flows)
     BudgetView/
     TransactionsView/
-    AccountsView/
     ...
 ```
 
-TanStack Query **`hooks/`** (e.g. `useAccounts`, `useBudgets`) are not present in the
-tree yet; when added, keep them under **`src/hooks/`** (or feature folders) and have
-them depend on **`connectRPC/`** + **`models/`** only.
+Feature folders such as **`components/Account/`** group screens and modals for one domain; **`components/shared/`** holds Mantine shells used across routes.
+
+TanStack Query hooks live under **`src/hooks/`** and depend on **`connectRPC/`** + **`models/`** only (no **`connectRPC/gen/`** imports from hooks).
 
 Until the tree matches this spec, any legacy top-level `constants/` or `utils/`
 folders should be merged into the owning feature or **`models/`** incrementally.
@@ -119,13 +141,22 @@ it, and components read it through hooks.
 | ------------------------ | -------------------------------- | -------------------------------------------------------------------- |
 | Accounts list            | `useAllAccounts()`               | `["accounts"]`                                                       |
 | Transactions list        | `useAllTransactions()`           | `["transactions"]`                                                   |
+| Transactions for account | `useTransactionsForAccount(id)`  | `["transactions", { accountId }]` (planned; server filter TODO)      |
 | Categories list          | `useAllCategories()`             | `["categories"]`                                                     |
 | Budgets for a date range | `useBudgetsForRange(start, end)` | `["budgets", startYear, startMonth, endYear, endMonth, categoryKey]` |
 
 
-Mutations (`useCreateAccount`, `useSetBudget`, etc.) perform optimistic cache
-updates via shared cache helpers (when present under **`connectRPC/`** or **`hooks/`**),
+Mutations (`useCreateManualAccount`, `useSetBudget`, etc.) perform optimistic cache
+updates via shared cache helpers under **`hooks/cachePatches.ts`** (when applicable),
 then invalidate the corresponding query key so the cache reconciles with the server.
+
+### Server RPC gaps (tracked in client)
+
+Some UI flows are implemented ahead of backend support. Hooks carry **`// TODO(server): ...`** markers at the exact call sites:
+
+- **`UpdateAccount`** — edit-account save paths call a mutation that patches the TanStack Query cache until the RPC exists.
+- **`DeleteAccount`** — delete flow patches the cache locally until the RPC exists.
+- **`ListTransactions` filtered by account** — `useTransactionsForAccount` will pass `account_id` on the wire once the cursor/request supports it; until then filtering may be client-side.
 
 ### Client State (Zustand)
 
@@ -232,10 +263,12 @@ const transport = createConnectTransport({
 export const accountClient = createClient(AccountService, transport);
 ```
 
-TanStack Query hooks (when present under **`src/hooks/`**) wrap these clients with
+TanStack Query hooks under **`src/hooks/`** wrap these clients with
 `useQuery`, `useInfiniteQuery`, and `useMutation`. They map RPC request and response
 messages to **`models/`** types before surfacing data to components. Demo / mock
 transport is handled from **`src/connectRPC/runtime.ts`** (e.g. URL `?mock=true`).
+
+The **`react-plaid-link`** dependency supports Plaid Link in **`components/Account/CreateConnectedAccountModal/`** (ConnectRPC **`plaidClient`** remains in **`connectRPC/connect.ts`**).
 
 ## Cache Management Patterns
 

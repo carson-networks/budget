@@ -3,6 +3,15 @@ export type {
 } from "./account.js";
 export { AccountKind, mapAccount } from "./account.js";
 
+export {
+  PLAID_LINKED_SUBTYPE_PREFIX,
+  displaySubTypeFromStored,
+  encodePlaidLinkedSubType,
+  isPlaidLinkedStoredSubType,
+} from "./accountIntegration.js";
+
+export { formatCurrency } from "./money.js";
+
 export type {
   Budget,
   ListBudgetsRange,

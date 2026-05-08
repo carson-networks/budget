@@ -4,6 +4,13 @@ import { useShellStore } from "../../stores/shell/useShellStore";
 import { NAV_ITEMS } from "./navItems";
 import { SidebarNavItem } from "./SidebarNavItem";
 
+function isRouteActive(pathname: string, navPath: string): boolean {
+  if (navPath === "/") {
+    return pathname === "/";
+  }
+  return pathname === navPath || pathname.startsWith(`${navPath}/`);
+}
+
 type AppSidebarProps = {
   showNavLabels: boolean;
   isMobile: boolean;
@@ -28,7 +35,7 @@ export function AppSidebar({ showNavLabels, isMobile }: AppSidebarProps) {
           key={path}
           label={label}
           icon={<Icon size={20} />}
-          active={location.pathname === path}
+          active={isRouteActive(location.pathname, path)}
           onClick={() => handleNavigate(path)}
           showLabels={showNavLabels}
         />

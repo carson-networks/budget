@@ -1,6 +1,7 @@
 import { ColorSchemeScript, MantineProvider } from "@mantine/core";
 import { Route, Routes } from "react-router-dom";
 import AppShell from "./components/AppShell/AppShell";
+import AccountsView from "./components/Account/AccountsView/AccountsView";
 import { HomePage } from "./pages/HomePage";
 import {
   preferenceToRootColorSchemeProps,
@@ -21,7 +22,15 @@ function App() {
             <Route index element={<HomePage />} />
             <Route path="budget" element={null} />
             <Route path="transactions" element={null} />
-            <Route path="accounts" element={null} />
+            <Route path="accounts" element={<AccountsView />} />
+            <Route
+              path="accounts/:accountId"
+              element={
+                <p style={{ padding: "var(--mantine-spacing-md)" }}>
+                  Account activity view ships in a later phase.
+                </p>
+              }
+            />
             <Route path="categories" element={null} />
           </Route>
         </Routes>
