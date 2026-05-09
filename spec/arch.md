@@ -63,8 +63,7 @@ src/
       transaction/v1/
 
   models/                       # UI-facing models + wire→model mappers; imports connectRPC/ only
-    account.ts … plaid.ts       # types, enums, and map* for each area
-    accountIntegration.ts       # Plaid vs manual detection via stored sub_type encoding
+    account.ts … plaid.ts       # types, enums, and map* for each area (`Account.integration`: TODO until API)
     money.ts                    # display helpers for amounts (e.g. formatCurrency)
     timestamp.ts                # protobuf Timestamp → Date helpers
     index.ts                    # re-exports types + map* for hooks / UI
@@ -154,6 +153,7 @@ then invalidate the corresponding query key so the cache reconciles with the ser
 
 Some UI flows are implemented ahead of backend support. Hooks carry **`// TODO(server): ...`** markers at the exact call sites:
 
+- **`account.v1.Account` integration + linked-account IDs** — Add an enum such as `AccountIntegration { UNSPECIFIED, MANUAL, PLAID }` plus fields needed to identify the linked institution/account (e.g. persist Plaid item/account ids from exchange). Wire mapping lives in **`src/models/account.ts`** (**`mapAccount`** / **`integrationFromWireAccount`**); extend **`Account`** when protos add linked-account ids. UI reads **`Account.integration`** (see **`spec/plans/account-integration-api.md`**). Until then the UI treats every account as manual for integration display.
 - **`UpdateAccount`** — edit-account save paths call a mutation that patches the TanStack Query cache until the RPC exists.
 - **`DeleteAccount`** — delete flow patches the cache locally until the RPC exists.
 - **`ListTransactions` filtered by account** — `useTransactionsForAccount` will pass `account_id` on the wire once the cursor/request supports it; until then filtering may be client-side.

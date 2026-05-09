@@ -1,6 +1,5 @@
 import { create } from "@bufbuild/protobuf";
 import type { PlaidLinkOnSuccessMetadata } from "react-plaid-link";
-import { encodePlaidLinkedSubType } from "../models";
 import {
   AccountType,
   ExchangeTokenRequestSchema,
@@ -26,7 +25,7 @@ export function exchangeTokenRequestFromPlaidSuccess(
       plaidAccountId: a.id,
       name: a.name || "Linked account",
       type: plaidProductTypeToAccountType(a.type),
-      subType: encodePlaidLinkedSubType(a.subtype || a.type || "account"),
+      subType: (a.subtype || a.type || "account").trim(),
       balance: "0",
     }),
   );

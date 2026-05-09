@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AccountKind } from "../../../models";
+import { AccountIntegration, AccountKind } from "../../../models";
 import type { Account } from "../../../models";
 import { groupAccountsByKind } from "./accountSegments.js";
 
@@ -10,6 +10,7 @@ function makeAccount(
     subType: "Checking",
     balance: "0",
     startingBalance: "0",
+    integration: AccountIntegration.Manual,
     ...partial,
   };
 }

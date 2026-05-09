@@ -28,7 +28,7 @@ describe("exchangeTokenRequestFromPlaidSuccess", () => {
     expect(req.accounts).toHaveLength(1);
     expect(req.accounts[0].plaidAccountId).toBe("acc-plaid");
     expect(req.accounts[0].type).toBe(AccountType.CASH);
-    expect(req.accounts[0].subType).toBe("plaid:checking");
+    expect(req.accounts[0].subType).toBe("checking");
   });
 
   it("maps credit accounts to credit card type", () => {

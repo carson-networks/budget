@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { AccountType, type Account as WireAccount } from "../connectRPC/types";
-import { AccountKind, mapAccount } from "./account.js";
+import { AccountIntegration, AccountKind, mapAccount } from "./account.js";
 
 describe("mapAccount", () => {
   it("maps wire fields to domain", () => {
@@ -26,6 +26,7 @@ describe("mapAccount", () => {
       balance: "120.50",
       startingBalance: "0",
       createdAt,
+      integration: AccountIntegration.Manual,
     });
   });
 });

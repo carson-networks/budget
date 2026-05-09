@@ -1,14 +1,7 @@
 export type {
   Account,
 } from "./account.js";
-export { AccountKind, mapAccount } from "./account.js";
-
-export {
-  PLAID_LINKED_SUBTYPE_PREFIX,
-  displaySubTypeFromStored,
-  encodePlaidLinkedSubType,
-  isPlaidLinkedStoredSubType,
-} from "./accountIntegration.js";
+export { AccountIntegration, AccountKind, mapAccount } from "./account.js";
 
 export { formatCurrency } from "./money.js";
 

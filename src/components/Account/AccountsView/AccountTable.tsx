@@ -2,7 +2,7 @@ import { Box, ActionIcon, Table, rem } from "@mantine/core";
 import { IconSettings } from "@tabler/icons-react";
 import type { Account } from "../../../models";
 import { formatCurrency } from "../../../models";
-import { accountSyncLabel, displayAccountSubType } from "./accountSyncLabel.js";
+import { accountSyncLabel } from "./accountSyncLabel.js";
 
 type AccountTableProps = {
   accounts: Account[];
@@ -84,7 +84,7 @@ export function AccountTable({
                 {accountSyncLabel(row)}
               </Table.Td>
               <Table.Td style={{ verticalAlign: "middle" }}>
-                {displayAccountSubType(row)}
+                {row.subType || "—"}
               </Table.Td>
               <Table.Td fw={500} style={{ verticalAlign: "middle" }}>
                 {formatCurrency(row.balance)}

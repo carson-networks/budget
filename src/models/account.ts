@@ -7,6 +7,12 @@ export enum AccountKind {
   CreditCards = 2,
 }
 
+export enum AccountIntegration {
+  Unspecified = 0,
+  Manual = 1,
+  Plaid = 2,
+}
+
 export type Account = {
   id: string;
   name: string;
@@ -15,6 +21,7 @@ export type Account = {
   balance: string;
   startingBalance: string;
   createdAt?: Date;
+  integration: AccountIntegration;
 };
 
 export function mapAccount(wire: WireAccount): Account {
@@ -26,5 +33,11 @@ export function mapAccount(wire: WireAccount): Account {
     balance: wire.balance,
     startingBalance: wire.startingBalance,
     createdAt: optionalDateFromTimestamp(wire.createdAt),
+    integration: integrationFromWireAccount(wire),
   };
+}
+
+function integrationFromWireAccount(wire: WireAccount): AccountIntegration {
+  void wire;
+  return AccountIntegration.Manual;
 }

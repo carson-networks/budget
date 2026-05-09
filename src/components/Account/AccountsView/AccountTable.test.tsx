@@ -2,7 +2,7 @@ import { MantineProvider } from "@mantine/core";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { AccountKind } from "../../../models";
+import { AccountIntegration, AccountKind } from "../../../models";
 import type { Account } from "../../../models";
 import { theme } from "../../../theme.js";
 import { AccountTable } from "./AccountTable.js";
@@ -14,6 +14,7 @@ const sample: Account = {
   subType: "Checking",
   balance: "10",
   startingBalance: "10",
+  integration: AccountIntegration.Manual,
 };
 
 describe("AccountTable", () => {

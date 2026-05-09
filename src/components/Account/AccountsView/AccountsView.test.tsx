@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AccountKind } from "../../../models";
+import { AccountIntegration, AccountKind } from "../../../models";
 import type { Account } from "../../../models";
 import { theme } from "../../../theme.js";
 
@@ -43,6 +43,7 @@ const cashAccount: Account = {
   subType: "Checking",
   balance: "42.00",
   startingBalance: "0",
+  integration: AccountIntegration.Manual,
 };
 
 function mockAccountQuery(
