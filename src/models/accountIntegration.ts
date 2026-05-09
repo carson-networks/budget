@@ -4,9 +4,6 @@
  */
 export const PLAID_LINKED_SUBTYPE_PREFIX = "plaid:";
 
-/** Legacy single-value marker used by older flows. */
-const LEGACY_PLAID_SUB_TYPE_MARKER = "Plaid";
-
 export function encodePlaidLinkedSubType(plaidSubtypeOrType: string): string {
   const trimmed = plaidSubtypeOrType.trim().replace(/^plaid:/i, "");
   return `${PLAID_LINKED_SUBTYPE_PREFIX}${trimmed || "account"}`;
@@ -14,9 +11,6 @@ export function encodePlaidLinkedSubType(plaidSubtypeOrType: string): string {
 
 export function isPlaidLinkedStoredSubType(subType: string): boolean {
   const s = subType.trim();
-  if (s === LEGACY_PLAID_SUB_TYPE_MARKER) {
-    return true;
-  }
   return s.toLowerCase().startsWith(PLAID_LINKED_SUBTYPE_PREFIX.toLowerCase());
 }
 

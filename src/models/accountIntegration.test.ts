@@ -13,8 +13,7 @@ describe("accountIntegration", () => {
     );
   });
 
-  it("detects legacy and prefixed Plaid rows", () => {
-    expect(isPlaidLinkedStoredSubType("Plaid")).toBe(true);
+  it("detects prefixed Plaid rows", () => {
     expect(isPlaidLinkedStoredSubType("plaid:checking")).toBe(true);
     expect(isPlaidLinkedStoredSubType("Checking")).toBe(false);
   });
