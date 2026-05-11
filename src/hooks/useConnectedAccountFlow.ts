@@ -1,28 +1,43 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePlaidLink } from "react-plaid-link";
 import type { PlaidLinkOnSuccessMetadata } from "react-plaid-link";
-import { useExchangePlaidToken } from "../../../hooks/useAccounts.js";
-import { exchangeTokenRequestFromPlaidSuccess } from "../../../hooks/plaidWire.js";
-import { usePlaidLinkToken } from "../../../hooks/usePlaidLinkToken.js";
+import { useExchangePlaidToken } from "./useAccounts.js";
+import { exchangeTokenRequestFromPlaidSuccess } from "./plaidWire.js";
+import {
+  plaidLinkTokenQueryKey,
+  plaidLinkTokenQueryOptions,
+} from "./usePlaidLinkToken.js";
 
-export function useConnectedAccountFlow(onClose: () => void) {
-  const linkTokenMutation = usePlaidLinkToken();
+/**
+ * Plaid Link + exchange-token flow. Call {@link startLink} to open Link (e.g. from the accounts menu).
+ * {@link onExchangeSuccess} runs after the server accepts the exchange (e.g. navigate to `/accounts`).
+ *
+ * Link tokens are fetched via TanStack Query so {@link prefetchPlaidLinkToken} can warm the cache on Accounts.
+ */
+export function useConnectedAccountFlow(onExchangeSuccess: () => void) {
+  const queryClient = useQueryClient();
   const exchangeMutation = useExchangePlaidToken();
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const openedForTokenRef = useRef<string | null>(null);
+  const [lastTokenError, setLastTokenError] = useState<string | null>(null);
+  const [startLinkPending, setStartLinkPending] = useState(false);
 
   const onPlaidSuccess = useCallback(
     (publicToken: string, metadata: PlaidLinkOnSuccessMetadata) => {
       const req = exchangeTokenRequestFromPlaidSuccess(publicToken, metadata);
       exchangeMutation.mutate(req, {
         onSuccess: () => {
+          void queryClient.invalidateQueries({
+            queryKey: plaidLinkTokenQueryKey,
+          });
           setLinkToken(null);
           openedForTokenRef.current = null;
-          onClose();
+          onExchangeSuccess();
         },
       });
     },
-    [exchangeMutation, onClose],
+    [exchangeMutation, onExchangeSuccess, queryClient],
   );
 
   const { open: openPlaidLink, ready } = usePlaidLink({
@@ -46,24 +61,25 @@ export function useConnectedAccountFlow(onClose: () => void) {
   }, [linkToken, ready, openPlaidLink]);
 
   const startLink = useCallback(async () => {
+    setLastTokenError(null);
+    setStartLinkPending(true);
     try {
-      const token = await linkTokenMutation.mutateAsync();
+      const token = await queryClient.fetchQuery(plaidLinkTokenQueryOptions());
       setLinkToken(token);
-    } catch {
-      /* surfaced via linkTokenMutation.isError */
+    } catch (e) {
+      setLastTokenError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setStartLinkPending(false);
     }
-  }, [linkTokenMutation]);
+  }, [queryClient]);
 
-  const tokenError =
-    linkTokenMutation.isError && linkTokenMutation.error
-      ? linkTokenMutation.error.message
-      : null;
+  const tokenError = lastTokenError;
   const exchangeError =
     exchangeMutation.isError && exchangeMutation.error
       ? exchangeMutation.error.message
       : null;
 
-  const preparingLink = linkTokenMutation.isPending;
+  const preparingLink = startLinkPending;
   const exchanging = exchangeMutation.isPending;
   const plaidSessionActive = linkToken !== null;
 
@@ -74,7 +90,7 @@ export function useConnectedAccountFlow(onClose: () => void) {
     plaidSessionActive,
     tokenError,
     exchangeError,
-    dismissTokenError: () => linkTokenMutation.reset(),
+    dismissTokenError: () => setLastTokenError(null),
     dismissExchangeError: () => exchangeMutation.reset(),
   };
 }

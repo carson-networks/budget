@@ -1,10 +1,12 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Box, Text } from "@mantine/core";
+import { Alert, Box, Stack, Text } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 import { AccountKind } from "../../../models";
 import { useAllAccounts } from "../../../hooks/useAccounts.js";
+import { prefetchPlaidLinkToken } from "../../../hooks/usePlaidLinkToken.js";
+import { usePlaidAccountLink } from "../../../plaid/PlaidAccountLinkProvider.js";
 import CreateManualAccountModal from "../CreateManualAccountModal/Modal.js";
-import CreateConnectedAccountModal from "../CreateConnectedAccountModal/Modal.js";
 import { SectionCard } from "../../shared/SectionCard.js";
 import { ViewErrorAlert } from "../../shared/ViewErrorAlert.js";
 import { ViewLoadingState } from "../../shared/ViewLoadingState.js";
@@ -21,9 +23,17 @@ const KIND_LABELS: Record<AccountKind, string> = {
 
 export default function AccountsView() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { accounts, isLoading, error } = useAllAccounts();
   const [manualModalOpen, setManualModalOpen] = useState(false);
-  const [connectedModalOpen, setConnectedModalOpen] = useState(false);
+
+  const {
+    startLink,
+    tokenError,
+    exchangeError,
+    dismissTokenError,
+    dismissExchangeError,
+  } = usePlaidAccountLink();
 
   const segments = useMemo(() => groupAccountsByKind(accounts), [accounts]);
 
@@ -37,45 +47,65 @@ export default function AccountsView() {
 
   return (
     <ViewShell title="Accounts">
-      <Box style={{ flex: 1, minHeight: 0, overflow: "auto", paddingRight: 2 }}>
-        {accounts.length === 0 ? (
-          <Text size="sm" c="dimmed">
-            No accounts yet. Use the + button to add one.
-          </Text>
-        ) : null}
-        {segments.map((segment) => (
-          <SectionCard
-            key={segment.kind}
-            header={
-              <Text fw={700} size="sm">
-                {KIND_LABELS[segment.kind] ?? String(segment.kind)}
-              </Text>
-            }
+      <Stack gap="sm" style={{ flex: 1, minHeight: 0 }}>
+        {tokenError ? (
+          <Alert
+            color="red"
+            title="Could not start Plaid"
+            onClose={dismissTokenError}
+            withCloseButton
           >
-            <AccountTable
-              accounts={segment.accounts}
-              onRowNavigate={(a) => navigate(`/accounts/${a.id}`)}
-              onOpenEdit={() => {
-                /* EditAccountModal wired in a later phase */
-              }}
-            />
-          </SectionCard>
-        ))}
-      </Box>
+            {tokenError}
+          </Alert>
+        ) : null}
+
+        {exchangeError ? (
+          <Alert
+            color="red"
+            title="Could not link accounts"
+            onClose={dismissExchangeError}
+            withCloseButton
+          >
+            {exchangeError}
+          </Alert>
+        ) : null}
+
+        <Box style={{ flex: 1, minHeight: 0, overflow: "auto", paddingRight: 2 }}>
+          {accounts.length === 0 ? (
+            <Text size="sm" c="dimmed">
+              No accounts yet. Use the + button to add one.
+            </Text>
+          ) : null}
+          {segments.map((segment) => (
+            <SectionCard
+              key={segment.kind}
+              header={
+                <Text fw={700} size="sm">
+                  {KIND_LABELS[segment.kind] ?? String(segment.kind)}
+                </Text>
+              }
+            >
+              <AccountTable
+                accounts={segment.accounts}
+                onRowNavigate={(a) => navigate(`/accounts/${a.id}`)}
+                onOpenEdit={() => {
+                  /* EditAccountModal wired in a later phase */
+                }}
+              />
+            </SectionCard>
+          ))}
+        </Box>
+      </Stack>
 
       <AddAccountMenu
         onManualOpen={() => setManualModalOpen(true)}
-        onConnectBankOpen={() => setConnectedModalOpen(true)}
+        onAddAccountMenuOpen={() => prefetchPlaidLinkToken(queryClient)}
+        onConnectBankOpen={() => void startLink()}
       />
 
       <CreateManualAccountModal
         open={manualModalOpen}
         onClose={() => setManualModalOpen(false)}
-      />
-
-      <CreateConnectedAccountModal
-        open={connectedModalOpen}
-        onClose={() => setConnectedModalOpen(false)}
       />
     </ViewShell>
   );

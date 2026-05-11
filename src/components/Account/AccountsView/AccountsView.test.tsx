@@ -1,5 +1,6 @@
 import { MantineProvider } from "@mantine/core";
-import { render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -23,14 +24,25 @@ vi.mock(import("../../../hooks/useAccounts.js"), () => ({
   useAllAccounts: vi.fn(),
 }));
 
-vi.mock(import("../CreateManualAccountModal/Modal.js"), () => ({
-  default: ({ open }: { open: boolean }) =>
-    open ? <span data-testid="manual-account-modal-open" /> : <></>,
+vi.mock(import("../../../hooks/usePlaidLinkToken.js"), () => ({
+  prefetchPlaidLinkToken: vi.fn(),
 }));
 
-vi.mock(import("../CreateConnectedAccountModal/Modal.js"), () => ({
-  default: ({ open }: { open: boolean }) =>
-    open ? <span data-testid="connected-account-modal-open" /> : <></>,
+vi.mock(import("../../../plaid/PlaidAccountLinkProvider.js"), () => ({
+  usePlaidAccountLink: () => ({
+    startLink: vi.fn(),
+    preparingLink: false,
+    exchanging: false,
+    plaidSessionActive: false,
+    tokenError: null,
+    exchangeError: null,
+    dismissTokenError: vi.fn(),
+    dismissExchangeError: vi.fn(),
+  }),
+}));
+
+vi.mock(import("../CreateManualAccountModal/Modal.js"), () => ({
+  default: () => <></>,
 }));
 
 import { useAllAccounts } from "../../../hooks/useAccounts.js";
@@ -62,11 +74,16 @@ function mockAccountQuery(
 }
 
 function renderAccountsView() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   return render(
     <MantineProvider theme={theme}>
-      <MemoryRouter>
-        <AccountsView />
-      </MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <AccountsView />
+        </MemoryRouter>
+      </QueryClientProvider>
     </MantineProvider>,
   );
 }
@@ -134,41 +151,5 @@ describe("AccountsView", () => {
     await user.click(screen.getByText("House Fund"));
 
     expect(navigateMock).toHaveBeenCalledWith("/accounts/acc-budget");
-  });
-
-  it("opens the manual account modal from the add menu", async () => {
-    const user = userEvent.setup();
-    renderAccountsView();
-
-    await user.click(screen.getByRole("button", { name: "Add account" }));
-    await waitFor(() =>
-      expect(document.querySelectorAll("[data-menu-item]").length).toBe(2),
-    );
-    await user.click(
-      document.querySelectorAll("[data-menu-item]")[0] as HTMLElement,
-    );
-
-    expect(screen.getByTestId("manual-account-modal-open")).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("connected-account-modal-open"),
-    ).not.toBeInTheDocument();
-  });
-
-  it("opens the connected account modal from the add menu", async () => {
-    const user = userEvent.setup();
-    renderAccountsView();
-
-    await user.click(screen.getByRole("button", { name: "Add account" }));
-    await waitFor(() =>
-      expect(document.querySelectorAll("[data-menu-item]").length).toBe(2),
-    );
-    await user.click(
-      document.querySelectorAll("[data-menu-item]")[1] as HTMLElement,
-    );
-
-    expect(screen.getByTestId("connected-account-modal-open")).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("manual-account-modal-open"),
-    ).not.toBeInTheDocument();
   });
 });

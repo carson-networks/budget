@@ -71,11 +71,15 @@ src/
 
   hooks/                        # TanStack Query wrappers over connectRPC clients + models mappers
     useAccounts.ts              # list/create accounts; exchange Plaid token
-    usePlaidLinkToken.ts       # Plaid Link token (createLinkToken)
+    usePlaidLinkToken.ts       # link token query key + prefetchPlaidLinkToken (warm cache when + menu opens)
+    useConnectedAccountFlow.ts # Plaid Link + exchange; mounted once via PlaidAccountLinkProvider
     plaidWire.ts               # Plaid Link metadata → ExchangeTokenRequest
     useTransactions.ts        # (planned) list transactions
     cachePatches.ts             # infinite-query cache helpers for mutations
     *.test.ts
+
+  plaid/                        # Plaid Link UI shell (single usePlaidLink instance for the app)
+    PlaidAccountLinkProvider.tsx
 
   persistence/                  # client-side storage adapters (typed disk slices)
     shell/
@@ -107,7 +111,6 @@ src/
       AccountsView/
       AccountTransactionsView/    # (planned) per-account transactions route
       CreateManualAccountModal/
-      CreateConnectedAccountModal/
       EditAccountModal/
     shared/                       # cross-feature presentation primitives (shells, layout)
       SectionCard.tsx
@@ -268,7 +271,7 @@ TanStack Query hooks under **`src/hooks/`** wrap these clients with
 messages to **`models/`** types before surfacing data to components. Demo / mock
 transport is handled from **`src/connectRPC/runtime.ts`** (e.g. URL `?mock=true`).
 
-The **`react-plaid-link`** dependency supports Plaid Link in **`components/Account/CreateConnectedAccountModal/`** (ConnectRPC **`plaidClient`** remains in **`connectRPC/connect.ts`**).
+The **`react-plaid-link`** dependency loads via **`hooks/useConnectedAccountFlow.ts`**, mounted once in **`plaid/PlaidAccountLinkProvider.tsx`** (wrapped in **`main.tsx`** under the router). **`AccountsView`** consumes **`usePlaidAccountLink()`** so **`usePlaidLink`** is not tied to route mounts. **`index.html`** preloads **`link-initialize.js`** once; **`vite.config.ts`** sends **`Permissions-Policy`** in dev; mirror that header in production if **`encrypted-media`** warnings persist. **`StrictMode`** is disabled — dev double-mount triggers Plaid’s duplicate-embed warning. ConnectRPC **`plaidClient`** remains in **`connectRPC/connect.ts`**.
 
 ## Cache Management Patterns
 
