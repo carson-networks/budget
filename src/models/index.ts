@@ -1,7 +1,9 @@
 export type {
   Account,
 } from "./account.js";
-export { AccountKind, mapAccount } from "./account.js";
+export { AccountIntegration, AccountKind, mapAccount } from "./account.js";
+
+export { formatCurrency } from "./money.js";
 
 export type {
   Budget,
@@ -27,10 +29,3 @@ export {
   mapTransactionTotalsCategory,
   mapTransactionTotalsMonth,
 } from "./transaction.js";
-
-export type {
-  ExchangeTokenInput,
-  LinkTokenResult,
-  PlaidSyncAccount,
-} from "./plaid.js";
-export { mapPlaidSyncAccount } from "./plaid.js";

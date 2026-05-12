@@ -63,10 +63,26 @@ src/
       transaction/v1/
 
   models/                       # UI-facing models + wire→model mappers; imports connectRPC/ only
-    account.ts … plaid.ts       # types, enums, and map* for each area
+    account.ts, budget.ts, …    # types, enums, and map* for each area (`Account.integration`: TODO until API)
+    money.ts                    # display helpers for amounts (e.g. formatCurrency)
     timestamp.ts                # protobuf Timestamp → Date helpers
     index.ts                    # re-exports types + map* for hooks / UI
     *_test.ts                   # colocated model tests
+
+  hooks/                        # TanStack Query wrappers over connectRPC clients + models mappers
+    useAccounts.ts              # list/create accounts
+    useTransactions.ts        # (planned) list transactions
+    cachePatches.ts             # infinite-query cache helpers for mutations
+    *.test.ts
+
+  plaid/                        # Plaid Link: types, wire encoding, react-plaid-link flow (under src/, not models/)
+    types.ts                    # ExchangeTokenInput + PlaidSyncAccount (AccountKind from models)
+    exchangeTokenRequestWire.ts # domain → ConnectRPC ExchangeTokenRequest
+    plaidWire.ts               # Plaid Link metadata → ExchangeTokenInput
+    usePlaidLinkToken.ts        # link token query + prefetchPlaidLinkToken
+    useExchangePlaidToken.ts    # exchange Plaid public_token (invalidates accounts)
+    useConnectedAccountFlow.ts  # Link open + exchange; used from AccountsView
+    *.test.ts
 
   persistence/                  # client-side storage adapters (typed disk slices)
     shell/
@@ -94,15 +110,23 @@ src/
       SidebarNavItem.tsx
       navItems.ts
       *.test.tsx
+    Account/                      # accounts feature: views + modals colocated
+      AccountsView/
+      AccountTransactionsView/    # (planned) per-account transactions route
+      CreateManualAccountModal/
+      EditAccountModal/
+    shared/                       # cross-feature presentation primitives (shells, layout)
+      SectionCard.tsx
+      ViewShell.tsx
+      DeleteConfirmBar.tsx        # (planned, edit flows)
     BudgetView/
     TransactionsView/
-    AccountsView/
     ...
 ```
 
-TanStack Query **`hooks/`** (e.g. `useAccounts`, `useBudgets`) are not present in the
-tree yet; when added, keep them under **`src/hooks/`** (or feature folders) and have
-them depend on **`connectRPC/`** + **`models/`** only.
+Feature folders such as **`components/Account/`** group screens and modals for one domain; **`components/shared/`** holds Mantine shells used across routes.
+
+TanStack Query hooks live under **`src/hooks/`** and depend on **`connectRPC/`** + **`models/`**; Plaid-specific modules live under **`src/plaid/`** (no **`connectRPC/gen/`** imports from hooks).
 
 Until the tree matches this spec, any legacy top-level `constants/` or `utils/`
 folders should be merged into the owning feature or **`models/`** incrementally.
@@ -119,13 +143,23 @@ it, and components read it through hooks.
 | ------------------------ | -------------------------------- | -------------------------------------------------------------------- |
 | Accounts list            | `useAllAccounts()`               | `["accounts"]`                                                       |
 | Transactions list        | `useAllTransactions()`           | `["transactions"]`                                                   |
+| Transactions for account | `useTransactionsForAccount(id)`  | `["transactions", { accountId }]` (planned; server filter TODO)      |
 | Categories list          | `useAllCategories()`             | `["categories"]`                                                     |
 | Budgets for a date range | `useBudgetsForRange(start, end)` | `["budgets", startYear, startMonth, endYear, endMonth, categoryKey]` |
 
 
-Mutations (`useCreateAccount`, `useSetBudget`, etc.) perform optimistic cache
-updates via shared cache helpers (when present under **`connectRPC/`** or **`hooks/`**),
+Mutations (`useCreateManualAccount`, `useSetBudget`, etc.) perform optimistic cache
+updates via shared cache helpers under **`hooks/cachePatches.ts`** (when applicable),
 then invalidate the corresponding query key so the cache reconciles with the server.
+
+### Server RPC gaps (tracked in client)
+
+Some UI flows are implemented ahead of backend support. Hooks carry **`// TODO(server): ...`** markers at the exact call sites:
+
+- **`account.v1.Account` integration + linked-account IDs** — Add an enum such as `AccountIntegration { UNSPECIFIED, MANUAL, PLAID }` plus fields needed to identify the linked institution/account (e.g. persist Plaid item/account ids from exchange). Wire mapping lives in **`src/models/account.ts`** (**`mapAccount`** / **`integrationFromWireAccount`**); extend **`Account`** when protos add linked-account ids. UI reads **`Account.integration`** (see **`spec/plans/account-integration-api.md`**). Until then the UI treats every account as manual for integration display.
+- **`UpdateAccount`** — edit-account save paths call a mutation that patches the TanStack Query cache until the RPC exists.
+- **`DeleteAccount`** — delete flow patches the cache locally until the RPC exists.
+- **`ListTransactions` filtered by account** — `useTransactionsForAccount` will pass `account_id` on the wire once the cursor/request supports it; until then filtering may be client-side.
 
 ### Client State (Zustand)
 
@@ -232,10 +266,13 @@ const transport = createConnectTransport({
 export const accountClient = createClient(AccountService, transport);
 ```
 
-TanStack Query hooks (when present under **`src/hooks/`**) wrap these clients with
+TanStack Query hooks under **`src/hooks/`** wrap these clients with
 `useQuery`, `useInfiniteQuery`, and `useMutation`. They map RPC request and response
-messages to **`models/`** types before surfacing data to components. Demo / mock
+messages to **`models/`** types before surfacing data to components (Plaid exchange
+helpers live under **`src/plaid/`**). Demo / mock
 transport is handled from **`src/connectRPC/runtime.ts`** (e.g. URL `?mock=true`).
+
+The **`react-plaid-link`** script is injected by the library when **`AccountsView`** runs **`plaid/useConnectedAccountFlow.ts`** (per Plaid’s React integration path). **`vite.config.ts`** sends **`Permissions-Policy`** in dev; mirror that header in production if **`encrypted-media`** warnings persist. ConnectRPC **`plaidClient`** remains in **`connectRPC/connect.ts`**.
 
 ## Cache Management Patterns
 
