@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AccountType } from "../connectRPC/types";
-import { AccountKind } from "../models/account.js";
+import { AccountKind } from "../models";
 import type { ExchangeTokenInput } from "./types.js";
 import { toExchangeTokenRequestWire } from "./exchangeTokenRequestWire.js";
 
