@@ -1,11 +1,12 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
   type FormEvent,
 } from "react";
+import { AccountType } from "../../../connectRPC/types.js";
 import {
-  AccountType,
   type CreateManualAccountInput,
   useCreateManualAccount,
 } from "../../../hooks/useAccounts.js";
@@ -18,21 +19,25 @@ export function useCreateManualAccountForm(open: boolean, onClose: () => void) {
   const [startingBalance, setStartingBalance] = useState("");
 
   const createAccount = useCreateManualAccount();
+  const resetRef = useRef(createAccount.reset);
+  resetRef.current = createAccount.reset;
+  const mutateRef = useRef(createAccount.mutate);
+  mutateRef.current = createAccount.mutate;
 
   useEffect(() => {
     if (!open) {
-      createAccount.reset();
+      resetRef.current();
     }
-  }, [open, createAccount]);
+  }, [open]);
 
   const handleClose = useCallback(() => {
     setName("");
     setType(String(AccountKind.Cash));
     setSubType("");
     setStartingBalance("");
-    createAccount.reset();
+    resetRef.current();
     onClose();
-  }, [createAccount, onClose]);
+  }, [onClose]);
 
   const handleSubmit = useCallback(
     (e: FormEvent) => {
@@ -47,13 +52,13 @@ export function useCreateManualAccountForm(open: boolean, onClose: () => void) {
         startingBalance: startingBalance.trim(),
       };
 
-      createAccount.mutate(body, {
+      mutateRef.current(body, {
         onSuccess: () => {
           handleClose();
         },
       });
     },
-    [createAccount, handleClose, name, startingBalance, subType, type],
+    [handleClose, name, startingBalance, subType, type],
   );
 
   const isFormValid =

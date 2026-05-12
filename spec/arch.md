@@ -63,23 +63,26 @@ src/
       transaction/v1/
 
   models/                       # UI-facing models + wire→model mappers; imports connectRPC/ only
-    account.ts … plaid.ts       # types, enums, and map* for each area (`Account.integration`: TODO until API)
+    account.ts, budget.ts, …    # types, enums, and map* for each area (`Account.integration`: TODO until API)
     money.ts                    # display helpers for amounts (e.g. formatCurrency)
     timestamp.ts                # protobuf Timestamp → Date helpers
     index.ts                    # re-exports types + map* for hooks / UI
     *_test.ts                   # colocated model tests
 
   hooks/                        # TanStack Query wrappers over connectRPC clients + models mappers
-    useAccounts.ts              # list/create accounts; exchange Plaid token
-    usePlaidLinkToken.ts       # link token query key + prefetchPlaidLinkToken (warm cache when + menu opens)
-    useConnectedAccountFlow.ts # Plaid Link + exchange; mounted once via PlaidAccountLinkProvider
-    plaidWire.ts               # Plaid Link metadata → ExchangeTokenRequest
+    useAccounts.ts              # list/create accounts
     useTransactions.ts        # (planned) list transactions
     cachePatches.ts             # infinite-query cache helpers for mutations
     *.test.ts
 
-  plaid/                        # Plaid Link UI shell (single usePlaidLink instance for the app)
-    PlaidAccountLinkProvider.tsx
+  plaid/                        # Plaid Link: types, wire encoding, react-plaid-link flow (under src/, not models/)
+    types.ts                    # ExchangeTokenInput + PlaidSyncAccount (AccountKind from models)
+    exchangeTokenRequestWire.ts # domain → ConnectRPC ExchangeTokenRequest
+    plaidWire.ts               # Plaid Link metadata → ExchangeTokenInput
+    usePlaidLinkToken.ts        # link token query + prefetchPlaidLinkToken
+    useExchangePlaidToken.ts    # exchange Plaid public_token (invalidates accounts)
+    useConnectedAccountFlow.ts  # Link open + exchange; used from AccountsView
+    *.test.ts
 
   persistence/                  # client-side storage adapters (typed disk slices)
     shell/
@@ -114,10 +117,7 @@ src/
       EditAccountModal/
     shared/                       # cross-feature presentation primitives (shells, layout)
       SectionCard.tsx
-      FloatingCreateButton.tsx
       ViewShell.tsx
-      ViewLoadingState.tsx
-      ViewErrorAlert.tsx
       DeleteConfirmBar.tsx        # (planned, edit flows)
     BudgetView/
     TransactionsView/
@@ -126,7 +126,7 @@ src/
 
 Feature folders such as **`components/Account/`** group screens and modals for one domain; **`components/shared/`** holds Mantine shells used across routes.
 
-TanStack Query hooks live under **`src/hooks/`** and depend on **`connectRPC/`** + **`models/`** only (no **`connectRPC/gen/`** imports from hooks).
+TanStack Query hooks live under **`src/hooks/`** and depend on **`connectRPC/`** + **`models/`**; Plaid-specific modules live under **`src/plaid/`** (no **`connectRPC/gen/`** imports from hooks).
 
 Until the tree matches this spec, any legacy top-level `constants/` or `utils/`
 folders should be merged into the owning feature or **`models/`** incrementally.
@@ -268,10 +268,11 @@ export const accountClient = createClient(AccountService, transport);
 
 TanStack Query hooks under **`src/hooks/`** wrap these clients with
 `useQuery`, `useInfiniteQuery`, and `useMutation`. They map RPC request and response
-messages to **`models/`** types before surfacing data to components. Demo / mock
+messages to **`models/`** types before surfacing data to components (Plaid exchange
+helpers live under **`src/plaid/`**). Demo / mock
 transport is handled from **`src/connectRPC/runtime.ts`** (e.g. URL `?mock=true`).
 
-The **`react-plaid-link`** dependency loads via **`hooks/useConnectedAccountFlow.ts`**, mounted once in **`plaid/PlaidAccountLinkProvider.tsx`** (wrapped in **`main.tsx`** under the router). **`AccountsView`** consumes **`usePlaidAccountLink()`** so **`usePlaidLink`** is not tied to route mounts. **`index.html`** preloads **`link-initialize.js`** once; **`vite.config.ts`** sends **`Permissions-Policy`** in dev; mirror that header in production if **`encrypted-media`** warnings persist. **`StrictMode`** is disabled — dev double-mount triggers Plaid’s duplicate-embed warning. ConnectRPC **`plaidClient`** remains in **`connectRPC/connect.ts`**.
+The **`react-plaid-link`** script is injected by the library when **`AccountsView`** runs **`plaid/useConnectedAccountFlow.ts`** (per Plaid’s React integration path). **`vite.config.ts`** sends **`Permissions-Policy`** in dev; mirror that header in production if **`encrypted-media`** warnings persist. ConnectRPC **`plaidClient`** remains in **`connectRPC/connect.ts`**.
 
 ## Cache Management Patterns
 

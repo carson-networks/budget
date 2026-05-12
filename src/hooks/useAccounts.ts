@@ -5,13 +5,12 @@ import {
   useQueryClient,
   type InfiniteData,
 } from "@tanstack/react-query";
-import { accountClient, plaidClient } from "../connectRPC/connect.js";
+import { accountClient } from "../connectRPC/connect.js";
 import { connectErrorMessage } from "../connectRPC/errors.js";
 import type { Account as WireAccount } from "../connectRPC/types.js";
 import {
   AccountSchema,
   AccountType,
-  type ExchangeTokenRequest,
   type ListAccountsCursor,
   type ListAccountsResponse,
 } from "../connectRPC/types.js";
@@ -114,22 +113,3 @@ export function useCreateManualAccount() {
     },
   });
 }
-
-export function useExchangePlaidToken() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (body: ExchangeTokenRequest) => {
-      try {
-        await plaidClient.exchangeToken(body);
-      } catch (e) {
-        throw new Error(connectErrorMessage(e));
-      }
-    },
-    onSettled: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["accounts"] });
-    },
-  });
-}
-
-export { AccountType };

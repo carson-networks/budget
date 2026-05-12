@@ -29,10 +29,3 @@ export {
   mapTransactionTotalsCategory,
   mapTransactionTotalsMonth,
 } from "./transaction.js";
-
-export type {
-  ExchangeTokenInput,
-  LinkTokenResult,
-  PlaidSyncAccount,
-} from "./plaid.js";
-export { mapPlaidSyncAccount } from "./plaid.js";

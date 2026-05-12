@@ -2,8 +2,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePlaidLink } from "react-plaid-link";
 import type { PlaidLinkOnSuccessMetadata } from "react-plaid-link";
-import { useExchangePlaidToken } from "./useAccounts.js";
-import { exchangeTokenRequestFromPlaidSuccess } from "./plaidWire.js";
+import { useExchangePlaidToken } from "./useExchangePlaidToken.js";
+import { exchangeTokenInputFromPlaidSuccess } from "./plaidWire.js";
 import {
   plaidLinkTokenQueryKey,
   plaidLinkTokenQueryOptions,
@@ -21,12 +21,11 @@ export function useConnectedAccountFlow(onExchangeSuccess: () => void) {
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const openedForTokenRef = useRef<string | null>(null);
   const [lastTokenError, setLastTokenError] = useState<string | null>(null);
-  const [startLinkPending, setStartLinkPending] = useState(false);
 
   const onPlaidSuccess = useCallback(
     (publicToken: string, metadata: PlaidLinkOnSuccessMetadata) => {
-      const req = exchangeTokenRequestFromPlaidSuccess(publicToken, metadata);
-      exchangeMutation.mutate(req, {
+      const input = exchangeTokenInputFromPlaidSuccess(publicToken, metadata);
+      exchangeMutation.mutate(input, {
         onSuccess: () => {
           void queryClient.invalidateQueries({
             queryKey: plaidLinkTokenQueryKey,
@@ -62,14 +61,11 @@ export function useConnectedAccountFlow(onExchangeSuccess: () => void) {
 
   const startLink = useCallback(async () => {
     setLastTokenError(null);
-    setStartLinkPending(true);
     try {
       const token = await queryClient.fetchQuery(plaidLinkTokenQueryOptions());
       setLinkToken(token);
     } catch (e) {
       setLastTokenError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setStartLinkPending(false);
     }
   }, [queryClient]);
 
@@ -79,15 +75,8 @@ export function useConnectedAccountFlow(onExchangeSuccess: () => void) {
       ? exchangeMutation.error.message
       : null;
 
-  const preparingLink = startLinkPending;
-  const exchanging = exchangeMutation.isPending;
-  const plaidSessionActive = linkToken !== null;
-
   return {
     startLink,
-    preparingLink,
-    exchanging,
-    plaidSessionActive,
     tokenError,
     exchangeError,
     dismissTokenError: () => setLastTokenError(null),

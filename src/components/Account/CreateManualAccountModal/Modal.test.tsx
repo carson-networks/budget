@@ -10,11 +10,6 @@ const { mutateMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("../../../hooks/useAccounts.js", () => ({
-  AccountType: {
-    UNSPECIFIED: 0,
-    CASH: 1,
-    CREDIT_CARDS: 2,
-  },
   useCreateManualAccount: () => ({
     mutate: mutateMock,
     reset: vi.fn(),

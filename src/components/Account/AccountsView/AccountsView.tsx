@@ -1,15 +1,13 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Alert, Box, Stack, Text } from "@mantine/core";
+import { Alert, Box, Loader, Stack, Text } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 import { AccountKind } from "../../../models";
 import { useAllAccounts } from "../../../hooks/useAccounts.js";
-import { prefetchPlaidLinkToken } from "../../../hooks/usePlaidLinkToken.js";
-import { usePlaidAccountLink } from "../../../plaid/PlaidAccountLinkProvider.js";
+import { useConnectedAccountFlow } from "../../../plaid/useConnectedAccountFlow.js";
+import { prefetchPlaidLinkToken } from "../../../plaid/usePlaidLinkToken.js";
 import CreateManualAccountModal from "../CreateManualAccountModal/Modal.js";
 import { SectionCard } from "../../shared/SectionCard.js";
-import { ViewErrorAlert } from "../../shared/ViewErrorAlert.js";
-import { ViewLoadingState } from "../../shared/ViewLoadingState.js";
 import { ViewShell } from "../../shared/ViewShell.js";
 import { AccountTable } from "./AccountTable.js";
 import { AddAccountMenu } from "./AddAccountMenu.js";
@@ -33,16 +31,27 @@ export default function AccountsView() {
     exchangeError,
     dismissTokenError,
     dismissExchangeError,
-  } = usePlaidAccountLink();
+  } = useConnectedAccountFlow(() => navigate("/accounts"));
 
   const segments = useMemo(() => groupAccountsByKind(accounts), [accounts]);
 
   if (isLoading) {
-    return <ViewLoadingState />;
+    return (
+      <Stack align="center" justify="center" gap="sm" py="xl">
+        <Loader size="md" />
+        <Text size="sm" c="dimmed">
+          Loading…
+        </Text>
+      </Stack>
+    );
   }
 
   if (error) {
-    return <ViewErrorAlert message={error.message} />;
+    return (
+      <Alert color="red" title="Something went wrong">
+        {error.message}
+      </Alert>
+    );
   }
 
   return (

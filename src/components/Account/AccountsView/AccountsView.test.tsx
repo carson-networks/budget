@@ -24,16 +24,13 @@ vi.mock(import("../../../hooks/useAccounts.js"), () => ({
   useAllAccounts: vi.fn(),
 }));
 
-vi.mock(import("../../../hooks/usePlaidLinkToken.js"), () => ({
+vi.mock(import("../../../plaid/usePlaidLinkToken.js"), () => ({
   prefetchPlaidLinkToken: vi.fn(),
 }));
 
-vi.mock(import("../../../plaid/PlaidAccountLinkProvider.js"), () => ({
-  usePlaidAccountLink: () => ({
+vi.mock(import("../../../plaid/useConnectedAccountFlow.js"), () => ({
+  useConnectedAccountFlow: () => ({
     startLink: vi.fn(),
-    preparingLink: false,
-    exchanging: false,
-    plaidSessionActive: false,
     tokenError: null,
     exchangeError: null,
     dismissTokenError: vi.fn(),
