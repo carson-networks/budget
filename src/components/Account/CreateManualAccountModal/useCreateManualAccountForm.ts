@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useRef,
   useState,
   type FormEvent,
 } from "react";
@@ -19,25 +18,21 @@ export function useCreateManualAccountForm(open: boolean, onClose: () => void) {
   const [startingBalance, setStartingBalance] = useState("");
 
   const createAccount = useCreateManualAccount();
-  const resetRef = useRef(createAccount.reset);
-  resetRef.current = createAccount.reset;
-  const mutateRef = useRef(createAccount.mutate);
-  mutateRef.current = createAccount.mutate;
 
   useEffect(() => {
     if (!open) {
-      resetRef.current();
+      createAccount.reset();
     }
-  }, [open]);
+  }, [open, createAccount]);
 
   const handleClose = useCallback(() => {
     setName("");
     setType(String(AccountKind.Cash));
     setSubType("");
     setStartingBalance("");
-    resetRef.current();
+    createAccount.reset();
     onClose();
-  }, [onClose]);
+  }, [createAccount, onClose]);
 
   const handleSubmit = useCallback(
     (e: FormEvent) => {
@@ -52,13 +47,13 @@ export function useCreateManualAccountForm(open: boolean, onClose: () => void) {
         startingBalance: startingBalance.trim(),
       };
 
-      mutateRef.current(body, {
+      createAccount.mutate(body, {
         onSuccess: () => {
           handleClose();
         },
       });
     },
-    [handleClose, name, startingBalance, subType, type],
+    [createAccount, handleClose, name, startingBalance, subType, type],
   );
 
   const isFormValid =
