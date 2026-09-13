@@ -27,12 +27,6 @@
       "groupSlug": "github-actions"
     },
     {
-      "description": "Group asdf/.tool-versions runtime updates",
-      "matchManagers": ["asdf"],
-      "groupName": "asdf runtimes",
-      "groupSlug": "asdf"
-    },
-    {
       "description": "budget-server proto release tags (keep separate; regenerate stubs)",
       "matchDepNames": ["budget-server-proto"],
       "labels": ["proto"],
