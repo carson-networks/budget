@@ -9,13 +9,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6.0.2
 
-      # pnpm version comes from package.json#packageManager
+      # pnpm version comes from package.json#packageManager (pnpm 12)
       - uses: pnpm/action-setup@v5.0.0
 
-      # Node version comes from package.json#engines.node
+      # Bootstrap Node for the runner; project Node comes from
+      # package.json#devEngines.runtime via pnpm install.
       - uses: actions/setup-node@v6.3.0
         with:
-          node-version-file: package.json
+          node-version: 24
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile

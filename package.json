@@ -3,15 +3,19 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "engines": {
-    "node": "^24.13.0"
-  },
-  "packageManager": "pnpm@10.33.0",
-  "pnpm": {
-    "executionEnv": {
-      "nodeVersion": "24.13.0"
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "^24.13.0",
+      "onFail": "download"
+    },
+    "packageManager": {
+      "name": "pnpm",
+      "version": ">=12.4.1 <13.0.0",
+      "onFail": "download"
     }
   },
+  "packageManager": "pnpm@12.4.1",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
