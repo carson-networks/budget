@@ -1,5 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
   "customManagers": [
     {
       "customType": "regex",
@@ -14,8 +15,29 @@
   ],
   "packageRules": [
     {
+      "description": "Group JavaScript/TypeScript (npm) dependency updates",
+      "matchManagers": ["npm"],
+      "groupName": "JavaScript dependencies",
+      "groupSlug": "javascript"
+    },
+    {
+      "description": "Group GitHub Actions updates",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "groupSlug": "github-actions"
+    },
+    {
+      "description": "Group asdf/.tool-versions runtime updates",
+      "matchManagers": ["asdf"],
+      "groupName": "asdf runtimes",
+      "groupSlug": "asdf"
+    },
+    {
+      "description": "budget-server proto release tags (keep separate; regenerate stubs)",
       "matchDepNames": ["budget-server-proto"],
       "labels": ["proto"],
+      "groupName": "budget-server proto",
+      "groupSlug": "budget-server-proto",
       "postUpgradeTasks": {
         "commands": ["pnpm install --frozen-lockfile", "pnpm run generate"],
         "executionMode": "branch"
