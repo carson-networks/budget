@@ -8,10 +8,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
-      - uses: pnpm/action-setup@v5.0.0
-      - uses: actions/setup-node@v6.3.0
 
-      - run: pnpm install
+      # pnpm version comes from package.json#packageManager (pnpm 12)
+      - uses: pnpm/action-setup@v5.0.0
+
+      # Bootstrap Node for the runner; project Node comes from
+      # package.json#devEngines.runtime via pnpm install.
+      - uses: actions/setup-node@v6.3.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
 
       - name: buf generate
         run: pnpm generate

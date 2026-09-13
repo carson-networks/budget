@@ -9,11 +9,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6.0.2
 
+      # pnpm version comes from package.json#packageManager (pnpm 12)
       - uses: pnpm/action-setup@v6.0.5
 
+      # Bootstrap Node for the runner; project Node comes from
+      # package.json#devEngines.runtime via pnpm install.
       - uses: actions/setup-node@v6.4.0
         with:
-          node-version-file: package.json
+          node-version: 24
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
@@ -25,11 +28,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6.0.2
 
+      # pnpm version comes from package.json#packageManager (pnpm 12)
       - uses: pnpm/action-setup@v6.0.5
 
+      # Bootstrap Node for the runner; project Node comes from
+      # package.json#devEngines.runtime via pnpm install.
       - uses: actions/setup-node@v6.4.0
         with:
-          node-version-file: package.json
+          node-version: 24
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
@@ -41,11 +47,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6.0.2
 
+      # pnpm version comes from package.json#packageManager (pnpm 12)
       - uses: pnpm/action-setup@v6.0.5
 
+      # Bootstrap Node for the runner; project Node comes from
+      # package.json#devEngines.runtime via pnpm install.
       - uses: actions/setup-node@v6.4.0
         with:
-          node-version-file: package.json
+          node-version: 24
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
