@@ -5,10 +5,10 @@ inputs:
     subdir: proto
 plugins:
   - remote: buf.build/bufbuild/es:v2.2.3
-    out: src/gen
+    out: src/connectRPC/gen
     opt:
       - target=ts
   - remote: buf.build/connectrpc/es:v1.6.1
-    out: src/gen
+    out: src/connectRPC/gen
     opt:
       - target=ts

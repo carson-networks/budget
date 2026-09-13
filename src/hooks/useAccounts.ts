@@ -1,32 +1,35 @@
+import { create } from "@bufbuild/protobuf";
 import {
   useInfiniteQuery,
   useMutation,
   useQueryClient,
   type InfiniteData,
 } from "@tanstack/react-query";
-import { accountClient } from "../api/connect";
-import { connectErrorMessage } from "../api/errors";
-import type {
-  Account,
-  ListAccountsCursor,
-  ListAccountsResponse,
-} from "../gen/account/v1/account_pb.js";
-import { AccountType } from "../gen/account/v1/account_pb.js";
+import { accountClient } from "../connectRPC/connect.js";
+import { connectErrorMessage } from "../connectRPC/errors.js";
+import type { Account as WireAccount } from "../connectRPC/types.js";
+import {
+  AccountSchema,
+  AccountType,
+  type ListAccountsCursor,
+  type ListAccountsResponse,
+} from "../connectRPC/types.js";
+import { mapAccount, type Account } from "../models";
+import {
+  prependToInfiniteList,
+} from "./cachePatches.js";
 
-export type { Account };
-export { AccountType };
+const PAGE_SIZE = 50;
 
-export type CreateAccountInput = {
+export type CreateManualAccountInput = {
   name: string;
   type: AccountType;
   subType: string;
   startingBalance: string;
 };
 
-const PAGE_SIZE = 50;
-
-export function useAccounts() {
-  return useInfiniteQuery<
+export function useAllAccounts() {
+  const query = useInfiniteQuery<
     ListAccountsResponse,
     Error,
     InfiniteData<ListAccountsResponse>,
@@ -49,14 +52,11 @@ export function useAccounts() {
     initialPageParam: undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
-}
 
-export function useAllAccounts() {
-  const query = useAccounts();
-
-  const accounts = (
-    query.data?.pages.flatMap((page) => page.accounts ?? []) ?? []
-  ).filter((a): a is Account => a != null);
+  const accounts: Account[] =
+    query.data?.pages.flatMap((page) =>
+      (page.accounts ?? []).filter(Boolean),
+    ).map(mapAccount) ?? [];
 
   return {
     ...query,
@@ -64,11 +64,11 @@ export function useAllAccounts() {
   };
 }
 
-export function useCreateAccount() {
+export function useCreateManualAccount() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (body: CreateAccountInput) => {
+    mutationFn: async (body: CreateManualAccountInput) => {
       try {
         await accountClient.createAccount({
           name: body.name,
@@ -80,8 +80,36 @@ export function useCreateAccount() {
         throw new Error(connectErrorMessage(e));
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: ["accounts"] });
+      const previous = queryClient.getQueryData<
+        InfiniteData<ListAccountsResponse>
+      >(["accounts"]);
+
+      const optimistic: WireAccount = create(AccountSchema, {
+        id: `optimistic-${crypto.randomUUID()}`,
+        name: variables.name,
+        type: variables.type,
+        subType: variables.subType,
+        balance: variables.startingBalance,
+        startingBalance: variables.startingBalance,
+      });
+
+      queryClient.setQueryData(
+        ["accounts"],
+        (old: InfiniteData<ListAccountsResponse> | undefined) =>
+          prependToInfiniteList(old, optimistic),
+      );
+
+      return { previous };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["accounts"], context.previous);
+      }
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["accounts"] });
     },
   });
 }
