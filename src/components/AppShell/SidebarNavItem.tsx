@@ -28,11 +28,22 @@ export function SidebarNavItem({
         color="brand"
         styles={{
           root: {
-            justifyContent: showLabels ? undefined : "center",
+            justifyContent: "center",
             borderRadius: rem(8),
           },
-          body: showLabels ? undefined : { display: "none" },
-          section: showLabels ? undefined : { marginInlineEnd: 0 },
+          body: {
+            maxWidth: showLabels ? rem(260) : 0,
+            whiteSpace: "nowrap",
+            textOverflow: "clip",
+            transition:
+              "max-width var(--app-shell-transition-duration) var(--app-shell-transition-timing-function)",
+          },
+          section: {
+            flexShrink: 0,
+            marginInlineEnd: showLabels ? "var(--mantine-spacing-sm)" : 0,
+            transition:
+              "margin-inline-end var(--app-shell-transition-duration) var(--app-shell-transition-timing-function)",
+          },
         }}
       />
     </Tooltip>

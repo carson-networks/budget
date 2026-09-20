@@ -1,5 +1,5 @@
 import { AppShell as MantineAppShell, Box } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
+import { useMediaQuery, useReducedMotion } from "@mantine/hooks";
 import { Outlet } from "react-router-dom";
 import { useShellStore } from "../../stores/shell/useShellStore";
 import { AppHeader } from "./AppHeader";
@@ -13,10 +13,13 @@ const MOBILE_MAX = "(max-width: 47.99em)";
 export default function AppShell() {
   const sidebarOpen = useShellStore((s) => s.sidebarOpen);
   const isMobile = useMediaQuery(MOBILE_MAX);
+  const reduceMotion = useReducedMotion();
   const showNavLabels = Boolean(isMobile) || sidebarOpen;
 
   return (
     <MantineAppShell
+      transitionDuration={reduceMotion ? 0 : 300}
+      transitionTimingFunction="ease-in-out"
       header={{ height: 64 }}
       navbar={{
         width: {
@@ -33,6 +36,8 @@ export default function AppShell() {
           borderBottom: "1px solid var(--mantine-color-default-border)",
         },
         navbar: {
+          transitionProperty: "transform, top, height, width, padding",
+          overflowX: "hidden",
           boxShadow: "var(--mantine-shadow-xs)",
         },
       }}
