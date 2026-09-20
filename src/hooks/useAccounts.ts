@@ -17,6 +17,7 @@ import {
 import { mapAccount, type Account } from "../models";
 import {
   prependToInfiniteList,
+  removeFromInfiniteList,
 } from "./cachePatches.js";
 
 const PAGE_SIZE = 50;
@@ -110,6 +111,24 @@ export function useCreateManualAccount() {
     },
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    },
+  });
+}
+
+export function useDeleteAccount() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      void id;
+      // TODO(server): call accountClient.deleteAccount when the RPC exists.
+    },
+    onSuccess: (_data, accountId) => {
+      queryClient.setQueryData(
+        ["accounts"],
+        (old: InfiniteData<ListAccountsResponse> | undefined) =>
+          removeFromInfiniteList(old, (a) => a.id === accountId),
+      );
     },
   });
 }

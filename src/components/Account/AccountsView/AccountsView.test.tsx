@@ -42,6 +42,23 @@ vi.mock(import("../CreateManualAccountModal/Modal.js"), () => ({
   default: () => <></>,
 }));
 
+vi.mock(import("../EditAccountModal/Modal.js"), () => ({
+  default: ({
+    open,
+    account,
+  }: {
+    open: boolean;
+    account: Account | null;
+  }) =>
+    open && account ? (
+      <div role="dialog" aria-label="Account settings">
+        Settings for {account.name}
+      </div>
+    ) : (
+      <></>
+    ),
+}));
+
 import { useAllAccounts } from "../../../hooks/useAccounts.js";
 import AccountsView from "./AccountsView.js";
 
@@ -91,6 +108,7 @@ describe("AccountsView", () => {
   });
 
   beforeEach(() => {
+    navigateMock.mockClear();
     mockAccountQuery({
       accounts: [],
       isLoading: false,
@@ -148,5 +166,26 @@ describe("AccountsView", () => {
     await user.click(screen.getByText("House Fund"));
 
     expect(navigateMock).toHaveBeenCalledWith("/accounts/acc-budget");
+  });
+
+  it("opens account settings when the row settings button is clicked", async () => {
+    const user = userEvent.setup();
+    mockAccountQuery({ accounts: [cashAccount] });
+
+    renderAccountsView();
+
+    expect(
+      screen.queryByRole("dialog", { name: "Account settings" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Settings for House Fund" }),
+    );
+
+    expect(
+      screen.getByRole("dialog", { name: "Account settings" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Settings for House Fund")).toBeInTheDocument();
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 });
