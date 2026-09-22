@@ -103,7 +103,7 @@ describe("EditAccountModal", () => {
     expect(
       screen.getByRole("heading", { name: "Delete account" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Delete this account?")).toBeInTheDocument();
+    expect(screen.getByText("Delete “House Fund”?")).toBeInTheDocument();
     // Settings content is not replaced by the confirm row
     expect(
       screen.getByRole("button", { name: "Delete account" }),

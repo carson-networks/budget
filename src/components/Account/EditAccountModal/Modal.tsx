@@ -89,7 +89,11 @@ export default function EditAccountModal({
       <DeleteConfirmModal
         open={deleteConfirmOpen}
         onClose={closeDeleteConfirm}
-        message="Delete this account?"
+        message={
+          account
+            ? `Delete “${account.name}”?`
+            : "Delete this account?"
+        }
         onConfirm={handleConfirmDelete}
         canDelete={canDelete}
         deletePending={deleteAccount.isPending}
