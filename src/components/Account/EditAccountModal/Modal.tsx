@@ -8,7 +8,7 @@ import {
   Alert,
 } from "@mantine/core";
 import type { Account } from "../../../models";
-import { DeleteConfirmBar } from "../../shared/DeleteConfirmBar.js";
+import { DeleteConfirmModal } from "../../shared/DeleteConfirmModal.js";
 import { AccountDetailRows } from "./AccountDetailRows.js";
 import { useEditAccountModal } from "./useEditAccountModal.js";
 
@@ -25,66 +25,75 @@ export default function EditAccountModal({
 }: EditAccountModalProps) {
   const {
     deleteAccount,
-    deleteArmed,
-    arm,
-    disarm,
+    deleteConfirmOpen,
+    openDeleteConfirm,
+    closeDeleteConfirm,
     handleClose,
     handleConfirmDelete,
     canDelete,
   } = useEditAccountModal(account, onClose);
 
   return (
-    <Modal
-      opened={open}
-      onClose={handleClose}
-      title={
-        <Title order={4} component="span" c="brand.7" fw={600}>
-          Account settings
-        </Title>
-      }
-      centered
-      size={440}
-    >
-      {account ? (
-        <Box
-          key={account.id}
-          style={{ display: "flex", flexDirection: "column" }}
-        >
-          <Stack gap="md" mb="md">
-            {deleteAccount.isError ? (
-              <Alert color="red" title="Error">
-                {deleteAccount.error.message}
-              </Alert>
-            ) : null}
+    <Modal.Stack>
+      <Modal
+        opened={open}
+        onClose={handleClose}
+        title={
+          <Title order={4} component="span" c="brand.7" fw={600}>
+            Account settings
+          </Title>
+        }
+        centered
+        size={440}
+        stackId="account-settings"
+      >
+        {account ? (
+          <Box
+            key={account.id}
+            style={{ display: "flex", flexDirection: "column" }}
+          >
+            <Stack gap="md" mb="md">
+              {deleteAccount.isError ? (
+                <Alert color="red" title="Error">
+                  {deleteAccount.error.message}
+                </Alert>
+              ) : null}
 
-            <AccountDetailRows account={account} />
+              <AccountDetailRows account={account} />
 
-            <Text size="sm" c="dimmed">
-              Editing account fields is not available in the API yet. You can
-              delete this account from the local list until the server supports
-              it.
-            </Text>
-          </Stack>
+              <Text size="sm" c="dimmed">
+                Editing account fields is not available in the API yet. You can
+                delete this account from the local list until the server supports
+                it.
+              </Text>
+            </Stack>
 
-          <DeleteConfirmBar
-            armed={deleteArmed}
-            confirmMessage="Delete this account?"
-            armButtonLabel="Delete account"
-            onArm={arm}
-            onDisarm={disarm}
-            onConfirmDelete={handleConfirmDelete}
-            canDelete={canDelete}
-            deletePending={deleteAccount.isPending}
-            cancelDisabled={deleteAccount.isPending}
-            armButtonMb="sm"
-            armedStackMb="md"
-          />
+            <Button
+              variant="light"
+              color="red"
+              fullWidth
+              mb="sm"
+              disabled={!canDelete || deleteAccount.isPending}
+              onClick={openDeleteConfirm}
+            >
+              Delete account
+            </Button>
 
-          <Button fullWidth color="brand" onClick={handleClose}>
-            Close
-          </Button>
-        </Box>
-      ) : null}
-    </Modal>
+            <Button fullWidth color="brand" onClick={handleClose}>
+              Close
+            </Button>
+          </Box>
+        ) : null}
+      </Modal>
+
+      <DeleteConfirmModal
+        open={deleteConfirmOpen}
+        onClose={closeDeleteConfirm}
+        message="Delete this account?"
+        onConfirm={handleConfirmDelete}
+        canDelete={canDelete}
+        deletePending={deleteAccount.isPending}
+      />
+    </Modal.Stack>
   );
 }

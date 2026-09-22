@@ -35,44 +35,44 @@ describe("useEditAccountModal", () => {
     resetMock.mockReset();
   });
 
-  it("starts with delete disarmed", () => {
+  it("starts with delete confirm closed", () => {
     const { result } = renderHook(() =>
       useEditAccountModal(account, vi.fn()),
     );
-    expect(result.current.deleteArmed).toBe(false);
+    expect(result.current.deleteConfirmOpen).toBe(false);
     expect(result.current.canDelete).toBe(true);
   });
 
-  it("arms and disarms delete confirmation", () => {
+  it("opens and closes the delete confirm modal state", () => {
     const { result } = renderHook(() =>
       useEditAccountModal(account, vi.fn()),
     );
 
     act(() => {
-      result.current.arm();
+      result.current.openDeleteConfirm();
     });
-    expect(result.current.deleteArmed).toBe(true);
+    expect(result.current.deleteConfirmOpen).toBe(true);
 
     act(() => {
-      result.current.disarm();
+      result.current.closeDeleteConfirm();
     });
-    expect(result.current.deleteArmed).toBe(false);
+    expect(result.current.deleteConfirmOpen).toBe(false);
   });
 
-  it("handleClose resets delete UI and mutation, then calls onClose", () => {
+  it("handleClose resets delete confirm and mutation, then calls onClose", () => {
     const onClose = vi.fn();
     const { result } = renderHook(() =>
       useEditAccountModal(account, onClose),
     );
 
     act(() => {
-      result.current.arm();
+      result.current.openDeleteConfirm();
     });
     act(() => {
       result.current.handleClose();
     });
 
-    expect(result.current.deleteArmed).toBe(false);
+    expect(result.current.deleteConfirmOpen).toBe(false);
     expect(resetMock).toHaveBeenCalledOnce();
     expect(onClose).toHaveBeenCalledOnce();
   });

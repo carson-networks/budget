@@ -1,5 +1,5 @@
 import { MantineProvider } from "@mantine/core";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AccountIntegration, AccountKind } from "../../../models";
@@ -86,8 +86,32 @@ describe("EditAccountModal", () => {
     expect(resetMock).toHaveBeenCalledOnce();
   });
 
-  it("arms delete then confirms deletion", async () => {
-    const user = userEvent.setup();
+  it("opens a separate delete confirm modal while settings stays open", async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+
+    render(
+      <MantineProvider theme={theme}>
+        <EditAccountModal account={account} open onClose={vi.fn()} />
+      </MantineProvider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Delete account" }));
+
+    expect(
+      screen.getByRole("heading", { name: "Account settings" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Delete account" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Delete this account?")).toBeInTheDocument();
+    // Settings content is not replaced by the confirm row
+    expect(
+      screen.getByRole("button", { name: "Delete account" }),
+    ).toBeInTheDocument();
+  });
+
+  it("confirms deletion from the second modal and closes settings", async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
     const onClose = vi.fn();
     mutateMock.mockImplementation(
       (_id: string, options?: { onSuccess?: () => void }) => {
@@ -102,28 +126,41 @@ describe("EditAccountModal", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Delete account" }));
-    expect(screen.getByText("Delete this account?")).toBeInTheDocument();
-
     await user.click(screen.getByRole("button", { name: "Delete" }));
+
     expect(mutateMock).toHaveBeenCalledWith("acc-1", expect.any(Object));
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("cancels an armed delete without mutating", async () => {
-    const user = userEvent.setup();
+  it("cancels delete confirm without mutating and keeps settings open", async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    const onClose = vi.fn();
 
     render(
       <MantineProvider theme={theme}>
-        <EditAccountModal account={account} open onClose={vi.fn()} />
+        <EditAccountModal account={account} open onClose={onClose} />
       </MantineProvider>,
     );
 
     await user.click(screen.getByRole("button", { name: "Delete account" }));
+    expect(
+      screen.getByRole("heading", { name: "Delete account" }),
+    ).toBeInTheDocument();
+
     await user.click(screen.getByRole("button", { name: "Cancel" }));
 
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("heading", { name: "Delete account" }),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole("heading", { name: "Account settings" }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Delete account" }),
     ).toBeInTheDocument();
     expect(mutateMock).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

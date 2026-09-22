@@ -5,30 +5,34 @@ import { useDeleteConfirmation } from "../../../hooks/useDeleteConfirmation.js";
 
 export function useEditAccountModal(account: Account | null, onClose: () => void) {
   const deleteAccount = useDeleteAccount();
-  const { armed: deleteArmed, arm, disarm, reset: resetDelete } =
-    useDeleteConfirmation();
+  const {
+    armed: deleteConfirmOpen,
+    arm: openDeleteConfirm,
+    disarm: closeDeleteConfirm,
+    reset: resetDeleteConfirm,
+  } = useDeleteConfirmation();
 
   const handleClose = useCallback(() => {
-    resetDelete();
+    resetDeleteConfirm();
     deleteAccount.reset();
     onClose();
-  }, [deleteAccount, onClose, resetDelete]);
+  }, [deleteAccount, onClose, resetDeleteConfirm]);
 
   const handleConfirmDelete = useCallback(() => {
     if (!account) return;
     deleteAccount.mutate(account.id, {
       onSuccess: () => {
-        resetDelete();
+        resetDeleteConfirm();
         handleClose();
       },
     });
-  }, [account, deleteAccount, handleClose, resetDelete]);
+  }, [account, deleteAccount, handleClose, resetDeleteConfirm]);
 
   return {
     deleteAccount,
-    deleteArmed,
-    arm,
-    disarm,
+    deleteConfirmOpen,
+    openDeleteConfirm,
+    closeDeleteConfirm,
     handleClose,
     handleConfirmDelete,
     canDelete: true,

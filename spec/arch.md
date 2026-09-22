@@ -118,7 +118,7 @@ src/
     shared/                       # cross-feature presentation primitives (shells, layout)
       SectionCard.tsx
       ViewShell.tsx
-      DeleteConfirmBar.tsx        # (planned, edit flows)
+      DeleteConfirmModal.tsx      # second-step delete confirm (edit flows)
     BudgetView/
     TransactionsView/
     ...
