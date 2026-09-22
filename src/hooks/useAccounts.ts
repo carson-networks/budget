@@ -14,10 +14,15 @@ import {
   type ListAccountsCursor,
   type ListAccountsResponse,
 } from "../connectRPC/types.js";
-import { mapAccount, type Account } from "../models";
+import {
+  balanceAfterStartingChange,
+  mapAccount,
+  type Account,
+} from "../models";
 import {
   prependToInfiniteList,
   removeFromInfiniteList,
+  updateInInfiniteList,
 } from "./cachePatches.js";
 
 const PAGE_SIZE = 50;
@@ -28,6 +33,24 @@ export type CreateManualAccountInput = {
   subType: string;
   startingBalance: string;
 };
+
+export type UpdateAccountInput = {
+  id: string;
+  name: string;
+  subType: string;
+  startingBalance: string;
+};
+
+function findWireAccount(
+  data: InfiniteData<ListAccountsResponse> | undefined,
+  id: string,
+): WireAccount | undefined {
+  for (const page of data?.pages ?? []) {
+    const found = (page.accounts ?? []).find((a) => a.id === id);
+    if (found) return found;
+  }
+  return undefined;
+}
 
 export function useAllAccounts() {
   const query = useInfiniteQuery<
@@ -101,6 +124,65 @@ export function useCreateManualAccount() {
         (old: InfiniteData<ListAccountsResponse> | undefined) =>
           prependToInfiniteList(old, optimistic),
       );
+
+      return { previous };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["accounts"], context.previous);
+      }
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    },
+  });
+}
+
+export function useUpdateAccount() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (body: UpdateAccountInput) => {
+      try {
+        await accountClient.updateAccount({
+          id: body.id,
+          name: body.name,
+          subType: body.subType,
+          startingBalance: body.startingBalance,
+        });
+      } catch (e) {
+        throw new Error(connectErrorMessage(e));
+      }
+    },
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: ["accounts"] });
+      const previous = queryClient.getQueryData<
+        InfiniteData<ListAccountsResponse>
+      >(["accounts"]);
+
+      const existing = findWireAccount(previous, variables.id);
+      if (existing) {
+        const optimistic = create(AccountSchema, {
+          ...existing,
+          name: variables.name,
+          subType: variables.subType,
+          startingBalance: variables.startingBalance,
+          balance: balanceAfterStartingChange(
+            existing.balance,
+            existing.startingBalance,
+            variables.startingBalance,
+          ),
+        });
+        queryClient.setQueryData(
+          ["accounts"],
+          (old: InfiniteData<ListAccountsResponse> | undefined) =>
+            updateInInfiniteList(
+              old,
+              (a) => a.id === variables.id,
+              optimistic,
+            ),
+        );
+      }
 
       return { previous };
     },

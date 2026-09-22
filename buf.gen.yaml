@@ -1,7 +1,7 @@
 version: v2
 inputs:
   - git_repo: https://github.com/carson-networks/budget-server.git
-    tag: v0.6.0
+    commit: bbe800149d583b127f949ebe5ca1e12ebdd842f2
     subdir: proto
 plugins:
   - remote: buf.build/bufbuild/es:v2.2.3

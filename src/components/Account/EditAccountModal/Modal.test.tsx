@@ -7,15 +7,25 @@ import type { Account } from "../../../models";
 import { theme } from "../../../theme.js";
 import EditAccountModal from "./Modal.js";
 
-const { mutateMock, resetMock } = vi.hoisted(() => ({
-  mutateMock: vi.fn(),
-  resetMock: vi.fn(),
-}));
+const { mutateUpdateMock, resetUpdateMock, mutateDeleteMock, resetDeleteMock } =
+  vi.hoisted(() => ({
+    mutateUpdateMock: vi.fn(),
+    resetUpdateMock: vi.fn(),
+    mutateDeleteMock: vi.fn(),
+    resetDeleteMock: vi.fn(),
+  }));
 
 vi.mock("../../../hooks/useAccounts.js", () => ({
+  useUpdateAccount: () => ({
+    mutate: mutateUpdateMock,
+    reset: resetUpdateMock,
+    isPending: false,
+    isError: false,
+    error: null,
+  }),
   useDeleteAccount: () => ({
-    mutate: mutateMock,
-    reset: resetMock,
+    mutate: mutateDeleteMock,
+    reset: resetDeleteMock,
     isPending: false,
     isError: false,
     error: null,
@@ -34,11 +44,13 @@ const account: Account = {
 
 describe("EditAccountModal", () => {
   beforeEach(() => {
-    mutateMock.mockReset();
-    resetMock.mockReset();
+    mutateUpdateMock.mockReset();
+    resetUpdateMock.mockReset();
+    mutateDeleteMock.mockReset();
+    resetDeleteMock.mockReset();
   });
 
-  it("renders account settings details when open", () => {
+  it("renders editable account settings when open", () => {
     render(
       <MantineProvider theme={theme}>
         <EditAccountModal account={account} open onClose={vi.fn()} />
@@ -48,15 +60,22 @@ describe("EditAccountModal", () => {
     expect(
       screen.getByRole("heading", { name: "Account settings" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("House Fund")).toBeInTheDocument();
-    expect(screen.getByText("Checking")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /name/i })).toHaveValue(
+      "House Fund",
+    );
+    expect(screen.getByRole("textbox", { name: /sub type/i })).toHaveValue(
+      "Checking",
+    );
     expect(
-      screen.getByText(/Editing account fields is not available/),
+      screen.getByRole("textbox", { name: /starting balance/i }),
+    ).toHaveValue("10.00");
+    expect(screen.getByText("Balance")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /save changes/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Delete account" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
   });
 
   it("does not render account details when closed with a null account", () => {
@@ -71,9 +90,14 @@ describe("EditAccountModal", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("calls onClose when Close is clicked", async () => {
+  it("saves edited fields through updateAccount", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
+    mutateUpdateMock.mockImplementation(
+      (_body: unknown, options?: { onSuccess?: () => void }) => {
+        options?.onSuccess?.();
+      },
+    );
 
     render(
       <MantineProvider theme={theme}>
@@ -81,9 +105,22 @@ describe("EditAccountModal", () => {
       </MantineProvider>,
     );
 
-    await user.click(screen.getByRole("button", { name: "Close" }));
+    const nameInput = screen.getByRole("textbox", { name: /name/i });
+    await user.clear(nameInput);
+    await user.type(nameInput, "Rainy Day");
+
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    expect(mutateUpdateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "acc-1",
+        name: "Rainy Day",
+        subType: "Checking",
+        startingBalance: "10.00",
+      }),
+      expect.any(Object),
+    );
     expect(onClose).toHaveBeenCalledOnce();
-    expect(resetMock).toHaveBeenCalledOnce();
   });
 
   it("opens a separate delete confirm modal while settings stays open", async () => {
@@ -104,7 +141,6 @@ describe("EditAccountModal", () => {
       screen.getByRole("heading", { name: "Delete account" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Delete “House Fund”?")).toBeInTheDocument();
-    // Settings content is not replaced by the confirm row
     expect(
       screen.getByRole("button", { name: "Delete account" }),
     ).toBeInTheDocument();
@@ -113,7 +149,7 @@ describe("EditAccountModal", () => {
   it("confirms deletion from the second modal and closes settings", async () => {
     const user = userEvent.setup({ pointerEventsCheck: 0 });
     const onClose = vi.fn();
-    mutateMock.mockImplementation(
+    mutateDeleteMock.mockImplementation(
       (_id: string, options?: { onSuccess?: () => void }) => {
         options?.onSuccess?.();
       },
@@ -128,7 +164,7 @@ describe("EditAccountModal", () => {
     await user.click(screen.getByRole("button", { name: "Delete account" }));
     await user.click(screen.getByRole("button", { name: "Delete" }));
 
-    expect(mutateMock).toHaveBeenCalledWith("acc-1", expect.any(Object));
+    expect(mutateDeleteMock).toHaveBeenCalledWith("acc-1", expect.any(Object));
     expect(onClose).toHaveBeenCalledOnce();
   });
 
@@ -157,10 +193,7 @@ describe("EditAccountModal", () => {
     expect(
       screen.getByRole("heading", { name: "Account settings" }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Delete account" }),
-    ).toBeInTheDocument();
-    expect(mutateMock).not.toHaveBeenCalled();
+    expect(mutateDeleteMock).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
   });
 });

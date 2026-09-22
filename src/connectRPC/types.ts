@@ -7,6 +7,8 @@ export type {
   ListAccountsResponse,
   SyncAccountsRequest,
   SyncAccountsResponse,
+  UpdateAccountRequest,
+  UpdateAccountResponse,
 } from "./gen/account/v1/account_pb.js";
 export {
   AccountSchema,
@@ -18,6 +20,8 @@ export {
   ListAccountsResponseSchema,
   SyncAccountsRequestSchema,
   SyncAccountsResponseSchema,
+  UpdateAccountRequestSchema,
+  UpdateAccountResponseSchema,
 } from "./gen/account/v1/account_pb.js";
 export { AccountType } from "./gen/account/v1/account_pb.js";
 

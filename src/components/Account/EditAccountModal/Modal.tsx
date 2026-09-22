@@ -4,12 +4,14 @@ import {
   Stack,
   Button,
   Text,
+  TextInput,
   Title,
   Alert,
+  Loader,
 } from "@mantine/core";
 import type { Account } from "../../../models";
+import { formatCurrency } from "../../../models";
 import { DeleteConfirmModal } from "../../shared/DeleteConfirmModal.js";
-import { AccountDetailRows } from "./AccountDetailRows.js";
 import { useEditAccountModal } from "./useEditAccountModal.js";
 
 type EditAccountModalProps = {
@@ -18,25 +20,36 @@ type EditAccountModalProps = {
   onClose: () => void;
 };
 
-export default function EditAccountModal({
-  account,
-  open,
-  onClose,
-}: EditAccountModalProps) {
+type AccountSettingsBodyProps = {
+  account: Account;
+  onClose: () => void;
+};
+
+function AccountSettingsBody({ account, onClose }: AccountSettingsBodyProps) {
   const {
+    name,
+    setName,
+    subType,
+    setSubType,
+    startingBalance,
+    setStartingBalance,
+    updateAccount,
     deleteAccount,
     deleteConfirmOpen,
     openDeleteConfirm,
     closeDeleteConfirm,
     handleClose,
+    handleSubmit,
     handleConfirmDelete,
+    isFormValid,
+    busy,
     canDelete,
   } = useEditAccountModal(account, onClose);
 
   return (
-    <Modal.Stack>
+    <>
       <Modal
-        opened={open}
+        opened
         onClose={handleClose}
         title={
           <Title order={4} component="span" c="brand.7" fw={600}>
@@ -47,57 +60,100 @@ export default function EditAccountModal({
         size={440}
         stackId="account-settings"
       >
-        {account ? (
-          <Box
-            key={account.id}
-            style={{ display: "flex", flexDirection: "column" }}
-          >
-            <Stack gap="md" mb="md">
-              {deleteAccount.isError ? (
-                <Alert color="red" title="Error">
-                  {deleteAccount.error.message}
-                </Alert>
-              ) : null}
+        <Box
+          component="form"
+          onSubmit={handleSubmit}
+          style={{ display: "flex", flexDirection: "column" }}
+        >
+          <Stack gap="md" mb="md">
+            {updateAccount.isError || deleteAccount.isError ? (
+              <Alert color="red" title="Error">
+                {(updateAccount.error ?? deleteAccount.error)?.message}
+              </Alert>
+            ) : null}
 
-              <AccountDetailRows account={account} />
+            <TextInput
+              label="Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              autoFocus
+            />
 
-              <Text size="sm" c="dimmed">
-                Editing account fields is not available in the API yet. You can
-                delete this account from the local list until the server supports
-                it.
+            <TextInput
+              label="Sub type"
+              value={subType}
+              onChange={(e) => setSubType(e.target.value)}
+              required
+            />
+
+            <div>
+              <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                Balance
               </Text>
-            </Stack>
+              <Text size="sm" fw={500}>
+                {formatCurrency(account.balance)}
+              </Text>
+            </div>
 
-            <Button
-              variant="light"
-              color="red"
-              fullWidth
-              mb="sm"
-              disabled={!canDelete || deleteAccount.isPending}
-              onClick={openDeleteConfirm}
-            >
-              Delete account
-            </Button>
+            <TextInput
+              label="Starting balance"
+              value={startingBalance}
+              onChange={(e) => setStartingBalance(e.target.value)}
+              description="Changing this adjusts the current balance by the same delta."
+              required
+            />
+          </Stack>
 
-            <Button fullWidth color="brand" onClick={handleClose}>
-              Close
-            </Button>
-          </Box>
-        ) : null}
+          <Button
+            type="submit"
+            fullWidth
+            color="brand"
+            mb="sm"
+            disabled={!isFormValid || busy}
+            leftSection={updateAccount.isPending ? <Loader size="sm" /> : null}
+          >
+            {updateAccount.isPending ? "Saving..." : "Save changes"}
+          </Button>
+
+          <Button
+            variant="light"
+            color="red"
+            fullWidth
+            disabled={!canDelete || busy}
+            onClick={openDeleteConfirm}
+          >
+            Delete account
+          </Button>
+        </Box>
       </Modal>
 
       <DeleteConfirmModal
         open={deleteConfirmOpen}
         onClose={closeDeleteConfirm}
-        message={
-          account
-            ? `Delete “${account.name}”?`
-            : "Delete this account?"
-        }
+        message={`Delete “${account.name}”?`}
         onConfirm={handleConfirmDelete}
         canDelete={canDelete}
         deletePending={deleteAccount.isPending}
       />
+    </>
+  );
+}
+
+export default function EditAccountModal({
+  account,
+  open,
+  onClose,
+}: EditAccountModalProps) {
+  return (
+    <Modal.Stack>
+      {open && account ? (
+        <AccountSettingsBody
+          key={account.id}
+          account={account}
+          onClose={onClose}
+        />
+      ) : null}
     </Modal.Stack>
   );
 }
