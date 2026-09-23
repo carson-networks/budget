@@ -157,7 +157,6 @@ then invalidate the corresponding query key so the cache reconciles with the ser
 Some UI flows are implemented ahead of backend support. Hooks carry **`// TODO(server): ...`** markers at the exact call sites:
 
 - **`account.v1.Account` integration + linked-account IDs** — Add an enum such as `AccountIntegration { UNSPECIFIED, MANUAL, PLAID }` plus fields needed to identify the linked institution/account (e.g. persist Plaid item/account ids from exchange). Wire mapping lives in **`src/models/account.ts`** (**`mapAccount`** / **`integrationFromWireAccount`**); extend **`Account`** when protos add linked-account ids. UI reads **`Account.integration`** (see **`spec/plans/account-integration-api.md`**). Until then the UI treats every account as manual for integration display.
-- **`DeleteAccount`** — delete flow patches the cache locally until the RPC exists.
 - **`ListTransactions` filtered by account** — `useTransactionsForAccount` will pass `account_id` on the wire once the cursor/request supports it; until then filtering may be client-side.
 
 ### Client State (Zustand)

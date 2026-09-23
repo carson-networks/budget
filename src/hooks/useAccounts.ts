@@ -202,15 +202,35 @@ export function useDeleteAccount() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      void id;
-      // TODO(server): call accountClient.deleteAccount when the RPC exists.
+      try {
+        await accountClient.deleteAccount({ id });
+      } catch (e) {
+        throw new Error(connectErrorMessage(e));
+      }
     },
-    onSuccess: (_data, accountId) => {
+    onMutate: async (accountId) => {
+      await queryClient.cancelQueries({ queryKey: ["accounts"] });
+      const previous = queryClient.getQueryData<
+        InfiniteData<ListAccountsResponse>
+      >(["accounts"]);
+
       queryClient.setQueryData(
         ["accounts"],
         (old: InfiniteData<ListAccountsResponse> | undefined) =>
           removeFromInfiniteList(old, (a) => a.id === accountId),
       );
+
+      return { previous };
+    },
+    onError: (_err, _accountId, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["accounts"], context.previous);
+      }
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      // Server cascades related transactions; refresh if/when that list is cached.
+      await queryClient.invalidateQueries({ queryKey: ["transactions"] });
     },
   });
 }

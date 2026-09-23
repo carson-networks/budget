@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CreateAccountRequest, CreateAccountResponse, ListAccountsRequest, ListAccountsResponse, SyncAccountsRequest, SyncAccountsResponse, UpdateAccountRequest, UpdateAccountResponse } from "./account_pb.js";
+import { CreateAccountRequest, CreateAccountResponse, DeleteAccountRequest, DeleteAccountResponse, ListAccountsRequest, ListAccountsResponse, SyncAccountsRequest, SyncAccountsResponse, UpdateAccountRequest, UpdateAccountResponse } from "./account_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -37,6 +37,15 @@ export const AccountService = {
       name: "UpdateAccount",
       I: UpdateAccountRequest,
       O: UpdateAccountResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc account.v1.AccountService.DeleteAccount
+     */
+    deleteAccount: {
+      name: "DeleteAccount",
+      I: DeleteAccountRequest,
+      O: DeleteAccountResponse,
       kind: MethodKind.Unary,
     },
     /**

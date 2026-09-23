@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file account/v1/account.proto.
  */
 export const file_account_v1_account: GenFile = /*@__PURE__*/
-  fileDesc("ChhhY2NvdW50L3YxL2FjY291bnQucHJvdG8SCmFjY291bnQudjEitwEKB0FjY291bnQSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIlCgR0eXBlGAMgASgOMhcuYWNjb3VudC52MS5BY2NvdW50VHlwZRIQCghzdWJfdHlwZRgEIAEoCRIPCgdiYWxhbmNlGAUgASgJEhgKEHN0YXJ0aW5nX2JhbGFuY2UYBiABKAkSLgoKY3JlYXRlZF9hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiNQoSTGlzdEFjY291bnRzQ3Vyc29yEhAKCHBvc2l0aW9uGAEgASgFEg0KBWxpbWl0GAIgASgFIlUKE0xpc3RBY2NvdW50c1JlcXVlc3QSMwoGY3Vyc29yGAEgASgLMh4uYWNjb3VudC52MS5MaXN0QWNjb3VudHNDdXJzb3JIAIgBAUIJCgdfY3Vyc29yIocBChRMaXN0QWNjb3VudHNSZXNwb25zZRIlCghhY2NvdW50cxgBIAMoCzITLmFjY291bnQudjEuQWNjb3VudBI4CgtuZXh0X2N1cnNvchgCIAEoCzIeLmFjY291bnQudjEuTGlzdEFjY291bnRzQ3Vyc29ySACIAQFCDgoMX25leHRfY3Vyc29yIncKFENyZWF0ZUFjY291bnRSZXF1ZXN0EgwKBG5hbWUYASABKAkSJQoEdHlwZRgCIAEoDjIXLmFjY291bnQudjEuQWNjb3VudFR5cGUSEAoIc3ViX3R5cGUYAyABKAkSGAoQc3RhcnRpbmdfYmFsYW5jZRgEIAEoCSInChVDcmVhdGVBY2NvdW50UmVzcG9uc2USDgoGc3RhdHVzGAEgASgFIpYBChRVcGRhdGVBY2NvdW50UmVxdWVzdBIKCgJpZBgBIAEoCRIRCgRuYW1lGAIgASgJSACIAQESFQoIc3ViX3R5cGUYAyABKAlIAYgBARIdChBzdGFydGluZ19iYWxhbmNlGAQgASgJSAKIAQFCBwoFX25hbWVCCwoJX3N1Yl90eXBlQhMKEV9zdGFydGluZ19iYWxhbmNlIhcKFVVwZGF0ZUFjY291bnRSZXNwb25zZSIqChNTeW5jQWNjb3VudHNSZXF1ZXN0EhMKC2FjY291bnRfaWRzGAEgAygJIhYKFFN5bmNBY2NvdW50c1Jlc3BvbnNlKmEKC0FjY291bnRUeXBlEhwKGEFDQ09VTlRfVFlQRV9VTlNQRUNJRklFRBAAEhUKEUFDQ09VTlRfVFlQRV9DQVNIEAESHQoZQUNDT1VOVF9UWVBFX0NSRURJVF9DQVJEUxACMuICCg5BY2NvdW50U2VydmljZRJRCgxMaXN0QWNjb3VudHMSHy5hY2NvdW50LnYxLkxpc3RBY2NvdW50c1JlcXVlc3QaIC5hY2NvdW50LnYxLkxpc3RBY2NvdW50c1Jlc3BvbnNlElQKDUNyZWF0ZUFjY291bnQSIC5hY2NvdW50LnYxLkNyZWF0ZUFjY291bnRSZXF1ZXN0GiEuYWNjb3VudC52MS5DcmVhdGVBY2NvdW50UmVzcG9uc2USVAoNVXBkYXRlQWNjb3VudBIgLmFjY291bnQudjEuVXBkYXRlQWNjb3VudFJlcXVlc3QaIS5hY2NvdW50LnYxLlVwZGF0ZUFjY291bnRSZXNwb25zZRJRCgxTeW5jQWNjb3VudHMSHy5hY2NvdW50LnYxLlN5bmNBY2NvdW50c1JlcXVlc3QaIC5hY2NvdW50LnYxLlN5bmNBY2NvdW50c1Jlc3BvbnNlQlJaUGdpdGh1Yi5jb20vY2Fyc29uLW5ldHdvcmtzL2J1ZGdldC1zZXJ2ZXIvaW50ZXJuYWwvY29ubmVjdGhhbmRsZXJzL2dlbi9hY2NvdW50L3YxYgZwcm90bzM", [file_google_protobuf_timestamp]);
+  fileDesc("ChhhY2NvdW50L3YxL2FjY291bnQucHJvdG8SCmFjY291bnQudjEitwEKB0FjY291bnQSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIlCgR0eXBlGAMgASgOMhcuYWNjb3VudC52MS5BY2NvdW50VHlwZRIQCghzdWJfdHlwZRgEIAEoCRIPCgdiYWxhbmNlGAUgASgJEhgKEHN0YXJ0aW5nX2JhbGFuY2UYBiABKAkSLgoKY3JlYXRlZF9hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiNQoSTGlzdEFjY291bnRzQ3Vyc29yEhAKCHBvc2l0aW9uGAEgASgFEg0KBWxpbWl0GAIgASgFIlUKE0xpc3RBY2NvdW50c1JlcXVlc3QSMwoGY3Vyc29yGAEgASgLMh4uYWNjb3VudC52MS5MaXN0QWNjb3VudHNDdXJzb3JIAIgBAUIJCgdfY3Vyc29yIocBChRMaXN0QWNjb3VudHNSZXNwb25zZRIlCghhY2NvdW50cxgBIAMoCzITLmFjY291bnQudjEuQWNjb3VudBI4CgtuZXh0X2N1cnNvchgCIAEoCzIeLmFjY291bnQudjEuTGlzdEFjY291bnRzQ3Vyc29ySACIAQFCDgoMX25leHRfY3Vyc29yIncKFENyZWF0ZUFjY291bnRSZXF1ZXN0EgwKBG5hbWUYASABKAkSJQoEdHlwZRgCIAEoDjIXLmFjY291bnQudjEuQWNjb3VudFR5cGUSEAoIc3ViX3R5cGUYAyABKAkSGAoQc3RhcnRpbmdfYmFsYW5jZRgEIAEoCSInChVDcmVhdGVBY2NvdW50UmVzcG9uc2USDgoGc3RhdHVzGAEgASgFIpYBChRVcGRhdGVBY2NvdW50UmVxdWVzdBIKCgJpZBgBIAEoCRIRCgRuYW1lGAIgASgJSACIAQESFQoIc3ViX3R5cGUYAyABKAlIAYgBARIdChBzdGFydGluZ19iYWxhbmNlGAQgASgJSAKIAQFCBwoFX25hbWVCCwoJX3N1Yl90eXBlQhMKEV9zdGFydGluZ19iYWxhbmNlIhcKFVVwZGF0ZUFjY291bnRSZXNwb25zZSIiChREZWxldGVBY2NvdW50UmVxdWVzdBIKCgJpZBgBIAEoCSIXChVEZWxldGVBY2NvdW50UmVzcG9uc2UiKgoTU3luY0FjY291bnRzUmVxdWVzdBITCgthY2NvdW50X2lkcxgBIAMoCSIWChRTeW5jQWNjb3VudHNSZXNwb25zZSphCgtBY2NvdW50VHlwZRIcChhBQ0NPVU5UX1RZUEVfVU5TUEVDSUZJRUQQABIVChFBQ0NPVU5UX1RZUEVfQ0FTSBABEh0KGUFDQ09VTlRfVFlQRV9DUkVESVRfQ0FSRFMQAjK4AwoOQWNjb3VudFNlcnZpY2USUQoMTGlzdEFjY291bnRzEh8uYWNjb3VudC52MS5MaXN0QWNjb3VudHNSZXF1ZXN0GiAuYWNjb3VudC52MS5MaXN0QWNjb3VudHNSZXNwb25zZRJUCg1DcmVhdGVBY2NvdW50EiAuYWNjb3VudC52MS5DcmVhdGVBY2NvdW50UmVxdWVzdBohLmFjY291bnQudjEuQ3JlYXRlQWNjb3VudFJlc3BvbnNlElQKDVVwZGF0ZUFjY291bnQSIC5hY2NvdW50LnYxLlVwZGF0ZUFjY291bnRSZXF1ZXN0GiEuYWNjb3VudC52MS5VcGRhdGVBY2NvdW50UmVzcG9uc2USVAoNRGVsZXRlQWNjb3VudBIgLmFjY291bnQudjEuRGVsZXRlQWNjb3VudFJlcXVlc3QaIS5hY2NvdW50LnYxLkRlbGV0ZUFjY291bnRSZXNwb25zZRJRCgxTeW5jQWNjb3VudHMSHy5hY2NvdW50LnYxLlN5bmNBY2NvdW50c1JlcXVlc3QaIC5hY2NvdW50LnYxLlN5bmNBY2NvdW50c1Jlc3BvbnNlQlJaUGdpdGh1Yi5jb20vY2Fyc29uLW5ldHdvcmtzL2J1ZGdldC1zZXJ2ZXIvaW50ZXJuYWwvY29ubmVjdGhhbmRsZXJzL2dlbi9hY2NvdW50L3YxYgZwcm90bzM", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message account.v1.Account
@@ -217,6 +217,36 @@ export const UpdateAccountResponseSchema: GenMessage<UpdateAccountResponse> = /*
   messageDesc(file_account_v1_account, 7);
 
 /**
+ * @generated from message account.v1.DeleteAccountRequest
+ */
+export type DeleteAccountRequest = Message<"account.v1.DeleteAccountRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+};
+
+/**
+ * Describes the message account.v1.DeleteAccountRequest.
+ * Use `create(DeleteAccountRequestSchema)` to create a new message.
+ */
+export const DeleteAccountRequestSchema: GenMessage<DeleteAccountRequest> = /*@__PURE__*/
+  messageDesc(file_account_v1_account, 8);
+
+/**
+ * @generated from message account.v1.DeleteAccountResponse
+ */
+export type DeleteAccountResponse = Message<"account.v1.DeleteAccountResponse"> & {
+};
+
+/**
+ * Describes the message account.v1.DeleteAccountResponse.
+ * Use `create(DeleteAccountResponseSchema)` to create a new message.
+ */
+export const DeleteAccountResponseSchema: GenMessage<DeleteAccountResponse> = /*@__PURE__*/
+  messageDesc(file_account_v1_account, 9);
+
+/**
  * @generated from message account.v1.SyncAccountsRequest
  */
 export type SyncAccountsRequest = Message<"account.v1.SyncAccountsRequest"> & {
@@ -231,7 +261,7 @@ export type SyncAccountsRequest = Message<"account.v1.SyncAccountsRequest"> & {
  * Use `create(SyncAccountsRequestSchema)` to create a new message.
  */
 export const SyncAccountsRequestSchema: GenMessage<SyncAccountsRequest> = /*@__PURE__*/
-  messageDesc(file_account_v1_account, 8);
+  messageDesc(file_account_v1_account, 10);
 
 /**
  * @generated from message account.v1.SyncAccountsResponse
@@ -244,7 +274,7 @@ export type SyncAccountsResponse = Message<"account.v1.SyncAccountsResponse"> & 
  * Use `create(SyncAccountsResponseSchema)` to create a new message.
  */
 export const SyncAccountsResponseSchema: GenMessage<SyncAccountsResponse> = /*@__PURE__*/
-  messageDesc(file_account_v1_account, 9);
+  messageDesc(file_account_v1_account, 11);
 
 /**
  * @generated from enum account.v1.AccountType
@@ -299,6 +329,14 @@ export const AccountService: GenService<{
     methodKind: "unary";
     input: typeof UpdateAccountRequestSchema;
     output: typeof UpdateAccountResponseSchema;
+  },
+  /**
+   * @generated from rpc account.v1.AccountService.DeleteAccount
+   */
+  deleteAccount: {
+    methodKind: "unary";
+    input: typeof DeleteAccountRequestSchema;
+    output: typeof DeleteAccountResponseSchema;
   },
   /**
    * @generated from rpc account.v1.AccountService.SyncAccounts
