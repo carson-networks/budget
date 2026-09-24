@@ -9,7 +9,8 @@ import {
   Loader,
   Title,
 } from "@mantine/core";
-import { AccountKind } from "../../../models";
+import { useState } from "react";
+import { AccountKind, formatCurrency } from "../../../models";
 import { useCreateManualAccountForm } from "./useCreateManualAccountForm.js";
 
 type CreateManualAccountModalProps = {
@@ -35,6 +36,7 @@ export default function CreateManualAccountModal({
     handleSubmit,
     isFormValid,
   } = useCreateManualAccountForm(open, onClose);
+  const [startingBalanceFocused, setStartingBalanceFocused] = useState(false);
 
   return (
     <Modal
@@ -93,7 +95,13 @@ export default function CreateManualAccountModal({
 
           <TextInput
             label="Starting Balance"
-            value={startingBalance}
+            value={
+              startingBalanceFocused
+                ? startingBalance
+                : formatCurrency(startingBalance)
+            }
+            onFocus={() => setStartingBalanceFocused(true)}
+            onBlur={() => setStartingBalanceFocused(false)}
             onChange={(e) => setStartingBalance(e.target.value)}
             placeholder="0.00"
             description="Decimal amount (e.g. 0.00 or -500.00)"

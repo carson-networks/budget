@@ -53,6 +53,42 @@ describe("CreateManualAccountModal", () => {
     );
   });
 
+  it("shows a raw decimal while editing starting balance and submits the decimal", async () => {
+    const user = userEvent.setup();
+    mutateMock.mockImplementation(
+      (_body: unknown, options?: { onSuccess?: () => void }) => {
+        options?.onSuccess?.();
+      },
+    );
+
+    render(
+      <MantineProvider theme={theme}>
+        <CreateManualAccountModal open onClose={vi.fn()} />
+      </MantineProvider>,
+    );
+
+    await user.type(screen.getByRole("textbox", { name: /name/i }), "My account");
+    await user.type(screen.getByRole("textbox", { name: /sub type/i }), "Checking");
+
+    const starting = screen.getByRole("textbox", { name: /starting balance/i });
+    await user.click(starting);
+    await user.type(starting, "25.50");
+    await user.tab();
+
+    expect(starting).toHaveValue("$25.50");
+
+    await user.click(starting);
+    expect(starting).toHaveValue("25.50");
+
+    await user.click(screen.getByRole("button", { name: /create account/i }));
+    expect(mutateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        startingBalance: "25.50",
+      }),
+      expect.any(Object),
+    );
+  });
+
   it("disables Create account when required fields are empty", () => {
     render(
       <MantineProvider theme={theme}>
