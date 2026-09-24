@@ -16,3 +16,29 @@ export function formatCurrency(decimalString: string): string {
   }
   return decimalString;
 }
+
+/**
+ * Mirrors server UpdateAccount: when starting balance changes,
+ * `balance += (newStarting − oldStarting)`.
+ */
+export function balanceAfterStartingChange(
+  currentBalance: string,
+  oldStartingBalance: string,
+  newStartingBalance: string,
+): string {
+  if (oldStartingBalance === newStartingBalance) {
+    return currentBalance;
+  }
+  const balance = Number.parseFloat(currentBalance);
+  const oldStarting = Number.parseFloat(oldStartingBalance);
+  const newStarting = Number.parseFloat(newStartingBalance);
+  if (
+    !Number.isFinite(balance) ||
+    !Number.isFinite(oldStarting) ||
+    !Number.isFinite(newStarting)
+  ) {
+    return currentBalance;
+  }
+  const next = balance + (newStarting - oldStarting);
+  return next.toFixed(2);
+}
