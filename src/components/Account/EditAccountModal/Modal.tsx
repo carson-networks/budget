@@ -11,7 +11,7 @@ import {
 } from "@mantine/core";
 import { useState } from "react";
 import type { Account } from "../../../models";
-import { formatCurrency } from "../../../models";
+import { formatCurrency, formatDecimal } from "../../../models";
 import { DeleteConfirmModal } from "../../shared/DeleteConfirmModal.js";
 import { useEditAccountModal } from "./useEditAccountModal.js";
 
@@ -103,7 +103,7 @@ function AccountSettingsBody({ account, onClose }: AccountSettingsBodyProps) {
               value={
                 startingBalanceFocused
                   ? startingBalance
-                  : formatCurrency(startingBalance)
+                  : formatDecimal(startingBalance)
               }
               onFocus={() => setStartingBalanceFocused(true)}
               onBlur={() => setStartingBalanceFocused(false)}

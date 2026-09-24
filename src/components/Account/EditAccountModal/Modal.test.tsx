@@ -68,7 +68,7 @@ describe("EditAccountModal", () => {
     );
     expect(
       screen.getByRole("textbox", { name: /starting balance/i }),
-    ).toHaveValue("$10.00");
+    ).toHaveValue("10.00");
     expect(screen.getByText("Balance")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /save changes/i }),
@@ -76,6 +76,29 @@ describe("EditAccountModal", () => {
     expect(
       screen.getByRole("button", { name: "Delete account" }),
     ).toBeInTheDocument();
+  });
+
+  it("formats starting balance without a dollar sign when blurred", async () => {
+    const user = userEvent.setup();
+    const largeStart: Account = {
+      ...account,
+      startingBalance: "1234.5",
+    };
+
+    render(
+      <MantineProvider theme={theme}>
+        <EditAccountModal account={largeStart} open onClose={vi.fn()} />
+      </MantineProvider>,
+    );
+
+    const starting = screen.getByRole("textbox", {
+      name: /starting balance/i,
+    }) as HTMLInputElement;
+    expect(starting.value).toBe("1,234.50");
+    expect(starting.value.includes("$")).toBe(false);
+
+    await user.click(starting);
+    expect(starting.value).toBe("1234.5");
   });
 
   it("shows a raw decimal while editing starting balance and submits the decimal", async () => {
@@ -93,16 +116,14 @@ describe("EditAccountModal", () => {
     );
 
     const starting = screen.getByRole("textbox", { name: /starting balance/i });
-    expect(starting).toHaveValue("$10.00");
-
-    await user.click(starting);
     expect(starting).toHaveValue("10.00");
 
+    await user.click(starting);
     await user.clear(starting);
     await user.type(starting, "25.50");
     await user.tab();
 
-    expect(starting).toHaveValue("$25.50");
+    expect(starting).toHaveValue("25.50");
 
     await user.click(screen.getByRole("button", { name: /save changes/i }));
     expect(mutateUpdateMock).toHaveBeenCalledWith(

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { balanceAfterStartingChange, formatCurrency } from "./money.js";
+import {
+  balanceAfterStartingChange,
+  formatCurrency,
+  formatDecimal,
+} from "./money.js";
 
 describe("formatCurrency", () => {
   it("formats a valid decimal string as USD", () => {
@@ -8,6 +12,17 @@ describe("formatCurrency", () => {
 
   it("returns the input when it is not a finite number", () => {
     expect(formatCurrency("n/a")).toBe("n/a");
+  });
+});
+
+describe("formatDecimal", () => {
+  it("formats with two fraction digits and no currency symbol", () => {
+    expect(formatDecimal("1234.5")).toBe("1,234.50");
+    expect(formatDecimal("10.00")).toBe("10.00");
+  });
+
+  it("returns the input when it is not a finite number", () => {
+    expect(formatDecimal("n/a")).toBe("n/a");
   });
 });
 
