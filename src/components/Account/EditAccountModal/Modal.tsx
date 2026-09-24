@@ -9,6 +9,7 @@ import {
   Alert,
   Loader,
 } from "@mantine/core";
+import { useState } from "react";
 import type { Account } from "../../../models";
 import { formatCurrency } from "../../../models";
 import { DeleteConfirmModal } from "../../shared/DeleteConfirmModal.js";
@@ -45,6 +46,7 @@ function AccountSettingsBody({ account, onClose }: AccountSettingsBodyProps) {
     busy,
     canDelete,
   } = useEditAccountModal(account, onClose);
+  const [startingBalanceFocused, setStartingBalanceFocused] = useState(false);
 
   return (
     <>
@@ -98,7 +100,13 @@ function AccountSettingsBody({ account, onClose }: AccountSettingsBodyProps) {
 
             <TextInput
               label="Starting balance"
-              value={startingBalance}
+              value={
+                startingBalanceFocused
+                  ? startingBalance
+                  : formatCurrency(startingBalance)
+              }
+              onFocus={() => setStartingBalanceFocused(true)}
+              onBlur={() => setStartingBalanceFocused(false)}
               onChange={(e) => setStartingBalance(e.target.value)}
               description="Changing this adjusts the current balance by the same delta."
               required

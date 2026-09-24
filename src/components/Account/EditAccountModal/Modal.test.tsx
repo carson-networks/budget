@@ -68,7 +68,7 @@ describe("EditAccountModal", () => {
     );
     expect(
       screen.getByRole("textbox", { name: /starting balance/i }),
-    ).toHaveValue("10.00");
+    ).toHaveValue("$10.00");
     expect(screen.getByText("Balance")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /save changes/i }),
@@ -76,6 +76,41 @@ describe("EditAccountModal", () => {
     expect(
       screen.getByRole("button", { name: "Delete account" }),
     ).toBeInTheDocument();
+  });
+
+  it("shows a raw decimal while editing starting balance and submits the decimal", async () => {
+    const user = userEvent.setup();
+    mutateUpdateMock.mockImplementation(
+      (_body: unknown, options?: { onSuccess?: () => void }) => {
+        options?.onSuccess?.();
+      },
+    );
+
+    render(
+      <MantineProvider theme={theme}>
+        <EditAccountModal account={account} open onClose={vi.fn()} />
+      </MantineProvider>,
+    );
+
+    const starting = screen.getByRole("textbox", { name: /starting balance/i });
+    expect(starting).toHaveValue("$10.00");
+
+    await user.click(starting);
+    expect(starting).toHaveValue("10.00");
+
+    await user.clear(starting);
+    await user.type(starting, "25.50");
+    await user.tab();
+
+    expect(starting).toHaveValue("$25.50");
+
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+    expect(mutateUpdateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        startingBalance: "25.50",
+      }),
+      expect.any(Object),
+    );
   });
 
   it("does not render account details when closed with a null account", () => {
