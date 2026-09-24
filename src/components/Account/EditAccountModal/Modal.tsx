@@ -49,7 +49,7 @@ function AccountSettingsBody({ account, onClose }: AccountSettingsBodyProps) {
   const [startingBalanceFocused, setStartingBalanceFocused] = useState(false);
 
   return (
-    <>
+    <Modal.Stack>
       <Modal
         opened
         onClose={handleClose}
@@ -144,7 +144,7 @@ function AccountSettingsBody({ account, onClose }: AccountSettingsBodyProps) {
         canDelete={canDelete}
         deletePending={deleteAccount.isPending}
       />
-    </>
+    </Modal.Stack>
   );
 }
 
@@ -153,15 +153,15 @@ export default function EditAccountModal({
   open,
   onClose,
 }: EditAccountModalProps) {
+  if (!open || !account) {
+    return null;
+  }
+
   return (
-    <Modal.Stack>
-      {open && account ? (
-        <AccountSettingsBody
-          key={account.id}
-          account={account}
-          onClose={onClose}
-        />
-      ) : null}
-    </Modal.Stack>
+    <AccountSettingsBody
+      key={account.id}
+      account={account}
+      onClose={onClose}
+    />
   );
 }

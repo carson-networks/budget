@@ -23,10 +23,6 @@ export function useEditAccountModal(account: Account, onClose: () => void) {
     reset: resetDeleteConfirm,
   } = useDeleteConfirmation();
 
-  // Do not reset mutations in an effect keyed on the mutation result object:
-  // useMutation returns a new object each render, so cleanup → reset() loops.
-  // Reset on explicit close; unmount discards local mutation state.
-
   const handleClose = useCallback(() => {
     resetDeleteConfirm();
     updateAccount.reset();
