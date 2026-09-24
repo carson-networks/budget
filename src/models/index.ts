@@ -3,7 +3,7 @@ export type {
 } from "./account.js";
 export { AccountIntegration, AccountKind, mapAccount } from "./account.js";
 
-export { formatAmount, formatCurrency } from "./money.js";
+export { formatCurrency, balanceAfterStartingChange } from "./money.js";
 
 export type {
   Budget,

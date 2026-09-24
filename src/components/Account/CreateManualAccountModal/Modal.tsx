@@ -10,7 +10,7 @@ import {
   Title,
 } from "@mantine/core";
 import { useState } from "react";
-import { AccountKind, formatAmount } from "../../../models";
+import { AccountKind, formatCurrency } from "../../../models";
 import { useCreateManualAccountForm } from "./useCreateManualAccountForm.js";
 
 type CreateManualAccountModalProps = {
@@ -98,7 +98,7 @@ export default function CreateManualAccountModal({
             value={
               startingBalanceFocused
                 ? startingBalance
-                : formatAmount(startingBalance)
+                : formatCurrency(startingBalance)
             }
             onFocus={() => setStartingBalanceFocused(true)}
             onBlur={() => setStartingBalanceFocused(false)}

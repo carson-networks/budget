@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatAmount, formatCurrency } from "./money.js";
+import { balanceAfterStartingChange, formatCurrency } from "./money.js";
 
 describe("formatCurrency", () => {
   it("formats a valid decimal string as USD", () => {
@@ -11,12 +11,26 @@ describe("formatCurrency", () => {
   });
 });
 
-describe("formatAmount", () => {
-  it("formats a valid decimal string without a currency symbol", () => {
-    expect(formatAmount("1234.5")).toBe("1,234.50");
+describe("balanceAfterStartingChange", () => {
+  it("returns the same balance when starting balance is unchanged", () => {
+    expect(balanceAfterStartingChange("100.00", "50.00", "50.00")).toBe(
+      "100.00",
+    );
   });
 
-  it("returns the input when it is not a finite number", () => {
-    expect(formatAmount("n/a")).toBe("n/a");
+  it("adds the starting-balance delta to the current balance", () => {
+    expect(balanceAfterStartingChange("100.00", "50.00", "75.00")).toBe(
+      "125.00",
+    );
+  });
+
+  it("subtracts when starting balance decreases", () => {
+    expect(balanceAfterStartingChange("100.00", "50.00", "25.00")).toBe(
+      "75.00",
+    );
+  });
+
+  it("returns the current balance when any value is non-finite", () => {
+    expect(balanceAfterStartingChange("n/a", "50.00", "75.00")).toBe("n/a");
   });
 });
