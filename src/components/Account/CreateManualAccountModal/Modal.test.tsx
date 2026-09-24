@@ -53,7 +53,7 @@ describe("CreateManualAccountModal", () => {
     );
   });
 
-  it("shows a raw decimal while editing starting balance and submits the decimal", async () => {
+  it("shows a grouped amount while blurred and submits the raw decimal", async () => {
     const user = userEvent.setup();
     mutateMock.mockImplementation(
       (_body: unknown, options?: { onSuccess?: () => void }) => {
@@ -72,18 +72,18 @@ describe("CreateManualAccountModal", () => {
 
     const starting = screen.getByRole("textbox", { name: /starting balance/i });
     await user.click(starting);
-    await user.type(starting, "25.50");
+    await user.type(starting, "1234.5");
     await user.tab();
 
-    expect(starting).toHaveValue("$25.50");
+    expect(starting).toHaveValue("1,234.50");
 
     await user.click(starting);
-    expect(starting).toHaveValue("25.50");
+    expect(starting).toHaveValue("1234.5");
 
     await user.click(screen.getByRole("button", { name: /create account/i }));
     expect(mutateMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        startingBalance: "25.50",
+        startingBalance: "1234.5",
       }),
       expect.any(Object),
     );
