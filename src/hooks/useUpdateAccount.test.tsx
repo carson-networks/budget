@@ -97,4 +97,58 @@ describe("useUpdateAccount", () => {
     expect(updated?.startingBalance).toBe("75.00");
     expect(updated?.balance).toBe("125.00");
   });
+
+  it("rolls back the accounts cache when updateAccount fails", async () => {
+    updateAccountMock.mockRejectedValue(new Error("boom"));
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        mutations: { retry: false },
+        queries: { retry: false },
+      },
+    });
+    const existing = create(AccountSchema, {
+      id: "acc-1",
+      name: "Old",
+      type: AccountType.CASH,
+      subType: "Checking",
+      balance: "100.00",
+      startingBalance: "50.00",
+    });
+    queryClient.setQueryData<InfiniteData<ListAccountsResponse>>(
+      ["accounts"],
+      {
+        pages: [
+          create(ListAccountsResponseSchema, {
+            accounts: [existing],
+            nextCursor: undefined,
+          }),
+        ],
+        pageParams: [undefined],
+      },
+    );
+
+    const { result } = renderHook(() => useUpdateAccount(), {
+      wrapper: wrapper(queryClient),
+    });
+
+    await act(async () => {
+      result.current.mutate({
+        id: "acc-1",
+        name: "New",
+        subType: "Savings",
+        startingBalance: "75.00",
+      });
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    const cached = queryClient.getQueryData<InfiniteData<ListAccountsResponse>>(
+      ["accounts"],
+    );
+    const restored = cached?.pages[0].accounts[0];
+    expect(restored?.name).toBe("Old");
+    expect(restored?.subType).toBe("Checking");
+    expect(restored?.startingBalance).toBe("50.00");
+    expect(restored?.balance).toBe("100.00");
+  });
 });
