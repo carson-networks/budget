@@ -12,7 +12,7 @@ export type Transaction = {
   categoryId?: string;
   amount: string;
   transactionName: string;
-  /** Plaid-enriched merchant; absent when unset (e.g. checks, transfers). */
+  /** Optional merchant label; absent when unset. */
   merchantName?: string;
   transactionDate?: Date;
   createdAt?: Date;
