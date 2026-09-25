@@ -10,7 +10,7 @@ import {
   Loader,
 } from "@mantine/core";
 import type { Account } from "../../../models";
-import { formatCurrency } from "../../../models";
+import { formatCurrency, truncateToTwoDecimals } from "../../../models";
 import { DeleteConfirmModal } from "../../shared/DeleteConfirmModal.js";
 import { useEditAccountModal } from "./useEditAccountModal.js";
 
@@ -100,7 +100,9 @@ function AccountSettingsBody({ account, onClose }: AccountSettingsBodyProps) {
               label="Starting balance"
               leftSection="$"
               value={startingBalance}
-              onChange={(e) => setStartingBalance(e.target.value)}
+              onChange={(e) =>
+                setStartingBalance(truncateToTwoDecimals(e.target.value))
+              }
               description="Changing this adjusts the current balance by the same delta."
               required
             />

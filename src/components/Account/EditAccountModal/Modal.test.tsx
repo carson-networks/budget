@@ -100,15 +100,15 @@ describe("EditAccountModal", () => {
     expect(starting.parentElement).toHaveTextContent("$");
 
     await user.clear(starting);
-    await user.type(starting, "25.50");
+    await user.type(starting, "25.559");
 
-    expect(starting).toHaveValue("25.50");
+    expect(starting).toHaveValue("25.55");
     expect(starting.parentElement).toHaveTextContent("$");
 
     await user.click(screen.getByRole("button", { name: /save changes/i }));
     expect(mutateUpdateMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        startingBalance: "25.50",
+        startingBalance: "25.55",
       }),
       expect.any(Object),
     );

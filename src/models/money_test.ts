@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { balanceAfterStartingChange, formatCurrency } from "./money.js";
+import { balanceAfterStartingChange, formatCurrency, truncateToTwoDecimals } from "./money.js";
 
 describe("formatCurrency", () => {
   it("formats a valid decimal string as USD", () => {
@@ -8,6 +8,20 @@ describe("formatCurrency", () => {
 
   it("returns the input when it is not a finite number", () => {
     expect(formatCurrency("n/a")).toBe("n/a");
+  });
+});
+
+describe("truncateToTwoDecimals", () => {
+  it("truncates digits beyond two decimal places", () => {
+    expect(truncateToTwoDecimals("25.559")).toBe("25.55");
+    expect(truncateToTwoDecimals("-10.999")).toBe("-10.99");
+  });
+
+  it("leaves shorter or non-decimal input unchanged", () => {
+    expect(truncateToTwoDecimals("25.5")).toBe("25.5");
+    expect(truncateToTwoDecimals("25.")).toBe("25.");
+    expect(truncateToTwoDecimals("25")).toBe("25");
+    expect(truncateToTwoDecimals("")).toBe("");
   });
 });
 

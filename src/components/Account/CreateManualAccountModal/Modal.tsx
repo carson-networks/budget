@@ -9,7 +9,7 @@ import {
   Loader,
   Title,
 } from "@mantine/core";
-import { AccountKind } from "../../../models";
+import { AccountKind, truncateToTwoDecimals } from "../../../models";
 import { useCreateManualAccountForm } from "./useCreateManualAccountForm.js";
 
 type CreateManualAccountModalProps = {
@@ -95,7 +95,9 @@ export default function CreateManualAccountModal({
             label="Starting Balance"
             leftSection="$"
             value={startingBalance}
-            onChange={(e) => setStartingBalance(e.target.value)}
+            onChange={(e) =>
+              setStartingBalance(truncateToTwoDecimals(e.target.value))
+            }
             placeholder="0.00"
             description="Decimal amount (e.g. 0.00 or -500.00)"
             required

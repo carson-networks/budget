@@ -18,6 +18,16 @@ export function formatCurrency(decimalString: string): string {
 }
 
 /**
+ * Truncates a decimal string to at most two digits after the decimal point.
+ * Leaves values without a decimal point unchanged (including partial input).
+ */
+export function truncateToTwoDecimals(value: string): string {
+  const dot = value.indexOf(".");
+  if (dot === -1) return value;
+  return value.slice(0, dot + 3);
+}
+
+/**
  * Mirrors server UpdateAccount: when starting balance changes,
  * `balance += (newStarting − oldStarting)`.
  */

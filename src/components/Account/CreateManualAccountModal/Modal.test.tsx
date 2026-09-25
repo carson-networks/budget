@@ -73,14 +73,14 @@ describe("CreateManualAccountModal", () => {
     const starting = screen.getByRole("textbox", { name: /starting balance/i });
     expect(starting.parentElement).toHaveTextContent("$");
 
-    await user.type(starting, "25.50");
-    expect(starting).toHaveValue("25.50");
+    await user.type(starting, "25.559");
+    expect(starting).toHaveValue("25.55");
     expect(starting.parentElement).toHaveTextContent("$");
 
     await user.click(screen.getByRole("button", { name: /create account/i }));
     expect(mutateMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        startingBalance: "25.50",
+        startingBalance: "25.55",
       }),
       expect.any(Object),
     );
