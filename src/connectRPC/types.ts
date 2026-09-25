@@ -2,22 +2,30 @@ export type {
   Account,
   CreateAccountRequest,
   CreateAccountResponse,
+  DeleteAccountRequest,
+  DeleteAccountResponse,
   ListAccountsCursor,
   ListAccountsRequest,
   ListAccountsResponse,
   SyncAccountsRequest,
   SyncAccountsResponse,
+  UpdateAccountRequest,
+  UpdateAccountResponse,
 } from "./gen/account/v1/account_pb.js";
 export {
   AccountSchema,
   AccountTypeSchema,
   CreateAccountRequestSchema,
   CreateAccountResponseSchema,
+  DeleteAccountRequestSchema,
+  DeleteAccountResponseSchema,
   ListAccountsCursorSchema,
   ListAccountsRequestSchema,
   ListAccountsResponseSchema,
   SyncAccountsRequestSchema,
   SyncAccountsResponseSchema,
+  UpdateAccountRequestSchema,
+  UpdateAccountResponseSchema,
 } from "./gen/account/v1/account_pb.js";
 export { AccountType } from "./gen/account/v1/account_pb.js";
 

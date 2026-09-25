@@ -2,11 +2,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Alert, Box, Loader, Stack, Text } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
-import { AccountKind } from "../../../models";
+import { AccountKind, type Account } from "../../../models";
 import { useAllAccounts } from "../../../hooks/useAccounts.js";
 import { useConnectedAccountFlow } from "../../../plaid/useConnectedAccountFlow.js";
 import { prefetchPlaidLinkToken } from "../../../plaid/usePlaidLinkToken.js";
 import CreateManualAccountModal from "../CreateManualAccountModal/Modal.js";
+import EditAccountModal from "../EditAccountModal/Modal.js";
 import { SectionCard } from "../../shared/SectionCard.js";
 import { ViewShell } from "../../shared/ViewShell.js";
 import { AccountTable } from "./AccountTable.js";
@@ -24,6 +25,7 @@ export default function AccountsView() {
   const queryClient = useQueryClient();
   const { accounts, isLoading, error } = useAllAccounts();
   const [manualModalOpen, setManualModalOpen] = useState(false);
+  const [settingsAccount, setSettingsAccount] = useState<Account | null>(null);
 
   const {
     startLink,
@@ -97,9 +99,7 @@ export default function AccountsView() {
               <AccountTable
                 accounts={segment.accounts}
                 onRowNavigate={(a) => navigate(`/accounts/${a.id}`)}
-                onOpenEdit={() => {
-                  /* EditAccountModal wired in a later phase */
-                }}
+                onOpenEdit={setSettingsAccount}
               />
             </SectionCard>
           ))}
@@ -115,6 +115,12 @@ export default function AccountsView() {
       <CreateManualAccountModal
         open={manualModalOpen}
         onClose={() => setManualModalOpen(false)}
+      />
+
+      <EditAccountModal
+        account={settingsAccount}
+        open={settingsAccount !== null}
+        onClose={() => setSettingsAccount(null)}
       />
     </ViewShell>
   );
