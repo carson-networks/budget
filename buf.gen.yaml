@@ -1,8 +1,8 @@
 version: v2
 inputs:
   - git_repo: https://github.com/carson-networks/budget-server.git
-    # budget-server #20 (merchant_name) until a proto release tag exists
-    commit: 850e49cd0da1e99a0bbfc12fc0f3f05da3a870d4
+    # budget-server master after #20 (merchant_name); no release tag yet
+    commit: b671832f7148ed16eaec8c8e14d036e74664e1db
     subdir: proto
 plugins:
   - remote: buf.build/bufbuild/es:v2.2.3
