@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      # pnpm version comes from package.json#packageManager (pnpm 12)
+      - uses: pnpm/action-setup@v6.0.5
+
+      # Bootstrap Node for the runner; project Node comes from
+      # package.json#devEngines.runtime via pnpm install.
+      - uses: actions/setup-node@v6.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run lint
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      # pnpm version comes from package.json#packageManager (pnpm 12)
+      - uses: pnpm/action-setup@v6.0.5
+
+      # Bootstrap Node for the runner; project Node comes from
+      # package.json#devEngines.runtime via pnpm install.
+      - uses: actions/setup-node@v6.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run test
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      # pnpm version comes from package.json#packageManager (pnpm 12)
+      - uses: pnpm/action-setup@v6.0.5
+
+      # Bootstrap Node for the runner; project Node comes from
+      # package.json#devEngines.runtime via pnpm install.
+      - uses: actions/setup-node@v6.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run build
