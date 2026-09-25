@@ -21,6 +21,7 @@ describe("mapTransaction", () => {
       categoryId: "c1",
       amount: "-15.99",
       transactionName: "Coffee",
+      merchantName: "Starbucks",
       transactionDate: timestampFromDate(txDate),
       createdAt: undefined,
     };
@@ -31,9 +32,25 @@ describe("mapTransaction", () => {
       categoryId: "c1",
       amount: "-15.99",
       transactionName: "Coffee",
+      merchantName: "Starbucks",
       transactionDate: txDate,
       createdAt: undefined,
     });
+  });
+
+  it("omits merchantName when the wire field is unset", () => {
+    const wire: WireTransaction = {
+      $typeName: "transaction.v1.Transaction",
+      $unknown: undefined,
+      id: "t2",
+      accountId: "a1",
+      amount: "10.00",
+      transactionName: "ACH Transfer",
+      transactionDate: undefined,
+      createdAt: undefined,
+    };
+
+    expect(mapTransaction(wire).merchantName).toBeUndefined();
   });
 });
 

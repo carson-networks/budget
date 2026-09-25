@@ -13,6 +13,7 @@ const sample: Transaction = {
   categoryId: "cat-1",
   amount: "12.50",
   transactionName: "Coffee",
+  merchantName: "Starbucks",
 };
 
 function renderTable(
@@ -34,13 +35,15 @@ describe("TransactionsTable", () => {
   it("renders transaction fields with resolved account and category labels", () => {
     renderTable();
 
+    expect(screen.getByRole("columnheader", { name: "Merchant" })).toBeInTheDocument();
     expect(screen.getByText("Coffee")).toBeInTheDocument();
+    expect(screen.getByText("Starbucks")).toBeInTheDocument();
     expect(screen.getByText("Checking")).toBeInTheDocument();
     expect(screen.getByText("Dining")).toBeInTheDocument();
     expect(screen.getByText(/12\.50/)).toBeInTheDocument();
   });
 
-  it("falls back to ids when labels are missing and shows em dash without category", () => {
+  it("falls back to ids when labels are missing and shows em dash without category or merchant", () => {
     renderTable({
       transactions: [
         {
@@ -55,7 +58,23 @@ describe("TransactionsTable", () => {
     });
 
     expect(screen.getByText("acc-missing")).toBeInTheDocument();
+    expect(screen.getAllByText("—")).toHaveLength(2);
+  });
+
+  it("shows an em dash when merchantName is empty", () => {
+    renderTable({
+      transactions: [
+        {
+          ...sample,
+          id: "txn-empty-merchant",
+          merchantName: "   ",
+        },
+      ],
+    });
+
+    expect(screen.getByText("Coffee")).toBeInTheDocument();
     expect(screen.getByText("—")).toBeInTheDocument();
+    expect(screen.queryByText("Starbucks")).not.toBeInTheDocument();
   });
 
   it("calls onRowOpen when a row is clicked", async () => {

@@ -14,6 +14,7 @@ type TransactionsTableProps = {
 const COLUMN_WIDTHS = {
   leading: rem(48),
   name: undefined,
+  merchant: rem(180),
   account: rem(160),
   category: rem(180),
   amount: rem(120),
@@ -26,7 +27,7 @@ export function TransactionsTable({
   onRowOpen,
 }: TransactionsTableProps) {
   return (
-    <Table.ScrollContainer minWidth={rem(700)}>
+    <Table.ScrollContainer minWidth={rem(880)}>
       <Table
         striped
         highlightOnHover
@@ -39,6 +40,7 @@ export function TransactionsTable({
         <colgroup>
           <col style={{ width: COLUMN_WIDTHS.leading }} />
           <col style={{ width: COLUMN_WIDTHS.name }} />
+          <col style={{ width: COLUMN_WIDTHS.merchant }} />
           <col style={{ width: COLUMN_WIDTHS.account }} />
           <col style={{ width: COLUMN_WIDTHS.category }} />
           <col style={{ width: COLUMN_WIDTHS.amount }} />
@@ -47,6 +49,7 @@ export function TransactionsTable({
           <Table.Tr>
             <Table.Th />
             <Table.Th>Transaction</Table.Th>
+            <Table.Th>Merchant</Table.Th>
             <Table.Th>Account</Table.Th>
             <Table.Th>Category</Table.Th>
             <Table.Th>Amount</Table.Th>
@@ -56,6 +59,9 @@ export function TransactionsTable({
           {transactions.map((txn) => {
             const accountName =
               accountNameById.get(txn.accountId) ?? txn.accountId;
+            const merchantName = txn.merchantName?.trim()
+              ? txn.merchantName
+              : "—";
             const categoryName = txn.categoryId
               ? (categoryNameById.get(txn.categoryId) ?? txn.categoryId)
               : "—";
@@ -91,6 +97,9 @@ export function TransactionsTable({
                 </Table.Td>
                 <Table.Td style={{ verticalAlign: "middle" }}>
                   {txn.transactionName}
+                </Table.Td>
+                <Table.Td style={{ verticalAlign: "middle" }}>
+                  {merchantName}
                 </Table.Td>
                 <Table.Td style={{ verticalAlign: "middle" }}>
                   {accountName}
