@@ -72,7 +72,18 @@ describe("TransactionsTable", () => {
     renderTable();
 
     await user.click(screen.getByText("Coffee"));
-    // No handler — click should not throw; row has no button role.
+    // No handler - click should not throw; row has no button role.
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("renders vertical column divider lines", () => {
+    const { container } = renderTable();
+    const table = container.querySelector("table");
+    expect(table).toHaveAttribute("data-with-table-border", "true");
+    const cells = container.querySelectorAll("th, td");
+    expect(cells.length).toBeGreaterThan(0);
+    for (const cell of cells) {
+      expect(cell).toHaveAttribute("data-with-column-border", "true");
+    }
   });
 });

@@ -30,6 +30,8 @@ export function TransactionsTable({
       <Table
         striped
         highlightOnHover
+        withTableBorder
+        withColumnBorders
         horizontalSpacing="md"
         verticalSpacing="xs"
         style={{ tableLayout: "fixed", width: "100%" }}
