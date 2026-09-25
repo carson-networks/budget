@@ -68,7 +68,10 @@ describe("EditAccountModal", () => {
     );
     expect(
       screen.getByRole("textbox", { name: /starting balance/i }),
-    ).toHaveValue("$10.00");
+    ).toHaveValue("10.00");
+    expect(
+      screen.getByRole("textbox", { name: /starting balance/i }).parentElement,
+    ).toHaveTextContent("$");
     expect(screen.getByText("Balance")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /save changes/i }),
@@ -78,7 +81,7 @@ describe("EditAccountModal", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows a raw decimal while editing starting balance and submits the decimal", async () => {
+  it("keeps $ visible while editing starting balance and submits the decimal", async () => {
     const user = userEvent.setup();
     mutateUpdateMock.mockImplementation(
       (_body: unknown, options?: { onSuccess?: () => void }) => {
@@ -93,21 +96,19 @@ describe("EditAccountModal", () => {
     );
 
     const starting = screen.getByRole("textbox", { name: /starting balance/i });
-    expect(starting).toHaveValue("$10.00");
-
-    await user.click(starting);
     expect(starting).toHaveValue("10.00");
+    expect(starting.parentElement).toHaveTextContent("$");
 
     await user.clear(starting);
-    await user.type(starting, "25.50");
-    await user.tab();
+    await user.type(starting, "25.559");
 
-    expect(starting).toHaveValue("$25.50");
+    expect(starting).toHaveValue("25.55");
+    expect(starting.parentElement).toHaveTextContent("$");
 
     await user.click(screen.getByRole("button", { name: /save changes/i }));
     expect(mutateUpdateMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        startingBalance: "25.50",
+        startingBalance: "25.55",
       }),
       expect.any(Object),
     );
