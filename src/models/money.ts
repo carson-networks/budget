@@ -18,6 +18,20 @@ export function formatCurrency(decimalString: string): string {
 }
 
 /**
+ * Formats a transaction amount for display: positives get an explicit `+`
+ * (e.g. `+$100.00`), negatives and zero show the unsigned magnitude
+ * (e.g. `$100.00` / `$0.00`). Non-finite values fall back to the original string.
+ */
+export function formatSignedCurrency(decimalString: string): string {
+  const n = Number.parseFloat(decimalString);
+  if (!Number.isFinite(n)) {
+    return decimalString;
+  }
+  const magnitude = currencyFormatter.format(Math.abs(n));
+  return n > 0 ? `+${magnitude}` : magnitude;
+}
+
+/**
  * Truncates a decimal string to at most two digits after the decimal point.
  * Leaves values without a decimal point unchanged (including partial input).
  */

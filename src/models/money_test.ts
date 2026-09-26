@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { balanceAfterStartingChange, formatCurrency, truncateToTwoDecimals } from "./money.js";
+import {
+  balanceAfterStartingChange,
+  formatCurrency,
+  formatSignedCurrency,
+  truncateToTwoDecimals,
+} from "./money.js";
 
 describe("formatCurrency", () => {
   it("formats a valid decimal string as USD", () => {
@@ -8,6 +13,26 @@ describe("formatCurrency", () => {
 
   it("returns the input when it is not a finite number", () => {
     expect(formatCurrency("n/a")).toBe("n/a");
+  });
+});
+
+describe("formatSignedCurrency", () => {
+  it("prefixes an explicit plus for positive amounts", () => {
+    expect(formatSignedCurrency("12.34")).toMatch(/^\+.*12\.34/);
+  });
+
+  it("shows negatives as unsigned magnitude (no minus)", () => {
+    expect(formatSignedCurrency("-12.34")).toMatch(/12\.34/);
+    expect(formatSignedCurrency("-12.34")).not.toMatch(/[+-]/);
+  });
+
+  it("leaves zero unsigned", () => {
+    expect(formatSignedCurrency("0")).toMatch(/0\.00/);
+    expect(formatSignedCurrency("0")).not.toMatch(/[+-]/);
+  });
+
+  it("returns the input when it is not a finite number", () => {
+    expect(formatSignedCurrency("n/a")).toBe("n/a");
   });
 });
 
