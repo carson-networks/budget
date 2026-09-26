@@ -9,7 +9,12 @@ import { TransactionsList } from "./TransactionsList.js";
 export default function TransactionsView() {
   const {
     transactions,
+    totalCount,
+    page,
+    setPage,
+    pageSize,
     isLoading: transactionsLoading,
+    isPlaceholderData,
     error: transactionsError,
   } = useAllTransactions();
   const {
@@ -34,7 +39,9 @@ export default function TransactionsView() {
   );
 
   const isLoading =
-    transactionsLoading || accountsLoading || categoriesLoading;
+    (transactionsLoading && !isPlaceholderData) ||
+    accountsLoading ||
+    categoriesLoading;
   const error = transactionsError ?? accountsError ?? categoriesError;
 
   if (isLoading) {
@@ -60,6 +67,10 @@ export default function TransactionsView() {
     <ViewShell title="Transactions">
       <TransactionsList
         transactions={transactions}
+        totalCount={totalCount}
+        page={page}
+        onPageChange={setPage}
+        pageSize={pageSize}
         accountNameById={accountNameById}
         categoryNameById={categoryNameById}
       />
