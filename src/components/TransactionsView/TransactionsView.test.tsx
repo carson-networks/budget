@@ -8,6 +8,7 @@ import { theme } from "../../theme.js";
 
 vi.mock(import("../../hooks/useTransactions.js"), () => ({
   useAllTransactions: vi.fn(),
+  TRANSACTIONS_PAGE_SIZE: 25 as const,
 }));
 
 vi.mock(import("../../hooks/useAccounts.js"), () => ({
@@ -54,7 +55,13 @@ function mockTransactions(
 ) {
   vi.mocked(useAllTransactions).mockReturnValue({
     transactions: [],
+    totalCount: 0,
+    totalPages: 1,
+    page: 1,
+    setPage: vi.fn(),
+    pageSize: 25,
     isLoading: false,
+    isPlaceholderData: false,
     error: null,
     isError: false,
     isPending: false,
@@ -111,13 +118,13 @@ describe("TransactionsView", () => {
   });
 
   beforeEach(() => {
-    mockTransactions({ transactions: [] });
+    mockTransactions({ transactions: [], totalCount: 0 });
     mockAccounts({ accounts: [] });
     mockCategories({ categories: [] });
   });
 
   it("shows a loading state while transactions load", () => {
-    mockTransactions({ isLoading: true });
+    mockTransactions({ isLoading: true, isPlaceholderData: false });
     renderView();
     expect(screen.getByText("Loading…")).toBeInTheDocument();
   });
@@ -130,7 +137,7 @@ describe("TransactionsView", () => {
   });
 
   it("renders the all-transactions list with resolved labels", () => {
-    mockTransactions({ transactions: [transaction] });
+    mockTransactions({ transactions: [transaction], totalCount: 1 });
     mockAccounts({ accounts: [account] });
     mockCategories({ categories: [category] });
     renderView();
