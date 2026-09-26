@@ -51,7 +51,7 @@ describe("TransactionsTable", () => {
     expect(screen.getByText(/\+.*12\.50/)).toBeInTheDocument();
   });
 
-  it("shows a normal minus for negative amounts and a plus for positives", () => {
+  it("shows unsigned magnitude for negatives and a plus for positives", () => {
     renderTable({
       transactions: [
         { ...sample, id: "txn-out", amount: "-9.99", transactionName: "Out" },
@@ -59,8 +59,8 @@ describe("TransactionsTable", () => {
       ],
     });
 
-    expect(screen.getByText(/-.*9\.99/)).toBeInTheDocument();
-    expect(screen.getByText(/\+.*5\.00/)).toBeInTheDocument();
+    expect(screen.getByText(/^\$9\.99$/)).toBeInTheDocument();
+    expect(screen.getByText(/^\+\$5\.00$/)).toBeInTheDocument();
   });
 
   it("falls back to ids when labels are missing and shows em dash without category or merchant", () => {

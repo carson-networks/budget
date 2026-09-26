@@ -18,12 +18,12 @@ describe("formatCurrency", () => {
 
 describe("formatSignedCurrency", () => {
   it("prefixes an explicit plus for positive amounts", () => {
-    expect(formatSignedCurrency("12.34")).toMatch(/\+.*12\.34/);
+    expect(formatSignedCurrency("12.34")).toMatch(/^\+.*12\.34/);
   });
 
-  it("keeps the normal minus for negative amounts", () => {
-    expect(formatSignedCurrency("-12.34")).toMatch(/-.*12\.34/);
-    expect(formatSignedCurrency("-12.34")).not.toMatch(/\+/);
+  it("shows negatives as unsigned magnitude (no minus)", () => {
+    expect(formatSignedCurrency("-12.34")).toMatch(/12\.34/);
+    expect(formatSignedCurrency("-12.34")).not.toMatch(/[+-]/);
   });
 
   it("leaves zero unsigned", () => {
