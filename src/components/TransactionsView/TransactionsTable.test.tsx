@@ -35,7 +35,15 @@ describe("TransactionsTable", () => {
   it("renders transaction fields with resolved account and category labels", () => {
     renderTable();
 
-    expect(screen.getByRole("columnheader", { name: "Merchant" })).toBeInTheDocument();
+    const headers = screen.getAllByRole("columnheader").map((h) => h.textContent);
+    expect(headers).toEqual([
+      "",
+      "Merchant",
+      "Transaction",
+      "Account",
+      "Category",
+      "Amount",
+    ]);
     expect(screen.getByText("Coffee")).toBeInTheDocument();
     expect(screen.getByText("Starbucks")).toBeInTheDocument();
     expect(screen.getByText("Checking")).toBeInTheDocument();

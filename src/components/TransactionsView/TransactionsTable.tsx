@@ -13,8 +13,8 @@ type TransactionsTableProps = {
 
 const COLUMN_WIDTHS = {
   leading: rem(48),
-  name: undefined,
   merchant: rem(180),
+  name: undefined,
   account: rem(160),
   category: rem(180),
   amount: rem(120),
@@ -39,8 +39,8 @@ export function TransactionsTable({
       >
         <colgroup>
           <col style={{ width: COLUMN_WIDTHS.leading }} />
-          <col style={{ width: COLUMN_WIDTHS.name }} />
           <col style={{ width: COLUMN_WIDTHS.merchant }} />
+          <col style={{ width: COLUMN_WIDTHS.name }} />
           <col style={{ width: COLUMN_WIDTHS.account }} />
           <col style={{ width: COLUMN_WIDTHS.category }} />
           <col style={{ width: COLUMN_WIDTHS.amount }} />
@@ -48,8 +48,8 @@ export function TransactionsTable({
         <Table.Thead>
           <Table.Tr>
             <Table.Th />
-            <Table.Th>Transaction</Table.Th>
             <Table.Th>Merchant</Table.Th>
+            <Table.Th>Transaction</Table.Th>
             <Table.Th>Account</Table.Th>
             <Table.Th>Category</Table.Th>
             <Table.Th>Amount</Table.Th>
@@ -96,10 +96,10 @@ export function TransactionsTable({
                   </Box>
                 </Table.Td>
                 <Table.Td style={{ verticalAlign: "middle" }}>
-                  {txn.transactionName}
+                  {merchantName}
                 </Table.Td>
                 <Table.Td style={{ verticalAlign: "middle" }}>
-                  {merchantName}
+                  {txn.transactionName}
                 </Table.Td>
                 <Table.Td style={{ verticalAlign: "middle" }}>
                   {accountName}
