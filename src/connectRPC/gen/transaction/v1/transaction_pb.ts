@@ -125,8 +125,6 @@ export type ListTransactionsResponse = Message<"transaction.v1.ListTransactionsR
   nextCursor?: ListTransactionsCursor;
 
   /**
-   * Total matching rows for the same filter as this page (for numbered pagination).
-   *
    * @generated from field: int32 total_count = 3;
    */
   totalCount: number;
