@@ -5,6 +5,15 @@ const currencyFormatter = new Intl.NumberFormat(undefined, {
   maximumFractionDigits: 2,
 });
 
+/** Like {@link currencyFormatter}, but always shows `+` / `-` except for zero. */
+const signedCurrencyFormatter = new Intl.NumberFormat(undefined, {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+  signDisplay: "exceptZero",
+});
+
 /**
  * Formats a decimal string amount (e.g. from the API) for display. Non-finite
  * values fall back to the original string.
@@ -13,6 +22,19 @@ export function formatCurrency(decimalString: string): string {
   const n = Number.parseFloat(decimalString);
   if (Number.isFinite(n)) {
     return currencyFormatter.format(n);
+  }
+  return decimalString;
+}
+
+/**
+ * Formats a signed amount for display: positives get an explicit `+`, negatives
+ * keep the normal minus sign, zero is unsigned. Non-finite values fall back to
+ * the original string.
+ */
+export function formatSignedCurrency(decimalString: string): string {
+  const n = Number.parseFloat(decimalString);
+  if (Number.isFinite(n)) {
+    return signedCurrencyFormatter.format(n);
   }
   return decimalString;
 }

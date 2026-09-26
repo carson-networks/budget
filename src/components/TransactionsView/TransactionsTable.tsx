@@ -1,5 +1,5 @@
 import { Box, Table, rem } from "@mantine/core";
-import { formatCurrency, type Transaction } from "../../models";
+import { formatSignedCurrency, type Transaction } from "../../models";
 
 /** Matches Mantine `ActionIcon` `size="md"` height used in Accounts settings column. */
 const TABLE_LEADING_CELL_HEIGHT_PX = 28;
@@ -108,7 +108,7 @@ export function TransactionsTable({
                   {categoryName}
                 </Table.Td>
                 <Table.Td fw={500} style={{ verticalAlign: "middle" }}>
-                  {formatCurrency(txn.amount)}
+                  {formatSignedCurrency(txn.amount)}
                 </Table.Td>
               </Table.Tr>
             );
