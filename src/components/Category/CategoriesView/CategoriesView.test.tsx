@@ -15,6 +15,13 @@ vi.mock("../../../hooks/useCategories.js", () => ({
     isError: false,
     error: null,
   }),
+  useUpdateCategory: () => ({
+    mutate: vi.fn(),
+    reset: vi.fn(),
+    isPending: false,
+    isError: false,
+    error: null,
+  }),
 }));
 
 import { useAllCategories } from "../../../hooks/useCategories.js";
@@ -141,5 +148,37 @@ describe("CategoriesView", () => {
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("New Category")).toBeInTheDocument();
+  });
+
+  it("opens category settings from a parent settings button", async () => {
+    const user = userEvent.setup();
+    mockCategoryQuery({ categories: [foodParent, groceries] });
+    renderCategoriesView();
+
+    await user.click(
+      screen.getByRole("button", { name: "Settings for Food" }),
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Category settings" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /name/i })).toHaveValue("Food");
+  });
+
+  it("opens category settings from a subcategory settings button", async () => {
+    const user = userEvent.setup();
+    mockCategoryQuery({ categories: [foodParent, groceries] });
+    renderCategoriesView();
+
+    await user.click(
+      screen.getByRole("button", { name: "Settings for Groceries" }),
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Category settings" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /name/i })).toHaveValue(
+      "Groceries",
+    );
   });
 });
