@@ -11,8 +11,7 @@ export type CategorySegment = {
 
 /**
  * Groups categories under each root (no `parentCategoryId`, or parent missing from set).
- * Children of each root are sorted by name. Nested children-of-children are ignored
- * (they are not a supported product shape).
+ * Children of each root are sorted by name.
  */
 export function buildCategorySegments(
   categories: Category[],

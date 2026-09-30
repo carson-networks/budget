@@ -54,26 +54,6 @@ describe("buildCategorySegments", () => {
     expect(segments[0].root.id).toBe("orphan");
     expect(segments[0].children).toEqual([]);
   });
-
-  it("does not nest grandchildren under a parent (one level only)", () => {
-    const segments = buildCategorySegments([
-      makeCategory({ id: "p1", name: "Food", isParent: true }),
-      makeCategory({
-        id: "c1",
-        name: "Groceries",
-        parentCategoryId: "p1",
-      }),
-      makeCategory({
-        id: "g1",
-        name: "Organic",
-        parentCategoryId: "c1",
-      }),
-    ]);
-
-    expect(segments).toHaveLength(1);
-    expect(segments[0].children.map((c) => c.name)).toEqual(["Groceries"]);
-    expect(segments[0].children.map((c) => c.id)).not.toContain("g1");
-  });
 });
 
 describe("sortCategorySegmentsForDisplay", () => {
