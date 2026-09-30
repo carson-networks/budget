@@ -12,6 +12,8 @@ export type Transaction = {
   categoryId?: string;
   amount: string;
   transactionName: string;
+  /** Optional merchant label; absent when unset. */
+  merchantName?: string;
   transactionDate?: Date;
   createdAt?: Date;
 };
@@ -53,6 +55,7 @@ export function mapTransaction(wire: WireTransaction): Transaction {
     categoryId: wire.categoryId,
     amount: wire.amount,
     transactionName: wire.transactionName,
+    merchantName: wire.merchantName,
     transactionDate: optionalDateFromTimestamp(wire.transactionDate),
     createdAt: optionalDateFromTimestamp(wire.createdAt),
   };
