@@ -15,7 +15,22 @@ vi.mock("./hooks/useCategories.js", () => ({
   }),
 }));
 
+vi.mock("./hooks/useBudgets.js", () => ({
+  useBudgetsForRange: vi.fn(),
+  useSetBudget: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+    variables: undefined,
+  }),
+}));
+
+vi.mock("./hooks/useTransactionTotals.js", () => ({
+  useTransactionTotalsForRange: vi.fn(),
+}));
+
 import { useAllCategories } from "./hooks/useCategories.js";
+import { useBudgetsForRange } from "./hooks/useBudgets.js";
+import { useTransactionTotalsForRange } from "./hooks/useTransactionTotals.js";
 import App from "./App.js";
 
 describe("App routes", () => {
@@ -27,6 +42,18 @@ describe("App routes", () => {
       isLoading: false,
       error: null,
     } as unknown as ReturnType<typeof useAllCategories>);
+    vi.mocked(useBudgetsForRange).mockReturnValue({
+      budgets: [],
+      isLoading: false,
+      isPlaceholderData: false,
+      error: null,
+    } as unknown as ReturnType<typeof useBudgetsForRange>);
+    vi.mocked(useTransactionTotalsForRange).mockReturnValue({
+      totals: { byMonth: [] },
+      isLoading: false,
+      isPlaceholderData: false,
+      error: null,
+    } as unknown as ReturnType<typeof useTransactionTotalsForRange>);
   });
 
   function renderApp(initialPath: string) {
@@ -46,6 +73,13 @@ describe("App routes", () => {
     renderApp("/");
     expect(
       screen.getByRole("heading", { name: "Home", level: 2 }),
+    ).toBeInTheDocument();
+  });
+
+  it("serves the budget month view at /budget", () => {
+    renderApp("/budget");
+    expect(
+      screen.getByRole("heading", { name: "Budget", level: 4 }),
     ).toBeInTheDocument();
   });
 
