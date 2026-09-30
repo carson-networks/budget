@@ -6,6 +6,7 @@ export { AccountIntegration, AccountKind, mapAccount } from "./account.js";
 export {
   balanceAfterStartingChange,
   formatCurrency,
+  formatSignedCurrency,
   truncateToTwoDecimals,
 } from "./money.js";
 

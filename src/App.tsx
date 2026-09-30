@@ -3,6 +3,7 @@ import { Route, Routes } from "react-router-dom";
 import AppShell from "./components/AppShell/AppShell";
 import AccountsView from "./components/Account/AccountsView/AccountsView";
 import CategoriesView from "./components/Category/CategoriesView/CategoriesView";
+import TransactionsView from "./components/TransactionsView/TransactionsView";
 import { HomePage } from "./pages/HomePage";
 import {
   preferenceToRootColorSchemeProps,
@@ -22,7 +23,7 @@ function App() {
           <Route path="/" element={<AppShell />}>
             <Route index element={<HomePage />} />
             <Route path="budget" element={null} />
-            <Route path="transactions" element={null} />
+            <Route path="transactions" element={<TransactionsView />} />
             <Route path="accounts" element={<AccountsView />} />
             <Route
               path="accounts/:accountId"
