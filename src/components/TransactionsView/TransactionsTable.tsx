@@ -5,7 +5,7 @@ import { formatSignedCurrency, type Transaction } from "../../models";
 const TABLE_LEADING_CELL_HEIGHT_PX = 28;
 
 type TransactionsTableProps = {
-  transactions: Transaction[];
+  transactions: readonly Transaction[];
   accountNameById: ReadonlyMap<string, string>;
   categoryNameById: ReadonlyMap<string, string>;
   onRowOpen?: (transaction: Transaction) => void;
