@@ -23,6 +23,13 @@ export type CreateCategoryInput = {
   categoryType: CategoryType;
 };
 
+export type UpdateCategoryInput = {
+  id: string;
+  name: string;
+  parentCategoryId?: string;
+  isDisabled: boolean;
+};
+
 const PAGE_SIZE = 50;
 
 export function useAllCategories() {
@@ -73,6 +80,28 @@ export function useCreateCategory() {
           parentCategoryId: body.parentCategoryId,
           isDisabled: body.isDisabled,
           categoryType: body.categoryType,
+        });
+      } catch (e) {
+        throw new Error(connectErrorMessage(e));
+      }
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["categories"] });
+    },
+  });
+}
+
+export function useUpdateCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (body: UpdateCategoryInput) => {
+      try {
+        await categoryClient.updateCategory({
+          id: body.id,
+          name: body.name,
+          parentCategoryId: body.parentCategoryId,
+          isDisabled: body.isDisabled,
         });
       } catch (e) {
         throw new Error(connectErrorMessage(e));
