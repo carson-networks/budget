@@ -15,7 +15,6 @@ export function ParentCategoryField({
     <Select
       label="Parent category"
       placeholder="None (top level)"
-      description="Leave empty to create a top-level parent category. Subcategories can only sit under a top-level category."
       clearable
       data={parentOptions}
       value={parentCategoryId}
