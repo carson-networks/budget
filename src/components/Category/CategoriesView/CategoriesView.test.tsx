@@ -1,12 +1,20 @@
 import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CategoryKind, type Category } from "../../../models";
 import { theme } from "../../../theme.js";
 
-vi.mock(import("../../../hooks/useCategories.js"), () => ({
+vi.mock("../../../hooks/useCategories.js", () => ({
   useAllCategories: vi.fn(),
+  useCreateCategory: () => ({
+    mutate: vi.fn(),
+    reset: vi.fn(),
+    isPending: false,
+    isError: false,
+    error: null,
+  }),
 }));
 
 import { useAllCategories } from "../../../hooks/useCategories.js";
@@ -121,5 +129,17 @@ describe("CategoriesView", () => {
     renderCategoriesView();
 
     expect(screen.getByText("No subcategories")).toBeInTheDocument();
+  });
+
+  it("opens the create category modal from the add category button", async () => {
+    const user = userEvent.setup();
+    renderCategoriesView();
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /add category/i }));
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("New Category")).toBeInTheDocument();
   });
 });

@@ -4,8 +4,15 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useShellStore } from "./stores/shell/useShellStore.js";
 
-vi.mock(import("./hooks/useCategories.js"), () => ({
+vi.mock("./hooks/useCategories.js", () => ({
   useAllCategories: vi.fn(),
+  useCreateCategory: () => ({
+    mutate: vi.fn(),
+    reset: vi.fn(),
+    isPending: false,
+    isError: false,
+    error: null,
+  }),
 }));
 
 import { useAllCategories } from "./hooks/useCategories.js";
