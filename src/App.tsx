@@ -2,6 +2,7 @@ import { ColorSchemeScript, MantineProvider } from "@mantine/core";
 import { Route, Routes } from "react-router-dom";
 import AppShell from "./components/AppShell/AppShell";
 import AccountsView from "./components/Account/AccountsView/AccountsView";
+import CategoriesView from "./components/Category/CategoriesView/CategoriesView";
 import TransactionsView from "./components/TransactionsView/TransactionsView";
 import { HomePage } from "./pages/HomePage";
 import {
@@ -32,7 +33,7 @@ function App() {
                 </p>
               }
             />
-            <Route path="categories" element={null} />
+            <Route path="categories" element={<CategoriesView />} />
           </Route>
         </Routes>
       </MantineProvider>
