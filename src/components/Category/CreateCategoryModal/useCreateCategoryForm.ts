@@ -18,7 +18,6 @@ export function useCreateCategoryForm(open: boolean, onClose: () => void) {
     String(CategoryType.EXPENSE),
   );
   const [parentCategoryId, setParentCategoryId] = useState<string | null>(null);
-  const [isParentCategory, setIsParentCategory] = useState(false);
 
   const { categories } = useAllCategories();
   const createCategory = useCreateCategory();
@@ -45,7 +44,6 @@ export function useCreateCategoryForm(open: boolean, onClose: () => void) {
     setName("");
     setCategoryType(String(CategoryType.EXPENSE));
     setParentCategoryId(null);
-    setIsParentCategory(false);
     createCategory.reset();
   }, [createCategory]);
 
@@ -59,12 +57,11 @@ export function useCreateCategoryForm(open: boolean, onClose: () => void) {
       e.preventDefault();
       if (categoryType === null) return;
       if (!name.trim()) return;
-      // Server rejects standalone leaves: must be a parent category or have a parent.
-      if (!hasParent && !isParentCategory) return;
 
+      // No parent selected → top-level parent category; otherwise a child leaf.
       const body: CreateCategoryInput = {
         name: name.trim(),
-        isParent: !hasParent && isParentCategory,
+        isParent: !hasParent,
         parentCategoryId: hasParent ? parentCategoryId! : undefined,
         isDisabled: false,
         categoryType: Number(categoryType) as CategoryType,
@@ -81,16 +78,12 @@ export function useCreateCategoryForm(open: boolean, onClose: () => void) {
       createCategory,
       handleClose,
       hasParent,
-      isParentCategory,
       name,
       parentCategoryId,
     ],
   );
 
-  const isFormValid =
-    name.trim().length > 0 &&
-    categoryType !== null &&
-    (hasParent || isParentCategory);
+  const isFormValid = name.trim().length > 0 && categoryType !== null;
 
   return {
     name,
@@ -99,8 +92,6 @@ export function useCreateCategoryForm(open: boolean, onClose: () => void) {
     setCategoryType,
     parentCategoryId,
     setParentCategoryId,
-    isParentCategory,
-    setIsParentCategory,
     parentOptions,
     createCategory,
     handleSubmit,

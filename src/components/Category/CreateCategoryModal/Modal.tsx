@@ -28,8 +28,6 @@ export default function CreateCategoryModal({
     setCategoryType,
     parentCategoryId,
     setParentCategoryId,
-    isParentCategory,
-    setIsParentCategory,
     parentOptions,
     createCategory,
     handleSubmit,
@@ -80,8 +78,6 @@ export default function CreateCategoryModal({
             parentOptions={parentOptions}
             parentCategoryId={parentCategoryId}
             onParentChange={setParentCategoryId}
-            isParentCategory={isParentCategory}
-            onIsParentCategoryChange={setIsParentCategory}
           />
         </Stack>
 

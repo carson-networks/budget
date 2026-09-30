@@ -1,5 +1,5 @@
 import { MantineProvider } from "@mantine/core";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CategoryType } from "../../../connectRPC/types.js";
@@ -32,49 +32,25 @@ vi.mock("../../../hooks/useCategories.js", () => ({
   }),
 }));
 
-function parentCategoryCheckbox() {
-  return screen.getByRole("checkbox", { name: /parent category/i });
-}
-
 describe("CreateCategoryModal", () => {
   beforeEach(() => {
     mutateMock.mockReset();
   });
 
-  it("does not show a Disabled checkbox on create", () => {
+  it("does not show Parent category or Disabled checkboxes", () => {
     render(
       <MantineProvider theme={theme}>
         <CreateCategoryModal open onClose={vi.fn()} />
       </MantineProvider>,
     );
 
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("checkbox", { name: /^disabled$/i }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("textbox", { name: /parent category/i }),
+    ).toBeInTheDocument();
   });
 
-  it("places the Parent category checkbox above the parent dropdown", () => {
-    render(
-      <MantineProvider theme={theme}>
-        <CreateCategoryModal open onClose={vi.fn()} />
-      </MantineProvider>,
-    );
-
-    const dialog = screen.getByRole("dialog");
-    const checkbox = within(dialog).getByRole("checkbox", {
-      name: /parent category/i,
-    });
-    const nestSelect = within(dialog).getByRole("textbox", {
-      name: /parent category/i,
-    });
-
-    expect(
-      checkbox.compareDocumentPosition(nestSelect) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-  });
-
-  it("disables Create until name and parent category or nest-under are set", async () => {
+  it("enables Create once name is set", async () => {
     const user = userEvent.setup();
     render(
       <MantineProvider theme={theme}>
@@ -86,13 +62,10 @@ describe("CreateCategoryModal", () => {
     expect(submit).toBeDisabled();
 
     await user.type(screen.getByRole("textbox", { name: /name/i }), "Housing");
-    expect(submit).toBeDisabled();
-
-    await user.click(parentCategoryCheckbox());
     expect(submit).not.toBeDisabled();
   });
 
-  it("submits a parent category to the create mutation", async () => {
+  it("submits a top-level parent when no nest-under parent is selected", async () => {
     const user = userEvent.setup();
     render(
       <MantineProvider theme={theme}>
@@ -101,7 +74,6 @@ describe("CreateCategoryModal", () => {
     );
 
     await user.type(screen.getByRole("textbox", { name: /name/i }), "Housing");
-    await user.click(parentCategoryCheckbox());
     await user.click(screen.getByRole("button", { name: /create category/i }));
 
     expect(mutateMock).toHaveBeenCalledWith(
@@ -115,15 +87,13 @@ describe("CreateCategoryModal", () => {
     );
   });
 
-  it("does not mutate when the form is submitted while invalid", async () => {
-    const user = userEvent.setup();
+  it("does not mutate when the form is submitted while invalid", () => {
     render(
       <MantineProvider theme={theme}>
         <CreateCategoryModal open onClose={vi.fn()} />
       </MantineProvider>,
     );
 
-    await user.type(screen.getByRole("textbox", { name: /name/i }), "Only name");
     const form = screen.getByRole("dialog").querySelector("form");
     expect(form).not.toBeNull();
     fireEvent.submit(form!);
@@ -140,7 +110,6 @@ describe("CreateCategoryModal", () => {
     );
 
     await user.type(screen.getByRole("textbox", { name: /name/i }), "   ");
-    await user.click(parentCategoryCheckbox());
 
     expect(
       screen.getByRole("button", { name: /create category/i }),

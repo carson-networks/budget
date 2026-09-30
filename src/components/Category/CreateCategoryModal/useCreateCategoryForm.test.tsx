@@ -46,7 +46,7 @@ describe("useCreateCategoryForm", () => {
     );
   });
 
-  it("starts invalid until name is set and parent category or nest-under is chosen", () => {
+  it("is valid once a non-empty name and type are set", () => {
     const { result } = renderHook(() =>
       useCreateCategoryForm(true, vi.fn()),
     );
@@ -56,44 +56,10 @@ describe("useCreateCategoryForm", () => {
     act(() => {
       result.current.setName("  Bills  ");
     });
-    expect(result.current.isFormValid).toBe(false);
-
-    act(() => {
-      result.current.setIsParentCategory(true);
-    });
     expect(result.current.isFormValid).toBe(true);
   });
 
-  it("becomes valid when nested under a parent instead of being a parent", () => {
-    const { result } = renderHook(() =>
-      useCreateCategoryForm(true, vi.fn()),
-    );
-
-    act(() => {
-      result.current.setName("Groceries");
-      result.current.setParentCategoryId("food");
-    });
-
-    expect(result.current.isFormValid).toBe(true);
-  });
-
-  it("does not mutate standalone leaf submissions", () => {
-    const { result } = renderHook(() =>
-      useCreateCategoryForm(true, vi.fn()),
-    );
-
-    act(() => {
-      result.current.setName("Orphan");
-    });
-
-    act(() => {
-      result.current.handleSubmit(fakeSubmitEvent());
-    });
-
-    expect(mutateMock).not.toHaveBeenCalled();
-  });
-
-  it("submits a parent category with isDisabled false and closes on success", () => {
+  it("submits a top-level parent when no nest-under parent is selected", () => {
     const onClose = vi.fn();
     const { result } = renderHook(() =>
       useCreateCategoryForm(true, onClose),
@@ -101,7 +67,6 @@ describe("useCreateCategoryForm", () => {
 
     act(() => {
       result.current.setName("  Housing  ");
-      result.current.setIsParentCategory(true);
       result.current.setCategoryType(String(CategoryType.INCOME));
     });
 
@@ -122,7 +87,7 @@ describe("useCreateCategoryForm", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("submits a leaf under a parent with isParent false", () => {
+  it("submits a leaf under a selected parent with isParent false", () => {
     const { result } = renderHook(() =>
       useCreateCategoryForm(true, vi.fn()),
     );
@@ -130,7 +95,6 @@ describe("useCreateCategoryForm", () => {
     act(() => {
       result.current.setName("Rent");
       result.current.setParentCategoryId("food");
-      result.current.setIsParentCategory(true);
     });
 
     act(() => {
@@ -147,6 +111,18 @@ describe("useCreateCategoryForm", () => {
       },
       expect.any(Object),
     );
+  });
+
+  it("does not call mutate when name is empty", () => {
+    const { result } = renderHook(() =>
+      useCreateCategoryForm(true, vi.fn()),
+    );
+
+    act(() => {
+      result.current.handleSubmit(fakeSubmitEvent());
+    });
+
+    expect(mutateMock).not.toHaveBeenCalled();
   });
 
   it("exposes top-level categories as parent options", () => {
@@ -167,7 +143,7 @@ describe("useCreateCategoryForm", () => {
 
     act(() => {
       result.current.setName("Temp");
-      result.current.setIsParentCategory(true);
+      result.current.setParentCategoryId("food");
     });
 
     act(() => {
@@ -177,7 +153,7 @@ describe("useCreateCategoryForm", () => {
     expect(resetMock).toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
     expect(result.current.name).toBe("");
-    expect(result.current.isParentCategory).toBe(false);
+    expect(result.current.parentCategoryId).toBeNull();
     expect(result.current.categoryType).toBe(String(CategoryType.EXPENSE));
   });
 
