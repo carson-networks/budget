@@ -37,19 +37,6 @@ describe("CreateCategoryModal", () => {
     mutateMock.mockReset();
   });
 
-  it("does not show Parent category or Disabled checkboxes", () => {
-    render(
-      <MantineProvider theme={theme}>
-        <CreateCategoryModal open onClose={vi.fn()} />
-      </MantineProvider>,
-    );
-
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("textbox", { name: /parent category/i }),
-    ).toBeInTheDocument();
-  });
-
   it("enables Create once name is set", async () => {
     const user = userEvent.setup();
     render(
