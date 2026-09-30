@@ -18,8 +18,7 @@ export function useCreateCategoryForm(open: boolean, onClose: () => void) {
     String(CategoryType.EXPENSE),
   );
   const [parentCategoryId, setParentCategoryId] = useState<string | null>(null);
-  const [isGroup, setIsGroup] = useState(false);
-  const [isDisabled, setIsDisabled] = useState(false);
+  const [isParentCategory, setIsParentCategory] = useState(false);
 
   const { categories } = useAllCategories();
   const createCategory = useCreateCategory();
@@ -46,8 +45,7 @@ export function useCreateCategoryForm(open: boolean, onClose: () => void) {
     setName("");
     setCategoryType(String(CategoryType.EXPENSE));
     setParentCategoryId(null);
-    setIsGroup(false);
-    setIsDisabled(false);
+    setIsParentCategory(false);
     createCategory.reset();
   }, [createCategory]);
 
@@ -61,14 +59,14 @@ export function useCreateCategoryForm(open: boolean, onClose: () => void) {
       e.preventDefault();
       if (categoryType === null) return;
       if (!name.trim()) return;
-      // Server rejects standalone leaves: must be a group or have a parent.
-      if (!hasParent && !isGroup) return;
+      // Server rejects standalone leaves: must be a parent category or have a parent.
+      if (!hasParent && !isParentCategory) return;
 
       const body: CreateCategoryInput = {
         name: name.trim(),
-        isParent: !hasParent && isGroup,
+        isParent: !hasParent && isParentCategory,
         parentCategoryId: hasParent ? parentCategoryId! : undefined,
-        isDisabled,
+        isDisabled: false,
         categoryType: Number(categoryType) as CategoryType,
       };
 
@@ -83,8 +81,7 @@ export function useCreateCategoryForm(open: boolean, onClose: () => void) {
       createCategory,
       handleClose,
       hasParent,
-      isDisabled,
-      isGroup,
+      isParentCategory,
       name,
       parentCategoryId,
     ],
@@ -93,7 +90,7 @@ export function useCreateCategoryForm(open: boolean, onClose: () => void) {
   const isFormValid =
     name.trim().length > 0 &&
     categoryType !== null &&
-    (hasParent || isGroup);
+    (hasParent || isParentCategory);
 
   return {
     name,
@@ -102,10 +99,8 @@ export function useCreateCategoryForm(open: boolean, onClose: () => void) {
     setCategoryType,
     parentCategoryId,
     setParentCategoryId,
-    isGroup,
-    setIsGroup,
-    isDisabled,
-    setIsDisabled,
+    isParentCategory,
+    setIsParentCategory,
     parentOptions,
     createCategory,
     handleSubmit,

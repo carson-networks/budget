@@ -4,19 +4,26 @@ type ParentCategoryFieldProps = {
   parentOptions: ComboboxData;
   parentCategoryId: string | null;
   onParentChange: (value: string | null) => void;
-  isGroup: boolean;
-  onIsGroupChange: (checked: boolean) => void;
+  isParentCategory: boolean;
+  onIsParentCategoryChange: (checked: boolean) => void;
 };
 
 export function ParentCategoryField({
   parentOptions,
   parentCategoryId,
   onParentChange,
-  isGroup,
-  onIsGroupChange,
+  isParentCategory,
+  onIsParentCategoryChange,
 }: ParentCategoryFieldProps) {
   return (
     <>
+      <Checkbox
+        label="Parent category"
+        checked={isParentCategory}
+        disabled={!!parentCategoryId}
+        onChange={(e) => onIsParentCategoryChange(e.currentTarget.checked)}
+      />
+
       <Select
         label="Parent category"
         placeholder="None (top level)"
@@ -26,13 +33,6 @@ export function ParentCategoryField({
         value={parentCategoryId}
         onChange={onParentChange}
         comboboxProps={{ withinPortal: true }}
-      />
-
-      <Checkbox
-        label="Group category (can contain subcategories)"
-        checked={isGroup}
-        disabled={!!parentCategoryId}
-        onChange={(e) => onIsGroupChange(e.currentTarget.checked)}
       />
     </>
   );

@@ -7,7 +7,6 @@ import {
   Alert,
   Loader,
   Title,
-  Checkbox,
 } from "@mantine/core";
 import { CategoryTypeSelect } from "./CategoryTypeSelect.js";
 import { ParentCategoryField } from "./ParentCategoryField.js";
@@ -29,10 +28,8 @@ export default function CreateCategoryModal({
     setCategoryType,
     parentCategoryId,
     setParentCategoryId,
-    isGroup,
-    setIsGroup,
-    isDisabled,
-    setIsDisabled,
+    isParentCategory,
+    setIsParentCategory,
     parentOptions,
     createCategory,
     handleSubmit,
@@ -79,18 +76,12 @@ export default function CreateCategoryModal({
             comboboxProps={{ withinPortal: true }}
           />
 
-          <Checkbox
-            label="Disabled"
-            checked={isDisabled}
-            onChange={(e) => setIsDisabled(e.currentTarget.checked)}
-          />
-
           <ParentCategoryField
             parentOptions={parentOptions}
             parentCategoryId={parentCategoryId}
             onParentChange={setParentCategoryId}
-            isGroup={isGroup}
-            onIsGroupChange={setIsGroup}
+            isParentCategory={isParentCategory}
+            onIsParentCategoryChange={setIsParentCategory}
           />
         </Stack>
 

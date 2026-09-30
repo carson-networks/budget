@@ -46,7 +46,7 @@ describe("useCreateCategoryForm", () => {
     );
   });
 
-  it("starts invalid until name is set and group or parent is chosen", () => {
+  it("starts invalid until name is set and parent category or nest-under is chosen", () => {
     const { result } = renderHook(() =>
       useCreateCategoryForm(true, vi.fn()),
     );
@@ -59,12 +59,12 @@ describe("useCreateCategoryForm", () => {
     expect(result.current.isFormValid).toBe(false);
 
     act(() => {
-      result.current.setIsGroup(true);
+      result.current.setIsParentCategory(true);
     });
     expect(result.current.isFormValid).toBe(true);
   });
 
-  it("becomes valid when a parent is selected instead of group", () => {
+  it("becomes valid when nested under a parent instead of being a parent", () => {
     const { result } = renderHook(() =>
       useCreateCategoryForm(true, vi.fn()),
     );
@@ -93,7 +93,7 @@ describe("useCreateCategoryForm", () => {
     expect(mutateMock).not.toHaveBeenCalled();
   });
 
-  it("submits a group category and closes on success", () => {
+  it("submits a parent category with isDisabled false and closes on success", () => {
     const onClose = vi.fn();
     const { result } = renderHook(() =>
       useCreateCategoryForm(true, onClose),
@@ -101,8 +101,7 @@ describe("useCreateCategoryForm", () => {
 
     act(() => {
       result.current.setName("  Housing  ");
-      result.current.setIsGroup(true);
-      result.current.setIsDisabled(true);
+      result.current.setIsParentCategory(true);
       result.current.setCategoryType(String(CategoryType.INCOME));
     });
 
@@ -115,7 +114,7 @@ describe("useCreateCategoryForm", () => {
         name: "Housing",
         isParent: true,
         parentCategoryId: undefined,
-        isDisabled: true,
+        isDisabled: false,
         categoryType: CategoryType.INCOME,
       },
       expect.any(Object),
@@ -131,7 +130,7 @@ describe("useCreateCategoryForm", () => {
     act(() => {
       result.current.setName("Rent");
       result.current.setParentCategoryId("food");
-      result.current.setIsGroup(true);
+      result.current.setIsParentCategory(true);
     });
 
     act(() => {
@@ -168,8 +167,7 @@ describe("useCreateCategoryForm", () => {
 
     act(() => {
       result.current.setName("Temp");
-      result.current.setIsGroup(true);
-      result.current.setIsDisabled(true);
+      result.current.setIsParentCategory(true);
     });
 
     act(() => {
@@ -179,8 +177,7 @@ describe("useCreateCategoryForm", () => {
     expect(resetMock).toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
     expect(result.current.name).toBe("");
-    expect(result.current.isGroup).toBe(false);
-    expect(result.current.isDisabled).toBe(false);
+    expect(result.current.isParentCategory).toBe(false);
     expect(result.current.categoryType).toBe(String(CategoryType.EXPENSE));
   });
 
