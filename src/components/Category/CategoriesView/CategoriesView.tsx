@@ -1,8 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Alert, Box, Loader, Stack, Text } from "@mantine/core";
 import { useAllCategories } from "../../../hooks/useCategories.js";
 import { SectionCard } from "../../shared/SectionCard.js";
+import { FloatingCreateButton } from "../../shared/FloatingCreateButton.js";
 import { ViewShell } from "../../shared/ViewShell.js";
+import CreateCategoryModal from "../CreateCategoryModal/Modal.js";
 import {
   buildCategorySegments,
   sortCategorySegmentsForDisplay,
@@ -13,6 +15,7 @@ import { SubcategoriesTable } from "./SubcategoriesTable.js";
 
 export default function CategoriesView() {
   const { categories, isLoading, error } = useAllCategories();
+  const [createOpen, setCreateOpen] = useState(false);
 
   const segments = useMemo(
     () => sortCategorySegmentsForDisplay(buildCategorySegments(categories)),
@@ -59,6 +62,16 @@ export default function CategoriesView() {
           </SectionCard>
         ))}
       </Box>
+
+      <FloatingCreateButton
+        ariaLabel="add category"
+        onClick={() => setCreateOpen(true)}
+      />
+
+      <CreateCategoryModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+      />
     </ViewShell>
   );
 }
