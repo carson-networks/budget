@@ -51,10 +51,10 @@ export default function CategoriesView() {
             key={segment.root.id}
             header={<SegmentHeader root={segment.root} />}
           >
-            {segment.descendantRows.length === 0 ? (
+            {segment.children.length === 0 ? (
               <EmptySubcategoriesMessage />
             ) : (
-              <SubcategoriesTable rows={segment.descendantRows} />
+              <SubcategoriesTable categories={segment.children} />
             )}
           </SectionCard>
         ))}

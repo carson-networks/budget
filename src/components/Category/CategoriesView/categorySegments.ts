@@ -1,71 +1,56 @@
 import type { Category } from "../../../models";
 
-export type CategoryRow = { category: Category; depth: number };
-
 /**
- * One top-level parent and its descendant rows (root is not repeated in the table).
- * The product model allows only one level: parent → child.
+ * One top-level parent and its direct children.
+ * Domain rule: parents are one level deep — no sub-parents / deeper nesting.
  */
 export type CategorySegment = {
   root: Category;
-  descendantRows: CategoryRow[];
+  children: Category[];
 };
 
 /**
  * Groups categories under each root (no `parentCategoryId`, or parent missing from set).
- * Each segment is ordered depth-first; siblings sorted by name.
+ * Children of each root are sorted by name. Nested children-of-children are ignored
+ * (they are not a supported product shape).
  */
 export function buildCategorySegments(
   categories: Category[],
 ): CategorySegment[] {
   const idSet = new Set(categories.map((c) => c.id));
-  const byParent = new Map<string | undefined, Category[]>();
+  const childrenByParent = new Map<string, Category[]>();
+  const roots: Category[] = [];
 
   for (const c of categories) {
-    let parentId = c.parentCategoryId ?? undefined;
-    if (parentId !== undefined && !idSet.has(parentId)) {
-      parentId = undefined;
+    const parentId = c.parentCategoryId;
+    if (parentId === undefined || !idSet.has(parentId)) {
+      roots.push(c);
+      continue;
     }
-    const bucket = byParent.get(parentId);
+    const bucket = childrenByParent.get(parentId);
     if (bucket) bucket.push(c);
-    else byParent.set(parentId, [c]);
+    else childrenByParent.set(parentId, [c]);
   }
 
-  for (const list of byParent.values()) {
-    list.sort((a, b) => a.name.localeCompare(b.name));
-  }
+  roots.sort((a, b) => a.name.localeCompare(b.name));
 
-  const roots = [...(byParent.get(undefined) ?? [])].sort((a, b) =>
-    a.name.localeCompare(b.name),
-  );
-
-  const walk = (parentId: string, depth: number): CategoryRow[] => {
-    const kids = byParent.get(parentId) ?? [];
-    const out: CategoryRow[] = [];
-    for (const k of kids) {
-      out.push({ category: k, depth });
-      out.push(...walk(k.id, depth + 1));
-    }
-    return out;
-  };
-
-  return roots.map((root) => ({
-    root,
-    descendantRows: walk(root.id, 0),
-  }));
+  return roots.map((root) => {
+    const children = [...(childrenByParent.get(root.id) ?? [])];
+    children.sort((a, b) => a.name.localeCompare(b.name));
+    return { root, children };
+  });
 }
 
-function sortRowsByEnabledThenName(rows: CategoryRow[]): CategoryRow[] {
-  const enabled = rows.filter((r) => !r.category.isDisabled);
-  const disabled = rows.filter((r) => r.category.isDisabled);
-  const byName = (a: CategoryRow, b: CategoryRow) =>
-    a.category.name.localeCompare(b.category.name);
+function sortByEnabledThenName(categories: Category[]): Category[] {
+  const enabled = categories.filter((c) => !c.isDisabled);
+  const disabled = categories.filter((c) => c.isDisabled);
+  const byName = (a: Category, b: Category) => a.name.localeCompare(b.name);
   enabled.sort(byName);
   disabled.sort(byName);
   return [...enabled, ...disabled];
 }
 
-/** Enabled parents first; disabled parents last. Within each table, enabled rows then disabled. */
+/** Enabled parents first; disabled parents last. Within each table, enabled then disabled. */
 export function sortCategorySegmentsForDisplay(
   segments: CategorySegment[],
 ): CategorySegment[] {
@@ -77,6 +62,6 @@ export function sortCategorySegmentsForDisplay(
   disabledParents.sort(byRootName);
   return [...enabledParents, ...disabledParents].map((seg) => ({
     root: seg.root,
-    descendantRows: sortRowsByEnabledThenName(seg.descendantRows),
+    children: sortByEnabledThenName(seg.children),
   }));
 }

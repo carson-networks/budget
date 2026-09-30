@@ -35,12 +35,11 @@ describe("buildCategorySegments", () => {
 
     const segments = buildCategorySegments(categories);
     expect(segments.map((s) => s.root.name)).toEqual(["Food", "Income"]);
-    expect(segments[0].descendantRows.map((r) => r.category.name)).toEqual([
+    expect(segments[0].children.map((c) => c.name)).toEqual([
       "Groceries",
       "Restaurants",
     ]);
-    expect(segments[0].descendantRows.every((r) => r.depth === 0)).toBe(true);
-    expect(segments[1].descendantRows).toEqual([]);
+    expect(segments[1].children).toEqual([]);
   });
 
   it("treats categories with missing parents as roots", () => {
@@ -53,7 +52,27 @@ describe("buildCategorySegments", () => {
     ]);
     expect(segments).toHaveLength(1);
     expect(segments[0].root.id).toBe("orphan");
-    expect(segments[0].descendantRows).toEqual([]);
+    expect(segments[0].children).toEqual([]);
+  });
+
+  it("does not nest grandchildren under a parent (one level only)", () => {
+    const segments = buildCategorySegments([
+      makeCategory({ id: "p1", name: "Food", isParent: true }),
+      makeCategory({
+        id: "c1",
+        name: "Groceries",
+        parentCategoryId: "p1",
+      }),
+      makeCategory({
+        id: "g1",
+        name: "Organic",
+        parentCategoryId: "c1",
+      }),
+    ]);
+
+    expect(segments).toHaveLength(1);
+    expect(segments[0].children.map((c) => c.name)).toEqual(["Groceries"]);
+    expect(segments[0].children.map((c) => c.id)).not.toContain("g1");
   });
 });
 
@@ -86,9 +105,6 @@ describe("sortCategorySegmentsForDisplay", () => {
 
     const sorted = sortCategorySegmentsForDisplay(segments);
     expect(sorted.map((s) => s.root.name)).toEqual(["Aaa", "Zzz"]);
-    expect(sorted[0].descendantRows.map((r) => r.category.name)).toEqual([
-      "Apple",
-      "Banana",
-    ]);
+    expect(sorted[0].children.map((c) => c.name)).toEqual(["Apple", "Banana"]);
   });
 });

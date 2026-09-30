@@ -39,21 +39,18 @@ describe("SegmentHeader", () => {
 });
 
 describe("SubcategoriesTable", () => {
-  it("renders indented child names and status chips", () => {
+  it("renders child names and status chips", () => {
     render(
       <MantineProvider theme={theme}>
         <SubcategoriesTable
-          rows={[
+          categories={[
             {
-              category: {
-                id: "pay",
-                name: "Paycheck",
-                isParent: false,
-                parentCategoryId: "income",
-                isDisabled: false,
-                categoryKind: CategoryKind.Income,
-              },
-              depth: 0,
+              id: "pay",
+              name: "Paycheck",
+              isParent: false,
+              parentCategoryId: "income",
+              isDisabled: false,
+              categoryKind: CategoryKind.Income,
             },
           ]}
         />

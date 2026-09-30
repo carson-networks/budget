@@ -1,13 +1,13 @@
-import { Box, Table, rem } from "@mantine/core";
-import type { CategoryRow } from "./categorySegments.js";
+import { Table, rem } from "@mantine/core";
+import type { Category } from "../../../models";
 import { enabledStatusChip } from "./categoryDisplay.js";
 
 type SubcategoriesTableProps = {
-  rows: CategoryRow[];
+  categories: Category[];
 };
 
 /** Shared column layout so each parent’s table lines up with the others. */
-export function SubcategoriesTable({ rows }: SubcategoriesTableProps) {
+export function SubcategoriesTable({ categories }: SubcategoriesTableProps) {
   return (
     <Table
       highlightOnHover
@@ -25,21 +25,9 @@ export function SubcategoriesTable({ rows }: SubcategoriesTableProps) {
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
-        {rows.map(({ category: row, depth }) => (
+        {categories.map((row) => (
           <Table.Tr key={row.id}>
-            <Table.Td style={{ verticalAlign: "middle" }}>
-              <Box
-                style={{
-                  paddingLeft: depth * 24,
-                  borderLeft:
-                    depth > 0
-                      ? "2px solid var(--mantine-color-brand-3)"
-                      : undefined,
-                }}
-              >
-                {row.name}
-              </Box>
-            </Table.Td>
+            <Table.Td style={{ verticalAlign: "middle" }}>{row.name}</Table.Td>
             <Table.Td style={{ verticalAlign: "middle" }}>
               {enabledStatusChip(row.isDisabled)}
             </Table.Td>
