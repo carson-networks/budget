@@ -6,7 +6,7 @@ import tseslint from "typescript-eslint";
 import { defineConfig, globalIgnores } from "eslint/config";
 
 export default defineConfig([
-  globalIgnores(["dist"]),
+  globalIgnores(["dist", "**/connectRPC/gen/**"]),
   {
     files: ["**/*.{ts,tsx}"],
     extends: [
@@ -18,6 +18,24 @@ export default defineConfig([
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
+    },
+  },
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/connectRPC/**", "src/gen/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: String.raw`\/gen\/`,
+              message:
+                "Import protobuf-generated modules only through src/connectRPC/ (see .agents/best-practices.md).",
+            },
+          ],
+        },
+      ],
     },
   },
 ]);
