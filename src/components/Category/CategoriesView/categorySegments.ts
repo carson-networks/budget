@@ -1,43 +1,44 @@
 import type { Category } from "../../../models";
 
-/**
- * One top-level parent and its direct children.
- * Domain rule: parents are one level deep — no sub-parents / deeper nesting.
- */
+/** One top-level parent and its direct children. */
 export type CategorySegment = {
   root: Category;
   children: Category[];
 };
 
 /**
- * Groups categories under each root (no `parentCategoryId`, or parent missing from set).
- * Children of each root are sorted by name.
+ * Groups each top-level category with its direct children (sorted by name).
+ * Top-level = no `parentCategoryId`, or parent missing from the set.
  */
 export function buildCategorySegments(
   categories: Category[],
 ): CategorySegment[] {
   const idSet = new Set(categories.map((c) => c.id));
-  const childrenByParent = new Map<string, Category[]>();
-  const roots: Category[] = [];
+  const roots = categories
+    .filter(
+      (c) =>
+        c.parentCategoryId === undefined || !idSet.has(c.parentCategoryId),
+    )
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const rootIds = new Set(roots.map((r) => r.id));
 
+  const childrenByRoot = new Map<string, Category[]>();
   for (const c of categories) {
     const parentId = c.parentCategoryId;
-    if (parentId === undefined || !idSet.has(parentId)) {
-      roots.push(c);
-      continue;
-    }
-    const bucket = childrenByParent.get(parentId);
+    if (parentId === undefined || !rootIds.has(parentId)) continue;
+    const bucket = childrenByRoot.get(parentId);
     if (bucket) bucket.push(c);
-    else childrenByParent.set(parentId, [c]);
+    else childrenByRoot.set(parentId, [c]);
   }
 
-  roots.sort((a, b) => a.name.localeCompare(b.name));
+  for (const list of childrenByRoot.values()) {
+    list.sort((a, b) => a.name.localeCompare(b.name));
+  }
 
-  return roots.map((root) => {
-    const children = [...(childrenByParent.get(root.id) ?? [])];
-    children.sort((a, b) => a.name.localeCompare(b.name));
-    return { root, children };
-  });
+  return roots.map((root) => ({
+    root,
+    children: childrenByRoot.get(root.id) ?? [],
+  }));
 }
 
 function sortByEnabledThenName(categories: Category[]): Category[] {
