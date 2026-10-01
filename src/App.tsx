@@ -6,6 +6,7 @@ import BudgetView from "./components/BudgetView/BudgetView";
 import CategoriesView from "./components/Category/CategoriesView/CategoriesView";
 import TransactionsView from "./components/TransactionsView/TransactionsView";
 import { HomePage } from "./pages/HomePage";
+import { SpikeFollowMonthsConfirmPage } from "./pages/SpikeFollowMonthsConfirmPage";
 import {
   preferenceToRootColorSchemeProps,
   useShellStore,
@@ -21,6 +22,10 @@ function App() {
       <ColorSchemeScript {...colorProps} />
       <MantineProvider theme={theme} {...colorProps}>
         <Routes>
+          <Route
+            path="/spike/follow-months-confirm"
+            element={<SpikeFollowMonthsConfirmPage />}
+          />
           <Route path="/" element={<AppShell />}>
             <Route index element={<HomePage />} />
             <Route path="budget" element={<BudgetView />} />

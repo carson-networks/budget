@@ -50,13 +50,17 @@ export function SegmentBudgetTable({
   const rootBudget = budgetByCategoryId.get(root.id);
   const rootEditable = !root.isParent;
 
-  const commitAmount = (categoryId: string, amount: string) =>
+  const commitAmount = (
+    categoryId: string,
+    amount: string,
+    overwriteFutureMonths: boolean,
+  ) =>
     setBudget.mutateAsync({
       categoryId,
       year: selectedMonth.year,
       month: selectedMonth.month,
       amount,
-      overwriteFutureMonths: false,
+      overwriteFutureMonths,
     });
 
   const isSavingCell = (categoryId: string) =>
@@ -115,7 +119,9 @@ export function SegmentBudgetTable({
               {rootEditable ? (
                 <BudgetCellInput
                   amountStr={rootBudget}
-                  onCommit={(amount) => commitAmount(root.id, amount)}
+                  onCommit={(amount, overwriteFutureMonths) =>
+                    commitAmount(root.id, amount, overwriteFutureMonths)
+                  }
                   saving={isSavingCell(root.id)}
                   fw={600}
                 />
@@ -150,7 +156,9 @@ export function SegmentBudgetTable({
                 >
                   <BudgetCellInput
                     amountStr={budgetRaw}
-                    onCommit={(amount) => commitAmount(row.id, amount)}
+                    onCommit={(amount, overwriteFutureMonths) =>
+                      commitAmount(row.id, amount, overwriteFutureMonths)
+                    }
                     saving={isSavingCell(row.id)}
                   />
                 </Table.Td>

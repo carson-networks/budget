@@ -19,7 +19,7 @@ function renderCell(
 }
 
 describe("BudgetCellInput", () => {
-  it("commits a changed whole-dollar amount on blur", async () => {
+  it("asks about following months before committing, defaulting to No", async () => {
     const user = userEvent.setup();
     const { onCommit } = renderCell();
     const input = screen.getByRole("textbox");
@@ -28,7 +28,34 @@ describe("BudgetCellInput", () => {
     await user.type(input, "250");
     await user.tab();
 
-    expect(onCommit).toHaveBeenCalledWith("250");
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("dialog", {
+        name: "Apply budget to following months",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Change the budget for all months following this one?",
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "No" }));
+
+    expect(onCommit).toHaveBeenCalledWith("250", false);
+  });
+
+  it("commits with overwriteFutureMonths when Yes is chosen", async () => {
+    const user = userEvent.setup();
+    const { onCommit } = renderCell();
+    const input = screen.getByRole("textbox");
+
+    await user.clear(input);
+    await user.type(input, "250");
+    await user.tab();
+    await user.click(screen.getByRole("button", { name: "Yes" }));
+
+    expect(onCommit).toHaveBeenCalledWith("250", true);
   });
 
   it("does not commit when the normalized value is unchanged", async () => {
@@ -40,6 +67,11 @@ describe("BudgetCellInput", () => {
     await user.tab();
 
     expect(onCommit).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("dialog", {
+        name: "Apply budget to following months",
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it("reverts the field when onCommit rejects", async () => {
@@ -51,8 +83,9 @@ describe("BudgetCellInput", () => {
     await user.clear(input);
     await user.type(input, "250");
     await user.tab();
+    await user.click(screen.getByRole("button", { name: "No" }));
 
-    expect(onCommit).toHaveBeenCalledWith("250");
+    expect(onCommit).toHaveBeenCalledWith("250", false);
     expect(input).toHaveValue("$100");
   });
 });
