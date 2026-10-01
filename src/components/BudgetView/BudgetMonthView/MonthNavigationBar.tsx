@@ -2,6 +2,7 @@ import {
   ActionIcon,
   Box,
   Button,
+  Checkbox,
   Group,
   Paper,
   Text,
@@ -19,6 +20,8 @@ type MonthNavigationBarProps = {
   onPrev: () => void;
   onNext: () => void;
   onGoToToday: () => void;
+  applyToFollowingMonths: boolean;
+  onApplyToFollowingMonthsChange: (checked: boolean) => void;
 };
 
 export function MonthNavigationBar({
@@ -26,6 +29,8 @@ export function MonthNavigationBar({
   onPrev,
   onNext,
   onGoToToday,
+  applyToFollowingMonths,
+  onApplyToFollowingMonthsChange,
 }: MonthNavigationBarProps) {
   const theme = useMantineTheme();
   const colorScheme = useComputedColorScheme("light");
@@ -51,7 +56,23 @@ export function MonthNavigationBar({
     >
       <Box px="md" py="sm" style={headerBarStyle}>
         <Group justify="space-between" align="center" wrap="nowrap" gap="sm">
-          <Box style={{ flex: 1 }} />
+          <Box
+            style={{
+              flex: 1,
+              display: "flex",
+              justifyContent: "flex-start",
+              minWidth: 0,
+            }}
+          >
+            <Checkbox
+              label="Apply to following months"
+              checked={applyToFollowingMonths}
+              onChange={(e) =>
+                onApplyToFollowingMonthsChange(e.currentTarget.checked)
+              }
+              size="sm"
+            />
+          </Box>
           <Group gap="md" wrap="nowrap" justify="center">
             <ActionIcon
               variant="subtle"

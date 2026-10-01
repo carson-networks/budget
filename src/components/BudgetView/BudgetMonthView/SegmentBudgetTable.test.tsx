@@ -58,6 +58,10 @@ describe("SegmentBudgetTable", () => {
 
     expect(screen.getByText("Food")).toBeInTheDocument();
     expect(screen.getByText("Groceries")).toBeInTheDocument();
+    expect(screen.getByText("Difference")).toBeInTheDocument();
+    // Expense difference: 400 + (-320) = 80
+    expect(screen.getByText("$80.00")).toBeInTheDocument();
+
     const inputs = screen.getAllByRole("textbox");
     expect(inputs).toHaveLength(1);
 
@@ -71,6 +75,41 @@ describe("SegmentBudgetTable", () => {
       month: 3,
       amount: "450",
       overwriteFutureMonths: false,
+    });
+  });
+
+  it("passes overwriteFutureMonths when the header option is on", async () => {
+    const mutateAsync = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(useSetBudget).mockReturnValue({
+      mutateAsync,
+      isPending: false,
+      variables: undefined,
+    } as unknown as ReturnType<typeof useSetBudget>);
+
+    const user = userEvent.setup();
+    render(
+      <MantineProvider theme={theme}>
+        <SegmentBudgetTable
+          segment={segment}
+          selectedMonth={{ year: 2025, month: 3 }}
+          budgetByCategoryId={new Map([["groceries", "400"]])}
+          actualByCategoryId={new Map([["groceries", -320]])}
+          overwriteFutureMonths
+        />
+      </MantineProvider>,
+    );
+
+    const inputs = screen.getAllByRole("textbox");
+    await user.clear(inputs[0]!);
+    await user.type(inputs[0]!, "500");
+    await user.tab();
+
+    expect(mutateAsync).toHaveBeenCalledWith({
+      categoryId: "groceries",
+      year: 2025,
+      month: 3,
+      amount: "500",
+      overwriteFutureMonths: true,
     });
   });
 });

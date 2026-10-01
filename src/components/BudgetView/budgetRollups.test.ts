@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { CategoryKind, type Category } from "../../models";
-import { rollUpBudgetByType } from "./budgetRollups.js";
+import {
+  categoryBudgetDifference,
+  rollUpBudgetByType,
+} from "./budgetRollups.js";
 
 function cat(
   partial: Pick<Category, "id" | "name" | "categoryKind"> &
@@ -68,5 +71,19 @@ describe("rollUpBudgetByType", () => {
     expect(summary.income.budget).toBe(1000);
     expect(summary.expense.budget).toBe(0);
     expect(summary.net.actual).toBe(0);
+  });
+});
+
+describe("categoryBudgetDifference", () => {
+  it("matches income and expense formulas used in totals", () => {
+    expect(
+      categoryBudgetDifference(CategoryKind.Income, 5000, 5100),
+    ).toBe(100);
+    expect(
+      categoryBudgetDifference(CategoryKind.Expense, 400, -320),
+    ).toBe(80);
+    expect(
+      categoryBudgetDifference(CategoryKind.Expense, undefined, undefined),
+    ).toBeUndefined();
   });
 });

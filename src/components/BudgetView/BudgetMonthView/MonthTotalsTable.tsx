@@ -2,6 +2,7 @@ import { Table, Text } from "@mantine/core";
 import { formatCurrency } from "../../../models";
 import { SectionCard } from "../../shared/SectionCard.js";
 import type { BudgetRollupSummary } from "../budgetRollups.js";
+import { BUDGET_COL } from "../budgetTableColumns.js";
 
 type MonthTotalsTableProps = {
   monthSummary: BudgetRollupSummary;
@@ -25,14 +26,16 @@ export function MonthTotalsTable({ monthSummary }: MonthTotalsTableProps) {
       >
         <Table.Thead>
           <Table.Tr>
-            <Table.Th style={{ width: "28%" }} />
-            <Table.Th style={{ width: "24%", textAlign: "right" }}>
+            <Table.Th style={{ width: BUDGET_COL.name }} />
+            <Table.Th style={{ width: BUDGET_COL.budgeted, textAlign: "right" }}>
               Budgeted
             </Table.Th>
-            <Table.Th style={{ width: "24%", textAlign: "right" }}>
+            <Table.Th style={{ width: BUDGET_COL.actual, textAlign: "right" }}>
               Actual
             </Table.Th>
-            <Table.Th style={{ width: "24%", textAlign: "right" }}>
+            <Table.Th
+              style={{ width: BUDGET_COL.difference, textAlign: "right" }}
+            >
               Difference
             </Table.Th>
           </Table.Tr>

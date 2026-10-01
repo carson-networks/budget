@@ -128,9 +128,13 @@ describe("BudgetMonthView", () => {
       screen.getByRole("heading", { name: "Budget", level: 4 }),
     ).toBeInTheDocument();
     expect(screen.getByText("Mar 2025")).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: "Apply to following months" }),
+    ).not.toBeChecked();
     expect(screen.getByText("Food")).toBeInTheDocument();
     expect(screen.getByText("Groceries")).toBeInTheDocument();
     expect(screen.getByText("Salary")).toBeInTheDocument();
+    expect(screen.getAllByText("Difference").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Month totals")).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "Income" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "Expenses" })).toBeInTheDocument();

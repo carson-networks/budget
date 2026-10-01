@@ -8,11 +8,13 @@ import {
   useComputedColorScheme,
   useMantineTheme,
 } from "@mantine/core";
-import { formatCurrency } from "../../../models";
+import { formatCurrency, type CategoryKind } from "../../../models";
 import { useSetBudget } from "../../../hooks/useBudgets.js";
 import type { CategorySegment } from "../../Category/CategoriesView/categorySegments.js";
 import { displayCategoryKind } from "../../Category/CategoriesView/categoryDisplay.js";
 import type { YearMonth } from "../../../utils/monthRange.js";
+import { BUDGET_COL } from "../budgetTableColumns.js";
+import { categoryBudgetDifference } from "../budgetRollups.js";
 import { BudgetCellInput } from "../shared/BudgetCellInput.js";
 
 type SegmentBudgetTableProps = {
@@ -20,7 +22,15 @@ type SegmentBudgetTableProps = {
   selectedMonth: YearMonth;
   budgetByCategoryId: Map<string, string>;
   actualByCategoryId: Map<string, number>;
+  /** When true, SetBudget also overwrites following months. Default false. */
+  overwriteFutureMonths?: boolean;
 };
+
+function parseBudgetAmount(raw: string | undefined): number | undefined {
+  if (raw === undefined) return undefined;
+  const n = parseFloat(raw);
+  return Number.isNaN(n) ? undefined : n;
+}
 
 function ActualCell({ value }: { value: number | undefined }) {
   if (value === undefined) {
@@ -33,11 +43,40 @@ function ActualCell({ value }: { value: number | undefined }) {
   return <>{formatCurrency(value.toFixed(2))}</>;
 }
 
+function DifferenceCell({
+  categoryKind,
+  budgetRaw,
+  actual,
+}: {
+  categoryKind: CategoryKind;
+  budgetRaw: string | undefined;
+  actual: number | undefined;
+}) {
+  const diff = categoryBudgetDifference(
+    categoryKind,
+    parseBudgetAmount(budgetRaw),
+    actual,
+  );
+  if (diff === undefined) {
+    return (
+      <Text span c="dimmed" size="sm">
+        —
+      </Text>
+    );
+  }
+  return (
+    <Text span size="sm" fw={600} style={{ fontVariantNumeric: "tabular-nums" }}>
+      {formatCurrency(diff.toFixed(2))}
+    </Text>
+  );
+}
+
 export function SegmentBudgetTable({
   segment,
   selectedMonth,
   budgetByCategoryId,
   actualByCategoryId,
+  overwriteFutureMonths = false,
 }: SegmentBudgetTableProps) {
   const setBudget = useSetBudget();
   const theme = useMantineTheme();
@@ -56,7 +95,7 @@ export function SegmentBudgetTable({
       year: selectedMonth.year,
       month: selectedMonth.month,
       amount,
-      overwriteFutureMonths: false,
+      overwriteFutureMonths,
     });
 
   const isSavingCell = (categoryId: string) =>
@@ -85,12 +124,17 @@ export function SegmentBudgetTable({
       >
         <Table.Thead>
           <Table.Tr>
-            <Table.Th style={{ width: "52%" }}>Name</Table.Th>
-            <Table.Th style={{ width: "24%", textAlign: "right" }}>
+            <Table.Th style={{ width: BUDGET_COL.name }}>Name</Table.Th>
+            <Table.Th style={{ width: BUDGET_COL.budgeted, textAlign: "right" }}>
               Budgeted
             </Table.Th>
-            <Table.Th style={{ width: "24%", textAlign: "right" }}>
+            <Table.Th style={{ width: BUDGET_COL.actual, textAlign: "right" }}>
               Actual
+            </Table.Th>
+            <Table.Th
+              style={{ width: BUDGET_COL.difference, textAlign: "right" }}
+            >
+              Difference
             </Table.Th>
           </Table.Tr>
         </Table.Thead>
@@ -128,6 +172,13 @@ export function SegmentBudgetTable({
             <Table.Td style={{ textAlign: "right", verticalAlign: "middle" }}>
               <ActualCell value={rootActual} />
             </Table.Td>
+            <Table.Td style={{ textAlign: "right", verticalAlign: "middle" }}>
+              <DifferenceCell
+                categoryKind={root.categoryKind}
+                budgetRaw={rootBudget}
+                actual={rootActual}
+              />
+            </Table.Td>
           </Table.Tr>
           {segment.children.map((row) => {
             const budgetRaw = budgetByCategoryId.get(row.id);
@@ -158,6 +209,15 @@ export function SegmentBudgetTable({
                   style={{ textAlign: "right", verticalAlign: "middle" }}
                 >
                   <ActualCell value={actualNum} />
+                </Table.Td>
+                <Table.Td
+                  style={{ textAlign: "right", verticalAlign: "middle" }}
+                >
+                  <DifferenceCell
+                    categoryKind={row.categoryKind}
+                    budgetRaw={budgetRaw}
+                    actual={actualNum}
+                  />
                 </Table.Td>
               </Table.Tr>
             );

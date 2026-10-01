@@ -28,6 +28,22 @@ function isExpense(c: Category): boolean {
   );
 }
 
+/**
+ * Per-category difference using the same formulas as month totals.
+ * Returns `undefined` when both budget and actual are missing.
+ */
+export function categoryBudgetDifference(
+  categoryKind: CategoryKind,
+  budget: number | undefined,
+  actual: number | undefined,
+): number | undefined {
+  if (budget === undefined && actual === undefined) return undefined;
+  const b = budget ?? 0;
+  const a = actual ?? 0;
+  if (categoryKind === CategoryKind.Income) return a - b;
+  return b + a;
+}
+
 export function rollUpBudgetByType(
   visibleCategories: Category[],
   getBudget: (categoryId: string) => number | undefined,
