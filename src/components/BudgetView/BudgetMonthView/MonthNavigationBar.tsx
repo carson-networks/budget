@@ -3,25 +3,17 @@ import {
   Box,
   Button,
   Group,
-  Menu,
   Paper,
   Text,
   useComputedColorScheme,
   useMantineTheme,
 } from "@mantine/core";
-import {
-  IconAdjustmentsHorizontal,
-  IconCheck,
-  IconChevronLeft,
-  IconChevronRight,
-} from "@tabler/icons-react";
+import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import {
   formatYearMonthLabel,
   type YearMonth,
 } from "../../../utils/monthRange.js";
-
-export const APPLY_TO_FOLLOWING_MONTHS_LABEL =
-  "Apply budget changes to following months";
+import { MonthOptionsMenu } from "./MonthOptionsMenu.js";
 
 type MonthNavigationBarProps = {
   selectedMonth: YearMonth;
@@ -75,38 +67,11 @@ export function MonthNavigationBar({
               minWidth: 0,
             }}
           >
-            <Menu position="bottom-start" shadow="md" width={280} withinPortal>
-              <Menu.Target>
-                <ActionIcon
-                  variant="subtle"
-                  color="gray"
-                  size="lg"
-                  aria-label="Month options"
-                  aria-haspopup="menu"
-                >
-                  <IconAdjustmentsHorizontal size={20} />
-                </ActionIcon>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Item
-                  disabled={!canApplyToFollowingMonths}
-                  leftSection={
-                    applyToFollowingMonths && canApplyToFollowingMonths ? (
-                      <IconCheck size={14} aria-hidden />
-                    ) : (
-                      <span style={{ width: 14 }} aria-hidden />
-                    )
-                  }
-                  closeMenuOnClick={false}
-                  onClick={() => {
-                    if (!canApplyToFollowingMonths) return;
-                    onApplyToFollowingMonthsChange(!applyToFollowingMonths);
-                  }}
-                >
-                  {APPLY_TO_FOLLOWING_MONTHS_LABEL}
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
+            <MonthOptionsMenu
+              canApplyToFollowingMonths={canApplyToFollowingMonths}
+              applyToFollowingMonths={applyToFollowingMonths}
+              onApplyToFollowingMonthsChange={onApplyToFollowingMonthsChange}
+            />
           </Box>
           <Group gap="md" wrap="nowrap" justify="center">
             <ActionIcon
