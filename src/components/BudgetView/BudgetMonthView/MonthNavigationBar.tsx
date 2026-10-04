@@ -20,6 +20,8 @@ type MonthNavigationBarProps = {
   onPrev: () => void;
   onNext: () => void;
   onGoToToday: () => void;
+  /** Shown only for the current month and future months. */
+  showApplyToFollowingMonths: boolean;
   applyToFollowingMonths: boolean;
   onApplyToFollowingMonthsChange: (checked: boolean) => void;
 };
@@ -29,6 +31,7 @@ export function MonthNavigationBar({
   onPrev,
   onNext,
   onGoToToday,
+  showApplyToFollowingMonths,
   applyToFollowingMonths,
   onApplyToFollowingMonthsChange,
 }: MonthNavigationBarProps) {
@@ -64,14 +67,16 @@ export function MonthNavigationBar({
               minWidth: 0,
             }}
           >
-            <Checkbox
-              label="Apply to following months"
-              checked={applyToFollowingMonths}
-              onChange={(e) =>
-                onApplyToFollowingMonthsChange(e.currentTarget.checked)
-              }
-              size="sm"
-            />
+            {showApplyToFollowingMonths ? (
+              <Checkbox
+                label="Apply budget changes to following months"
+                checked={applyToFollowingMonths}
+                onChange={(e) =>
+                  onApplyToFollowingMonthsChange(e.currentTarget.checked)
+                }
+                size="sm"
+              />
+            ) : null}
           </Box>
           <Group gap="md" wrap="nowrap" justify="center">
             <ActionIcon

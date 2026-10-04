@@ -1,6 +1,6 @@
 import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CategoryKind, type Category } from "../../../models";
 import { theme } from "../../../theme.js";
@@ -129,7 +129,9 @@ describe("BudgetMonthView", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Mar 2025")).toBeInTheDocument();
     expect(
-      screen.getByRole("checkbox", { name: "Apply to following months" }),
+      screen.getByRole("checkbox", {
+        name: "Apply budget changes to following months",
+      }),
     ).not.toBeChecked();
     expect(screen.getByText("Food")).toBeInTheDocument();
     expect(screen.getByText("Groceries")).toBeInTheDocument();
@@ -141,6 +143,25 @@ describe("BudgetMonthView", () => {
     expect(screen.getByRole("cell", { name: "Net" })).toBeInTheDocument();
     // Parent categories are not editable; leaf rows expose budget inputs.
     expect(screen.getAllByRole("textbox")).toHaveLength(2);
+  });
+
+  it("hides the follow-months checkbox on past months", () => {
+    renderMonthView();
+
+    expect(
+      screen.getByRole("checkbox", {
+        name: "Apply budget changes to following months",
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Previous month" }));
+
+    expect(screen.getByText("Feb 2025")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("checkbox", {
+        name: "Apply budget changes to following months",
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows loading and error states", () => {

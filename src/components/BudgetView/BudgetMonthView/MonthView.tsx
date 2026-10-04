@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { Alert, Box, Loader, Stack, Text } from "@mantine/core";
 import { ViewShell } from "../../shared/ViewShell.js";
+import {
+  compareYearMonth,
+  currentYearMonth,
+} from "../../../utils/monthRange.js";
 import { useSelectedYearMonth } from "./useSelectedYearMonth.js";
 import { useBudgetMonthData } from "./useBudgetMonthData.js";
 import { MonthNavigationBar } from "./MonthNavigationBar.js";
@@ -10,6 +14,10 @@ import { MonthTotalsTable } from "./MonthTotalsTable.js";
 export default function BudgetMonthView() {
   const { selectedMonth, goPrev, goNext, goToToday } = useSelectedYearMonth();
   const [applyToFollowingMonths, setApplyToFollowingMonths] = useState(false);
+  const canApplyToFollowingMonths =
+    compareYearMonth(selectedMonth, currentYearMonth()) >= 0;
+  const overwriteFutureMonths =
+    canApplyToFollowingMonths && applyToFollowingMonths;
   const {
     segments,
     budgetByCategoryId,
@@ -46,6 +54,7 @@ export default function BudgetMonthView() {
           onPrev={goPrev}
           onNext={goNext}
           onGoToToday={goToToday}
+          showApplyToFollowingMonths={canApplyToFollowingMonths}
           applyToFollowingMonths={applyToFollowingMonths}
           onApplyToFollowingMonthsChange={setApplyToFollowingMonths}
         />
@@ -63,7 +72,7 @@ export default function BudgetMonthView() {
             selectedMonth={selectedMonth}
             budgetByCategoryId={budgetByCategoryId}
             actualByCategoryId={actualByCategoryId}
-            overwriteFutureMonths={applyToFollowingMonths}
+            overwriteFutureMonths={overwriteFutureMonths}
           />
         ))}
 
