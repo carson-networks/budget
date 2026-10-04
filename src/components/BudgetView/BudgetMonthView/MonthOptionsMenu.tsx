@@ -1,9 +1,6 @@
 import { ActionIcon, Menu } from "@mantine/core";
 import { IconAdjustmentsHorizontal, IconCheck } from "@tabler/icons-react";
 
-export const APPLY_TO_FOLLOWING_MONTHS_LABEL =
-  "Apply budget changes to following months";
-
 type MonthOptionsMenuProps = {
   /** When false (past months), the follow-months option is disabled. */
   canApplyToFollowingMonths: boolean;
@@ -49,7 +46,7 @@ export function MonthOptionsMenu({
             onApplyToFollowingMonthsChange(!applyToFollowingMonths);
           }}
         >
-          {APPLY_TO_FOLLOWING_MONTHS_LABEL}
+          Apply budget changes to following months
         </Menu.Item>
       </Menu.Dropdown>
     </Menu>

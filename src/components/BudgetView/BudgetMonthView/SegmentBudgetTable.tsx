@@ -13,7 +13,6 @@ import { useSetBudget } from "../../../hooks/useBudgets.js";
 import type { CategorySegment } from "../../Category/CategoriesView/categorySegments.js";
 import { displayCategoryKind } from "../../Category/CategoriesView/categoryDisplay.js";
 import type { YearMonth } from "../../../utils/monthRange.js";
-import { BUDGET_COL } from "../budgetTableColumns.js";
 import { categoryBudgetDifference } from "../budgetRollups.js";
 import { BudgetCellInput } from "../shared/BudgetCellInput.js";
 
@@ -124,16 +123,14 @@ export function SegmentBudgetTable({
       >
         <Table.Thead>
           <Table.Tr>
-            <Table.Th style={{ width: BUDGET_COL.name }}>Name</Table.Th>
-            <Table.Th style={{ width: BUDGET_COL.budgeted, textAlign: "right" }}>
+            <Table.Th style={{ width: "28%" }}>Name</Table.Th>
+            <Table.Th style={{ width: "24%", textAlign: "right" }}>
               Budgeted
             </Table.Th>
-            <Table.Th style={{ width: BUDGET_COL.actual, textAlign: "right" }}>
+            <Table.Th style={{ width: "24%", textAlign: "right" }}>
               Actual
             </Table.Th>
-            <Table.Th
-              style={{ width: BUDGET_COL.difference, textAlign: "right" }}
-            >
+            <Table.Th style={{ width: "24%", textAlign: "right" }}>
               Difference
             </Table.Th>
           </Table.Tr>
