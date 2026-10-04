@@ -11,7 +11,11 @@ import { MonthNavigationBar } from "./MonthNavigationBar.js";
 import { SegmentBudgetTable } from "./SegmentBudgetTable.js";
 import { MonthTotalsTable } from "./MonthTotalsTable.js";
 
-export default function BudgetMonthView() {
+export default function BudgetMonthView({
+  embedded = false,
+}: {
+  embedded?: boolean;
+}) {
   const { selectedMonth, goPrev, goNext, goToToday } = useSelectedYearMonth();
   const [applyToFollowingMonths, setApplyToFollowingMonths] = useState(false);
   const canApplyToFollowingMonths =
@@ -46,38 +50,37 @@ export default function BudgetMonthView() {
     );
   }
 
-  return (
-    <ViewShell title="Budget">
-      <Box style={{ flex: 1, minHeight: 0, overflow: "auto", paddingRight: 2 }}>
-        <MonthNavigationBar
+  const content = (
+    <Box style={{ flex: 1, minHeight: 0, overflow: "auto", paddingRight: 2 }}>
+      <MonthNavigationBar
+        selectedMonth={selectedMonth}
+        onPrev={goPrev}
+        onNext={goNext}
+        onGoToToday={goToToday}
+        canApplyToFollowingMonths={canApplyToFollowingMonths}
+        applyToFollowingMonths={applyToFollowingMonths}
+        onApplyToFollowingMonthsChange={setApplyToFollowingMonths}
+      />
+
+      {segments.length === 0 ? (
+        <Text size="sm" c="dimmed">
+          No categories yet.
+        </Text>
+      ) : null}
+
+      {segments.map((segment) => (
+        <SegmentBudgetTable
+          key={segment.root.id}
+          segment={segment}
           selectedMonth={selectedMonth}
-          onPrev={goPrev}
-          onNext={goNext}
-          onGoToToday={goToToday}
-          canApplyToFollowingMonths={canApplyToFollowingMonths}
-          applyToFollowingMonths={applyToFollowingMonths}
-          onApplyToFollowingMonthsChange={setApplyToFollowingMonths}
+          budgetByCategoryId={budgetByCategoryId}
+          actualByCategoryId={actualByCategoryId}
+          overwriteFutureMonths={overwriteFutureMonths}
         />
+      ))}
 
-        {segments.length === 0 ? (
-          <Text size="sm" c="dimmed">
-            No categories yet.
-          </Text>
-        ) : null}
-
-        {segments.map((segment) => (
-          <SegmentBudgetTable
-            key={segment.root.id}
-            segment={segment}
-            selectedMonth={selectedMonth}
-            budgetByCategoryId={budgetByCategoryId}
-            actualByCategoryId={actualByCategoryId}
-            overwriteFutureMonths={overwriteFutureMonths}
-          />
-        ))}
-
-        <MonthTotalsTable monthSummary={monthSummary} />
-      </Box>
-    </ViewShell>
+      <MonthTotalsTable monthSummary={monthSummary} />
+    </Box>
   );
+  return embedded ? content : <ViewShell title="Budget">{content}</ViewShell>;
 }

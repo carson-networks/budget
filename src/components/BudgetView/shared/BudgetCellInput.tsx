@@ -14,6 +14,7 @@ type BudgetCellInputProps = {
   disabled?: boolean;
   /** Font weight for the input (e.g. parent row). */
   fw?: number;
+  label?: string;
 };
 
 function parseToNumber(amountStr: string | undefined): number | "" {
@@ -33,6 +34,7 @@ export function BudgetCellInput({
   saving = false,
   disabled,
   fw = 400,
+  label,
 }: BudgetCellInputProps) {
   const [val, setVal] = useState<number | string | "">(() =>
     parseToNumber(amountStr),
@@ -64,6 +66,7 @@ export function BudgetCellInput({
 
   return (
     <NumberInput
+      aria-label={label}
       min={0}
       clampBehavior="strict"
       allowNegative={false}
