@@ -1,6 +1,5 @@
 import { useSetBudget } from "../../../hooks/useBudgets.js";
 import {
-  compareYearMonth,
   formatYearMonthLabel,
   type YearMonth,
 } from "../../../utils/monthRange.js";
@@ -10,7 +9,6 @@ import type { Category } from "../../../models";
 type Props = {
   category: Category;
   month: YearMonth;
-  nowYm: YearMonth;
   amount: string | undefined;
   applyToFutureMonths: boolean;
   disabled?: boolean;
@@ -19,7 +17,6 @@ type Props = {
 export function MatrixBudgetInput({
   category,
   month,
-  nowYm,
   amount,
   applyToFutureMonths,
   disabled,
@@ -36,8 +33,7 @@ export function MatrixBudgetInput({
           categoryId: category.id,
           ...month,
           amount: value,
-          overwriteFutureMonths:
-            applyToFutureMonths && compareYearMonth(month, nowYm) >= 0,
+          overwriteFutureMonths: applyToFutureMonths,
         })
       }
     />

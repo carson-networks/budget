@@ -38,14 +38,12 @@ describe("MatrixBudgetInput", () => {
         <QueryClientProvider client={client}>
           <MatrixBudgetInput
             category={category}
-            nowYm={nowYm}
             month={nowYm}
             amount="400"
             applyToFutureMonths={false}
           />
           <MatrixBudgetInput
             category={category}
-            nowYm={nowYm}
             month={{ year: 2025, month: 4 }}
             amount="400"
             applyToFutureMonths={false}

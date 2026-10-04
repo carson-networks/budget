@@ -43,7 +43,6 @@ export function MatrixDataCell({
         <MatrixBudgetInput
           category={category}
           month={month}
-          nowYm={nowYm}
           amount={budget}
           applyToFutureMonths={applyToFutureMonths}
           disabled={isRefreshing}

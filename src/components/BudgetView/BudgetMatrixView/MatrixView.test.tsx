@@ -195,14 +195,14 @@ describe("BudgetMatrixView", () => {
     });
   });
 
-  it("applies to future months for current/future cells while keeping past edits local", async () => {
+  it("applies to every following month when checked, including edits to past months", async () => {
     const user = userEvent.setup();
     renderMatrix();
     await user.click(
       screen.getByRole("checkbox", { name: "Apply changes to future months" }),
     );
     for (const [month, label, propagate] of [
-      [2, "Feb", false],
+      [2, "Feb", true],
       [3, "Mar", true],
       [4, "Apr", true],
     ] as const) {
