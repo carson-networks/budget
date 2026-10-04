@@ -129,10 +129,8 @@ describe("BudgetMonthView", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Mar 2025")).toBeInTheDocument();
     expect(
-      screen.getByRole("checkbox", {
-        name: "Apply budget changes to following months",
-      }),
-    ).not.toBeChecked();
+      screen.getByRole("button", { name: "Month options" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Food")).toBeInTheDocument();
     expect(screen.getByText("Groceries")).toBeInTheDocument();
     expect(screen.getByText("Salary")).toBeInTheDocument();
@@ -145,23 +143,19 @@ describe("BudgetMonthView", () => {
     expect(screen.getAllByRole("textbox")).toHaveLength(2);
   });
 
-  it("hides the follow-months checkbox on past months", () => {
+  it("keeps the month options control when navigating to a past month", () => {
     renderMonthView();
 
     expect(
-      screen.getByRole("checkbox", {
-        name: "Apply budget changes to following months",
-      }),
+      screen.getByRole("button", { name: "Month options" }),
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Previous month" }));
 
     expect(screen.getByText("Feb 2025")).toBeInTheDocument();
     expect(
-      screen.queryByRole("checkbox", {
-        name: "Apply budget changes to following months",
-      }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: "Month options" }),
+    ).toBeInTheDocument();
   });
 
   it("shows loading and error states", () => {

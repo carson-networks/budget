@@ -2,26 +2,34 @@ import {
   ActionIcon,
   Box,
   Button,
-  Checkbox,
   Group,
+  Menu,
   Paper,
   Text,
   useComputedColorScheme,
   useMantineTheme,
 } from "@mantine/core";
-import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
+import {
+  IconAdjustmentsHorizontal,
+  IconCheck,
+  IconChevronLeft,
+  IconChevronRight,
+} from "@tabler/icons-react";
 import {
   formatYearMonthLabel,
   type YearMonth,
 } from "../../../utils/monthRange.js";
+
+export const APPLY_TO_FOLLOWING_MONTHS_LABEL =
+  "Apply budget changes to following months";
 
 type MonthNavigationBarProps = {
   selectedMonth: YearMonth;
   onPrev: () => void;
   onNext: () => void;
   onGoToToday: () => void;
-  /** Shown only for the current month and future months. */
-  showApplyToFollowingMonths: boolean;
+  /** When false (past months), the follow-months option is disabled. */
+  canApplyToFollowingMonths: boolean;
   applyToFollowingMonths: boolean;
   onApplyToFollowingMonthsChange: (checked: boolean) => void;
 };
@@ -31,7 +39,7 @@ export function MonthNavigationBar({
   onPrev,
   onNext,
   onGoToToday,
-  showApplyToFollowingMonths,
+  canApplyToFollowingMonths,
   applyToFollowingMonths,
   onApplyToFollowingMonthsChange,
 }: MonthNavigationBarProps) {
@@ -67,16 +75,38 @@ export function MonthNavigationBar({
               minWidth: 0,
             }}
           >
-            {showApplyToFollowingMonths ? (
-              <Checkbox
-                label="Apply budget changes to following months"
-                checked={applyToFollowingMonths}
-                onChange={(e) =>
-                  onApplyToFollowingMonthsChange(e.currentTarget.checked)
-                }
-                size="sm"
-              />
-            ) : null}
+            <Menu position="bottom-start" shadow="md" width={280} withinPortal>
+              <Menu.Target>
+                <ActionIcon
+                  variant="subtle"
+                  color="gray"
+                  size="lg"
+                  aria-label="Month options"
+                  aria-haspopup="menu"
+                >
+                  <IconAdjustmentsHorizontal size={20} />
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item
+                  disabled={!canApplyToFollowingMonths}
+                  leftSection={
+                    applyToFollowingMonths && canApplyToFollowingMonths ? (
+                      <IconCheck size={14} aria-hidden />
+                    ) : (
+                      <span style={{ width: 14 }} aria-hidden />
+                    )
+                  }
+                  closeMenuOnClick={false}
+                  onClick={() => {
+                    if (!canApplyToFollowingMonths) return;
+                    onApplyToFollowingMonthsChange(!applyToFollowingMonths);
+                  }}
+                >
+                  {APPLY_TO_FOLLOWING_MONTHS_LABEL}
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
           </Box>
           <Group gap="md" wrap="nowrap" justify="center">
             <ActionIcon

@@ -54,7 +54,7 @@ export default function BudgetMonthView() {
           onPrev={goPrev}
           onNext={goNext}
           onGoToToday={goToToday}
-          showApplyToFollowingMonths={canApplyToFollowingMonths}
+          canApplyToFollowingMonths={canApplyToFollowingMonths}
           applyToFollowingMonths={applyToFollowingMonths}
           onApplyToFollowingMonthsChange={setApplyToFollowingMonths}
         />
