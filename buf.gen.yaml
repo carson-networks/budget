@@ -1,7 +1,8 @@
 version: v2
 inputs:
   - git_repo: https://github.com/carson-networks/budget-server.git
-    tag: v0.9.0
+    # Account-filtered transactions API; pinned until a release includes it.
+    ref: 8025e0880cfdf7a25521485e58efcc0193df9434
     subdir: proto
 plugins:
   - remote: buf.build/bufbuild/es:v2.2.3
