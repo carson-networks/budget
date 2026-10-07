@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { transactionClient } from "../connectRPC/connect.js";
@@ -11,7 +11,7 @@ export const TRANSACTIONS_PAGE_SIZE = 25;
 
 export type TransactionsPageQueryKey = readonly [
   "transactions",
-  { page: number; pageSize: number },
+  { page: number; pageSize: number; accountId?: string },
 ];
 
 /**
@@ -21,43 +21,70 @@ export type TransactionsPageQueryKey = readonly [
  */
 export function useAllTransactions(
   pageSize: number = TRANSACTIONS_PAGE_SIZE,
+  { accountId, enabled = true }: { accountId?: string; enabled?: boolean } = {},
 ) {
-  const [page, setPage] = useState(1);
-  /** Freeze the list window across pages (from first response's next_cursor). */
-  const maxCreationTimeRef = useRef<Timestamp | undefined>(undefined);
+  const [pagination, setPagination] = useState({
+    accountId,
+    pageSize,
+    page: 1,
+  });
+  const scopeChanged =
+    pagination.accountId !== accountId || pagination.pageSize !== pageSize;
+  const page = scopeChanged ? 1 : pagination.page;
+  if (scopeChanged) setPagination({ accountId, pageSize, page: 1 });
+  const setPage = (page: number) =>
+    setPagination({ accountId, pageSize, page });
+
+  /** Keep each filter's frozen window separate, including concurrent requests. */
+  const maxCreationTimes = useRef(new Map<string, Timestamp>());
+  const scope = JSON.stringify([accountId, pageSize]);
 
   const queryKey: TransactionsPageQueryKey = [
     "transactions",
-    { page, pageSize },
+    { page, pageSize, ...(accountId === undefined ? {} : { accountId }) },
   ];
 
   const query = useQuery<ListTransactionsResponse, Error>({
     queryKey,
+    enabled,
     queryFn: async () => {
       try {
         const response = await transactionClient.listTransactions({
+          ...(accountId === undefined ? {} : { accountId }),
           cursor: {
             position: (page - 1) * pageSize,
             limit: pageSize,
-            maxCreationTime: maxCreationTimeRef.current,
+            maxCreationTime: maxCreationTimes.current.get(scope),
           },
         });
         if (
-          maxCreationTimeRef.current === undefined &&
+          !maxCreationTimes.current.has(scope) &&
           response.nextCursor?.maxCreationTime !== undefined
         ) {
-          maxCreationTimeRef.current = response.nextCursor.maxCreationTime;
+          maxCreationTimes.current.set(
+            scope,
+            response.nextCursor.maxCreationTime,
+          );
         }
         return response;
       } catch (e) {
         throw new Error(connectErrorMessage(e));
       }
     },
-    placeholderData: keepPreviousData,
+    placeholderData: (previousData, previousQuery) => {
+      const previousScope = previousQuery?.queryKey[1] as
+        | TransactionsPageQueryKey[1]
+        | undefined;
+      return previousScope?.accountId === accountId &&
+        previousScope?.pageSize === pageSize
+        ? previousData
+        : undefined;
+    },
   });
 
-  const transactions: Transaction[] =
-    (query.data?.transactions ?? []).filter(Boolean).map(mapTransaction);
+  const transactions: Transaction[] = (query.data?.transactions ?? [])
+    .filter(Boolean)
+    .map(mapTransaction);
 
   const totalCount = query.data?.totalCount ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize) || 1);
