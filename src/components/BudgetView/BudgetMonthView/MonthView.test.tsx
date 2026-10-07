@@ -124,9 +124,6 @@ describe("BudgetMonthView", () => {
   it("renders the selected month, category rows, and month totals", () => {
     renderMonthView();
 
-    expect(
-      screen.getByRole("heading", { name: "Budget", level: 4 }),
-    ).toBeInTheDocument();
     expect(screen.getByText("Mar 2025")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Month options" }),

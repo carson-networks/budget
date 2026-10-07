@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Alert, Box, Loader, Stack, Text } from "@mantine/core";
-import { ViewShell } from "../../shared/ViewShell.js";
 import {
   compareYearMonth,
   currentYearMonth,
@@ -47,37 +46,35 @@ export default function BudgetMonthView() {
   }
 
   return (
-    <ViewShell title="Budget">
-      <Box style={{ flex: 1, minHeight: 0, overflow: "auto", paddingRight: 2 }}>
-        <MonthNavigationBar
+    <Box style={{ flex: 1, minHeight: 0, overflow: "auto", paddingRight: 2 }}>
+      <MonthNavigationBar
+        selectedMonth={selectedMonth}
+        onPrev={goPrev}
+        onNext={goNext}
+        onGoToToday={goToToday}
+        canApplyToFollowingMonths={canApplyToFollowingMonths}
+        applyToFollowingMonths={applyToFollowingMonths}
+        onApplyToFollowingMonthsChange={setApplyToFollowingMonths}
+      />
+
+      {segments.length === 0 ? (
+        <Text size="sm" c="dimmed">
+          No categories yet.
+        </Text>
+      ) : null}
+
+      {segments.map((segment) => (
+        <SegmentBudgetTable
+          key={segment.root.id}
+          segment={segment}
           selectedMonth={selectedMonth}
-          onPrev={goPrev}
-          onNext={goNext}
-          onGoToToday={goToToday}
-          canApplyToFollowingMonths={canApplyToFollowingMonths}
-          applyToFollowingMonths={applyToFollowingMonths}
-          onApplyToFollowingMonthsChange={setApplyToFollowingMonths}
+          budgetByCategoryId={budgetByCategoryId}
+          actualByCategoryId={actualByCategoryId}
+          overwriteFutureMonths={overwriteFutureMonths}
         />
+      ))}
 
-        {segments.length === 0 ? (
-          <Text size="sm" c="dimmed">
-            No categories yet.
-          </Text>
-        ) : null}
-
-        {segments.map((segment) => (
-          <SegmentBudgetTable
-            key={segment.root.id}
-            segment={segment}
-            selectedMonth={selectedMonth}
-            budgetByCategoryId={budgetByCategoryId}
-            actualByCategoryId={actualByCategoryId}
-            overwriteFutureMonths={overwriteFutureMonths}
-          />
-        ))}
-
-        <MonthTotalsTable monthSummary={monthSummary} />
-      </Box>
-    </ViewShell>
+      <MonthTotalsTable monthSummary={monthSummary} />
+    </Box>
   );
 }

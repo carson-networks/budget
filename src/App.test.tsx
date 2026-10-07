@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useShellStore } from "./stores/shell/useShellStore.js";
@@ -76,10 +76,25 @@ describe("App routes", () => {
     ).toBeInTheDocument();
   });
 
-  it("serves the budget month view at /budget", () => {
+  it("serves the budget matrix at /budget and can switch to the month view", () => {
     renderApp("/budget");
     expect(
       screen.getByRole("heading", { name: "Budget", level: 4 }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("table", { name: "Budget matrix" }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "Month" }));
+    expect(screen.getByText("Month totals")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("table", { name: "Budget matrix" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole("heading", { name: "Budget", level: 4 }),
+    ).toHaveLength(1);
+    fireEvent.click(screen.getByRole("radio", { name: "Matrix" }));
+    expect(
+      screen.getByRole("table", { name: "Budget matrix" }),
     ).toBeInTheDocument();
   });
 
