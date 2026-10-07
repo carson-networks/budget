@@ -1,4 +1,5 @@
 import { Box, Table, rem } from "@mantine/core";
+import type { ReactNode } from "react";
 import { formatSignedCurrency, type Transaction } from "../../models";
 
 /** Matches Mantine `ActionIcon` `size="md"` height used in Accounts settings column. */
@@ -9,6 +10,7 @@ type TransactionsTableProps = {
   accountNameById: ReadonlyMap<string, string>;
   categoryNameById: ReadonlyMap<string, string>;
   onRowOpen?: (transaction: Transaction) => void;
+  renderCategory?: (transaction: Transaction) => ReactNode;
 };
 
 const COLUMN_WIDTHS = {
@@ -25,6 +27,7 @@ export function TransactionsTable({
   accountNameById,
   categoryNameById,
   onRowOpen,
+  renderCategory,
 }: TransactionsTableProps) {
   return (
     <Table.ScrollContainer minWidth={rem(880)}>
@@ -104,8 +107,15 @@ export function TransactionsTable({
                 <Table.Td style={{ verticalAlign: "middle" }}>
                   {accountName}
                 </Table.Td>
-                <Table.Td style={{ verticalAlign: "middle" }}>
-                  {categoryName}
+                <Table.Td
+                  style={{ verticalAlign: "middle" }}
+                  onClick={
+                    renderCategory
+                      ? (event) => event.stopPropagation()
+                      : undefined
+                  }
+                >
+                  {renderCategory ? renderCategory(txn) : categoryName}
                 </Table.Td>
                 <Table.Td fw={500} style={{ verticalAlign: "middle" }}>
                   {formatSignedCurrency(txn.amount)}

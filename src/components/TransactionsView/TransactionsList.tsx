@@ -1,4 +1,5 @@
 import { Box, Pagination, Paper, Text } from "@mantine/core";
+import type { ReactNode } from "react";
 import type { Transaction } from "../../models";
 import { TRANSACTIONS_PAGE_SIZE } from "../../hooks/useTransactions.js";
 import { TransactionsTable } from "./TransactionsTable.js";
@@ -20,6 +21,7 @@ export type TransactionsListProps = {
   categoryNameById: ReadonlyMap<string, string>;
   /** Optional row click (e.g. open edit). Omitted when no detail handler exists yet. */
   onRowOpen?: (transaction: Transaction) => void;
+  renderCategory?: (transaction: Transaction) => ReactNode;
   pageSize?: number;
   emptyMessage?: string;
 };
@@ -36,6 +38,7 @@ export function TransactionsList({
   accountNameById,
   categoryNameById,
   onRowOpen,
+  renderCategory,
   pageSize = DEFAULT_TRANSACTIONS_PAGE_SIZE,
   emptyMessage = "No transactions yet.",
 }: TransactionsListProps) {
@@ -67,6 +70,7 @@ export function TransactionsList({
             accountNameById={accountNameById}
             categoryNameById={categoryNameById}
             onRowOpen={onRowOpen}
+            renderCategory={renderCategory}
           />
         )}
       </Box>
