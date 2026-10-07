@@ -9,6 +9,7 @@ import {
   type ListTransactionsResponse,
 } from "../connectRPC/types.js";
 import { useUpdateTransactionCategory } from "./useUpdateTransactionCategory.js";
+import { transactionClient } from "../connectRPC/connect.js";
 
 const { updateCategory } = vi.hoisted(() => ({ updateCategory: vi.fn() }));
 vi.mock("../connectRPC/connect.js", () => ({
@@ -67,6 +68,22 @@ function setup() {
 describe("useUpdateTransactionCategory", () => {
   beforeEach(() => {
     updateCategory.mockReset();
+    Object.assign(transactionClient, {
+      updateTransactionCategory: updateCategory,
+    });
+  });
+
+  it("reports an unsupported API and rolls back when the generated client lacks the update RPC", async () => {
+    Reflect.deleteProperty(transactionClient, "updateTransactionCategory");
+    const { client, existing, result } = setup();
+    act(() => result.current.mutate(input));
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error?.message).toBe(
+      "Changing transaction categories is not supported by the server yet.",
+    );
+    expect(client.getQueryData(pageKey(1))).toEqual(existing);
+    expect(client.getQueryData(pageKey(2))).toEqual(existing);
+    expect(updateCategory).not.toHaveBeenCalled();
   });
 
   it("optimistically changes matching transactions in every cached page and preserves other data", async () => {
