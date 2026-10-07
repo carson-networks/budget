@@ -103,8 +103,6 @@ export type ListTransactionsRequest = Message<"transaction.v1.ListTransactionsRe
   cursor?: ListTransactionsCursor;
 
   /**
-   * When set, both the page and total_count are scoped to this account.
-   *
    * @generated from field: optional string account_id = 2;
    */
   accountId?: string;
