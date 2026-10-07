@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Alert, Box, Loader, Stack, Text } from "@mantine/core";
-import { ViewShell } from "../../shared/ViewShell.js";
 import {
   compareYearMonth,
   currentYearMonth,
@@ -11,11 +10,7 @@ import { MonthNavigationBar } from "./MonthNavigationBar.js";
 import { SegmentBudgetTable } from "./SegmentBudgetTable.js";
 import { MonthTotalsTable } from "./MonthTotalsTable.js";
 
-export default function BudgetMonthView({
-  embedded = false,
-}: {
-  embedded?: boolean;
-}) {
+export default function BudgetMonthView() {
   const { selectedMonth, goPrev, goNext, goToToday } = useSelectedYearMonth();
   const [applyToFollowingMonths, setApplyToFollowingMonths] = useState(false);
   const canApplyToFollowingMonths =
@@ -50,7 +45,7 @@ export default function BudgetMonthView({
     );
   }
 
-  const content = (
+  return (
     <Box style={{ flex: 1, minHeight: 0, overflow: "auto", paddingRight: 2 }}>
       <MonthNavigationBar
         selectedMonth={selectedMonth}
@@ -82,5 +77,4 @@ export default function BudgetMonthView({
       <MonthTotalsTable monthSummary={monthSummary} />
     </Box>
   );
-  return embedded ? content : <ViewShell title="Budget">{content}</ViewShell>;
 }

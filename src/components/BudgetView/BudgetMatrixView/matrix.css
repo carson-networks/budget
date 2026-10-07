@@ -1,32 +1,7 @@
-.budget-matrix-toolbar {
-  border-bottom: 1px solid var(--mantine-color-default-border);
-  flex-shrink: 0;
-}
-
-.budget-matrix {
-  --matrix-strip: var(--mantine-color-gray-0);
-  --matrix-current: var(--mantine-color-brand-0);
-  border-collapse: separate;
-  border-spacing: 0;
-  table-layout: fixed;
-  font-size: var(--mantine-font-size-sm);
-  font-variant-numeric: tabular-nums;
-}
-
-[data-mantine-color-scheme="dark"] .budget-matrix {
-  --matrix-strip: var(--mantine-color-dark-6);
-  --matrix-current: var(--mantine-color-brand-9);
-}
-
 .budget-matrix th,
 .budget-matrix td {
-  box-sizing: border-box;
-  padding: 8px;
-  height: 42px;
   text-align: right;
   vertical-align: middle;
-  border-right: 1px solid var(--mantine-color-default-border);
-  border-bottom: 1px solid var(--mantine-color-default-border);
 }
 
 .budget-matrix tr > th:first-child {
@@ -34,48 +9,34 @@
   left: 0;
   z-index: 1;
   text-align: left;
-  padding: 8px 12px;
   background: var(--mantine-color-body);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.budget-matrix thead th {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: var(--matrix-strip);
-  font-size: var(--mantine-font-size-xs);
-  white-space: nowrap;
+.budget-matrix thead th:first-child {
+  z-index: 4;
 }
 
-.budget-matrix thead th:first-child {
-  z-index: 3;
-}
 .budget-matrix [data-root] > *,
 .budget-matrix tfoot tr > *,
-.budget-matrix thead th:first-child {
-  background: var(--matrix-strip);
+.budget-matrix thead th {
+  background: var(--table-striped-color);
 }
+
 .budget-matrix [data-current] {
-  background: var(--matrix-current);
+  background: light-dark(
+    var(--mantine-color-brand-0),
+    var(--mantine-color-brand-9)
+  );
 }
-.budget-matrix thead [data-current] {
-  font-weight: 700;
-}
+
 .budget-matrix [data-year-start] {
   border-left: 3px solid var(--mantine-color-dimmed);
 }
+
 .budget-matrix tfoot tr > * {
-  border-top: 2px solid var(--mantine-color-default-border);
+  border-top: 2px solid var(--table-border-color);
   font-weight: 700;
-}
-.budget-matrix-child {
-  padding-left: 24px;
-  border-left: 2px solid var(--mantine-color-brand-3);
-  font-weight: 400;
-}
-.budget-matrix-empty {
-  color: var(--mantine-color-dimmed);
 }

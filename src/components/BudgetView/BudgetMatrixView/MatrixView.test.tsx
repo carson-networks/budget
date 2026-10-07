@@ -69,6 +69,7 @@ function mockData(
     budgetsError?: Error;
     totalsError?: Error;
     refreshing?: boolean;
+    saving?: boolean;
     empty?: boolean;
   } = {},
 ) {
@@ -105,7 +106,16 @@ function mockData(
   } as ReturnType<typeof useTransactionTotalsForRange>);
   vi.mocked(useSetBudget).mockReturnValue({
     mutateAsync,
-    isPending: false,
+    isPending: options.saving ?? false,
+    variables: options.saving
+      ? {
+          categoryId: "groceries",
+          year: 2025,
+          month: 3,
+          amount: "450",
+          overwriteFutureMonths: false,
+        }
+      : undefined,
   } as unknown as ReturnType<typeof useSetBudget>);
 }
 
@@ -234,6 +244,50 @@ describe("BudgetMatrixView", () => {
     await user.clear(input);
     await user.type(input, "450{Enter}");
     expect(input).toHaveValue("$400");
+  });
+
+  it("only disables the matching category and month while saving", () => {
+    mockData({ saving: true });
+    const { rerender } = renderMatrix();
+    const march = screen.getByRole("textbox", {
+      name: "Groceries budget for Mar 2025",
+    });
+    expect(march).toBeDisabled();
+    expect(
+      screen.getByRole("textbox", { name: "Groceries budget for Apr 2025" }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole("textbox", { name: "Salary budget for Mar 2025" }),
+    ).toBeEnabled();
+    mockData();
+    rerender(
+      <MantineProvider theme={theme}>
+        <BudgetMatrixView />
+      </MantineProvider>,
+    );
+    expect(march).toBeEnabled();
+  });
+
+  it("saves only the edited month after unchecking future propagation", async () => {
+    const user = userEvent.setup();
+    renderMatrix();
+    const checkbox = screen.getByRole("checkbox", {
+      name: "Apply changes to future months",
+    });
+    await user.click(checkbox);
+    await user.click(checkbox);
+    const input = screen.getByRole("textbox", {
+      name: "Groceries budget for Feb 2025",
+    });
+    await user.clear(input);
+    await user.type(input, "450{Enter}");
+    expect(mutateAsync).toHaveBeenLastCalledWith({
+      categoryId: "groceries",
+      year: 2025,
+      month: 2,
+      amount: "450",
+      overwriteFutureMonths: false,
+    });
   });
 
   it("keeps the matrix visible and prevents edits while range data is stale", () => {

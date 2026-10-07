@@ -3,14 +3,14 @@ import { Alert, Box, Loader, Paper, Stack, Text } from "@mantine/core";
 import { useBudgetMatrixMonthWindow } from "./useBudgetMatrixMonthWindow.js";
 import { useBudgetMatrixData } from "./useBudgetMatrixData.js";
 import { useExtendableMonthRange } from "./useExtendableMonthRange.js";
-import type { MatrixValueMode } from "./budgetMatrix.js";
+import { MatrixValueMode } from "./budgetMatrix.js";
 import { MatrixToolbar } from "./MatrixToolbar.js";
 import { MatrixTable } from "./MatrixTable.js";
 import "./matrix.css";
 
 export default function BudgetMatrixView() {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [valueMode, setValueMode] = useState<MatrixValueMode>("budgeted");
+  const [valueMode, setValueMode] = useState(MatrixValueMode.Budgeted);
   const [applyToFutureMonths, setApplyToFutureMonths] = useState(false);
   const window = useBudgetMatrixMonthWindow();
   const data = useBudgetMatrixData(window.months);

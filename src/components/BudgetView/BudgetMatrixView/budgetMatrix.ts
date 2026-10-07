@@ -11,7 +11,11 @@ export const MAX_TOTAL_MONTHS = 500;
 export const MONTH_COLUMN_PX = 100;
 export const CATEGORY_COLUMN_PX = 220;
 
-export type MatrixValueMode = "budgeted" | "actual" | "net";
+export enum MatrixValueMode {
+  Budgeted = "budgeted",
+  Actual = "actual",
+  Net = "net",
+}
 
 export function matrixCellNumber(
   mode: MatrixValueMode,
@@ -21,8 +25,8 @@ export function matrixCellNumber(
 ): number | undefined {
   const parsed = budgetRaw === undefined ? NaN : Number(budgetRaw);
   const budget = Number.isFinite(parsed) ? parsed : undefined;
-  if (mode === "budgeted") return budget;
-  if (mode === "actual") return actual;
+  if (mode === MatrixValueMode.Budgeted) return budget;
+  if (mode === MatrixValueMode.Actual) return actual;
   return categoryBudgetDifference(kind, budget, actual);
 }
 
@@ -30,8 +34,8 @@ export function totalForMode(
   summary: BudgetRollupSummary,
   mode: MatrixValueMode,
 ): number {
-  if (mode === "budgeted") return summary.net.budget;
-  if (mode === "actual") return summary.net.actual;
+  if (mode === MatrixValueMode.Budgeted) return summary.net.budget;
+  if (mode === MatrixValueMode.Actual) return summary.net.actual;
   return summary.net.difference;
 }
 

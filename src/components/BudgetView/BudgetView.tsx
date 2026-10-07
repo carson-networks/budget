@@ -30,7 +30,7 @@ export default function BudgetView() {
           ]}
         />
       </Group>
-      {mode === "matrix" ? <BudgetMatrixView /> : <BudgetMonthView embedded />}
+      {mode === "matrix" ? <BudgetMatrixView /> : <BudgetMonthView />}
     </Box>
   );
 }
