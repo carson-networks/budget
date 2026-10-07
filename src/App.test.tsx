@@ -13,6 +13,13 @@ vi.mock("./hooks/useCategories.js", () => ({
     isError: false,
     error: null,
   }),
+  useUpdateCategory: () => ({
+    mutate: vi.fn(),
+    reset: vi.fn(),
+    isPending: false,
+    isError: false,
+    error: null,
+  }),
 }));
 
 vi.mock("./hooks/useBudgets.js", () => ({
