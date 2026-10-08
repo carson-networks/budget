@@ -8,25 +8,16 @@ export type UpdateTransactionCategoryInput = {
   categoryId: string;
 };
 
-// TODO(server): Regenerate the client when UpdateTransactionCategory is available.
-const categoryUpdateClient: typeof transactionClient & {
-  updateTransactionCategory?: (
-    body: UpdateTransactionCategoryInput,
-  ) => Promise<unknown>;
-} = transactionClient;
-
 export function useUpdateTransactionCategory() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (body: UpdateTransactionCategoryInput) => {
       try {
-        if (!categoryUpdateClient.updateTransactionCategory) {
-          throw new Error(
-            "Changing transaction categories is not supported by the server yet.",
-          );
-        }
-        await categoryUpdateClient.updateTransactionCategory(body);
+        await transactionClient.updateTransaction({
+          id: body.transactionId,
+          categoryId: body.categoryId,
+        });
       } catch (error) {
         throw new Error(connectErrorMessage(error));
       }

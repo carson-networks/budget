@@ -9,16 +9,20 @@ import {
   type ListTransactionsResponse,
 } from "../connectRPC/types.js";
 import { useUpdateTransactionCategory } from "./useUpdateTransactionCategory.js";
-import { transactionClient } from "../connectRPC/connect.js";
 
 const { updateCategory } = vi.hoisted(() => ({ updateCategory: vi.fn() }));
 vi.mock("../connectRPC/connect.js", () => ({
-  transactionClient: { updateTransactionCategory: updateCategory },
+  transactionClient: { updateTransaction: updateCategory },
 }));
 
 const input = { transactionId: "txn-1", categoryId: "new-category" };
 const pageKey = (page: number) => ["transactions", { page, pageSize: 25 }];
 const totalsKey = ["transactionTotals", 2026, 1, 2026, 12];
+const accountPageKey = [
+  "transactions",
+  { page: 1, pageSize: 25, accountId: "acc-1" },
+];
+const rpcInput = { id: input.transactionId, categoryId: input.categoryId };
 
 function setup() {
   const client = new QueryClient({
@@ -47,6 +51,7 @@ function setup() {
   });
   client.setQueryData(pageKey(1), existing);
   client.setQueryData(pageKey(2), existing);
+  client.setQueryData(accountPageKey, existing);
   client.setQueryData(
     pageKey(3),
     create(ListTransactionsResponseSchema, {
@@ -68,25 +73,9 @@ function setup() {
 describe("useUpdateTransactionCategory", () => {
   beforeEach(() => {
     updateCategory.mockReset();
-    Object.assign(transactionClient, {
-      updateTransactionCategory: updateCategory,
-    });
   });
 
-  it("reports an unsupported API and rolls back when the generated client lacks the update RPC", async () => {
-    Reflect.deleteProperty(transactionClient, "updateTransactionCategory");
-    const { client, existing, result } = setup();
-    act(() => result.current.mutate(input));
-    await waitFor(() => expect(result.current.isError).toBe(true));
-    expect(result.current.error?.message).toBe(
-      "Changing transaction categories is not supported by the server yet.",
-    );
-    expect(client.getQueryData(pageKey(1))).toEqual(existing);
-    expect(client.getQueryData(pageKey(2))).toEqual(existing);
-    expect(updateCategory).not.toHaveBeenCalled();
-  });
-
-  it("optimistically changes matching transactions in every cached page and preserves other data", async () => {
+  it("sends only id and categoryId, and optimistically updates all-transactions and account pages without changing other data", async () => {
     let complete!: () => void;
     updateCategory.mockReturnValue(
       new Promise<void>((resolve) => {
@@ -96,11 +85,11 @@ describe("useUpdateTransactionCategory", () => {
     const { client, existing, result } = setup();
     act(() => result.current.mutate(input));
     await waitFor(() =>
-      expect(updateCategory).toHaveBeenCalledExactlyOnceWith(input),
+      expect(updateCategory).toHaveBeenCalledExactlyOnceWith(rpcInput),
     );
     expect(result.current.isPending).toBe(true);
-    for (const page of [1, 2]) {
-      expect(client.getQueryData(pageKey(page))).toEqual({
+    for (const key of [pageKey(1), pageKey(2), accountPageKey]) {
+      expect(client.getQueryData(key)).toEqual({
         ...existing,
         transactions: [
           { ...existing.transactions[0], categoryId: "new-category" },
@@ -116,7 +105,13 @@ describe("useUpdateTransactionCategory", () => {
       complete();
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    for (const key of [pageKey(1), pageKey(2), pageKey(3), totalsKey]) {
+    for (const key of [
+      pageKey(1),
+      pageKey(2),
+      pageKey(3),
+      accountPageKey,
+      totalsKey,
+    ]) {
       expect(client.getQueryState(key)?.isInvalidated).toBe(true);
     }
   });
@@ -131,6 +126,7 @@ describe("useUpdateTransactionCategory", () => {
       expect(result.current.error?.message).toBe("Save failed");
       expect(client.getQueryData(pageKey(1))).toEqual(existing);
       expect(client.getQueryData(pageKey(2))).toEqual(existing);
+      expect(client.getQueryData(accountPageKey)).toEqual(existing);
       expect(client.getQueryState(pageKey(1))?.isInvalidated).toBe(true);
       expect(client.getQueryState(totalsKey)?.isInvalidated).toBe(true);
     },
