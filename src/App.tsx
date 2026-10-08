@@ -2,6 +2,7 @@ import { ColorSchemeScript, MantineProvider } from "@mantine/core";
 import { Route, Routes } from "react-router-dom";
 import AppShell from "./components/AppShell/AppShell";
 import AccountsView from "./components/Account/AccountsView/AccountsView";
+import AccountTransactionsView from "./components/Account/AccountTransactionsView/AccountTransactionsView";
 import BudgetView from "./components/BudgetView/BudgetView";
 import CategoriesView from "./components/Category/CategoriesView/CategoriesView";
 import TransactionsView from "./components/TransactionsView/TransactionsView";
@@ -28,11 +29,7 @@ function App() {
             <Route path="accounts" element={<AccountsView />} />
             <Route
               path="accounts/:accountId"
-              element={
-                <p style={{ padding: "var(--mantine-spacing-md)" }}>
-                  Account activity view ships in a later phase.
-                </p>
-              }
+              element={<AccountTransactionsView />}
             />
             <Route path="categories" element={<CategoriesView />} />
           </Route>
