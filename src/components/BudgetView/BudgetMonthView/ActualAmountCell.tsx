@@ -14,8 +14,7 @@ export function ActualAmountCell({
   selected = false,
   onSelect,
 }: ActualAmountCellProps) {
-  const label =
-    value === undefined ? "—" : formatCurrency(value.toFixed(2));
+  const label = value === undefined ? "—" : formatCurrency(value.toFixed(2));
 
   if (!onSelect) {
     return value === undefined ? (
