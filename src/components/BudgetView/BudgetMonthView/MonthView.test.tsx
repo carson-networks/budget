@@ -1,6 +1,7 @@
 import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CategoryKind, type Category } from "../../../models";
 import { theme } from "../../../theme.js";
@@ -16,26 +17,6 @@ vi.mock("../../../hooks/useBudgets.js", () => ({
 
 vi.mock("../../../hooks/useTransactionTotals.js", () => ({
   useTransactionTotalsForRange: vi.fn(),
-}));
-
-vi.mock("./CategoryTransactions.js", () => ({
-  CategoryTransactions: ({
-    month,
-    category,
-    onNextMonth,
-    onBack,
-  }: {
-    month: { year: number; month: number };
-    category: Category;
-    onNextMonth: () => void;
-    onBack: () => void;
-  }) => (
-    <div data-testid="category-transactions">
-      {`${category.name} ${month.year}-${month.month}`}
-      <button onClick={onNextMonth}>Next stub</button>
-      <button onClick={onBack}>Back stub</button>
-    </div>
-  ),
 }));
 
 import { useAllCategories } from "../../../hooks/useCategories.js";
@@ -116,14 +97,22 @@ function mockMonthData(opts?: {
   } as unknown as ReturnType<typeof useSetBudget>);
 }
 
-function renderMonthView() {
+function LocationDisplay() {
+  const { pathname, search } = useLocation();
+  return <div data-testid="location">{`${pathname}${search}`}</div>;
+}
+
+function renderMonthView(initialEntry = "/budget") {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <MantineProvider theme={theme}>
       <QueryClientProvider client={queryClient}>
-        <BudgetMonthView />
+        <MemoryRouter initialEntries={[initialEntry]}>
+          <BudgetMonthView />
+          <LocationDisplay />
+        </MemoryRouter>
       </QueryClientProvider>
     </MantineProvider>,
   );
@@ -185,38 +174,28 @@ describe("BudgetMonthView", () => {
     renderMonthView();
     expect(screen.getByText("budgets down")).toBeInTheDocument();
   });
-  it("opens a category's transactions in place of the budget tables and goes back", () => {
+
+  it("opens a category's transactions for the selected month", () => {
     renderMonthView();
     fireEvent.click(
       screen.getByRole("button", { name: "Open Groceries transactions" }),
     );
 
-    expect(screen.getByTestId("category-transactions")).toHaveTextContent(
-      "Groceries 2025-3",
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      "/budget/categories/groceries?month=2025-03",
     );
-    expect(screen.queryByText("Month totals")).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Month options" }),
-    ).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Back stub" }));
-    expect(
-      screen.queryByTestId("category-transactions"),
-    ).not.toBeInTheDocument();
-    expect(screen.getByText("Month totals")).toBeInTheDocument();
   });
 
-  it("shares the selected month with the category view", () => {
-    renderMonthView();
+  it("opens a category for the month picked in the URL", () => {
+    renderMonthView("/budget?view=month&month=2025-06");
+    expect(screen.getByText("Jun 2025")).toBeInTheDocument();
+
     fireEvent.click(
       screen.getByRole("button", { name: "Open Salary transactions" }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Next stub" }));
-    expect(screen.getByTestId("category-transactions")).toHaveTextContent(
-      "Salary 2025-4",
-    );
 
-    fireEvent.click(screen.getByRole("button", { name: "Back stub" }));
-    expect(screen.getByText("Apr 2025")).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      "/budget/categories/salary?month=2025-06",
+    );
   });
 });

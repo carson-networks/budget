@@ -5,6 +5,7 @@ import {
   currentYearMonth,
   formatYearMonthLabel,
   monthsBetweenInclusive,
+  parseYearMonthKey,
   yearMonthKey,
 } from "./monthRange.js";
 
@@ -67,5 +68,12 @@ describe("monthRange", () => {
   it("formatYearMonthLabel and yearMonthKey format stably", () => {
     expect(formatYearMonthLabel({ year: 2025, month: 3 })).toBe("Mar 2025");
     expect(yearMonthKey({ year: 2025, month: 3 })).toBe("2025-03");
+  });
+
+  it("parses year-month keys and rejects invalid ones", () => {
+    expect(parseYearMonthKey("2025-03")).toEqual({ year: 2025, month: 3 });
+    expect(parseYearMonthKey("2025-13")).toBeUndefined();
+    expect(parseYearMonthKey("2025-3")).toBeUndefined();
+    expect(parseYearMonthKey(null)).toBeUndefined();
   });
 });

@@ -1,10 +1,20 @@
-import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Box, Group, SegmentedControl, Title } from "@mantine/core";
 import BudgetMonthView from "./BudgetMonthView/MonthView.js";
 import BudgetMatrixView from "./BudgetMatrixView/MatrixView.js";
 
 export default function BudgetView() {
-  const [mode, setMode] = useState("matrix");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const mode = searchParams.get("view") === "month" ? "month" : "matrix";
+  const setMode = (value: string) =>
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("view", value);
+        return next;
+      },
+      { replace: true },
+    );
   return (
     <Box
       style={{
