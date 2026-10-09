@@ -1,63 +1,31 @@
-import { Alert, Box, Button, Loader, Stack, Text, Title } from "@mantine/core";
-import { IconArrowLeft } from "@tabler/icons-react";
-import type { YearMonth } from "../../../utils/monthRange.js";
+import { Alert, Loader, Stack, Text } from "@mantine/core";
 import {
   TransactionsList,
   type TransactionsListProps,
 } from "../../TransactionsView/TransactionsList.js";
 import { CategoryUpdateErrorAlert } from "../../TransactionsView/CategoryUpdateErrorAlert.js";
-import { MonthNavigationBar } from "./MonthNavigationBar.js";
 
-type CategoryTransactionsPanelProps = Omit<
+type CategoryTransactionsTableProps = Omit<
   TransactionsListProps,
   "emptyMessage"
 > & {
   categoryName: string;
-  month: YearMonth;
-  onPrevMonth: () => void;
-  onNextMonth: () => void;
-  onGoToToday: () => void;
-  onBack: () => void;
   isLoading: boolean;
   error: Error | null;
   categoryUpdateError: Error | null;
   onDismissCategoryUpdateError: () => void;
 };
 
-export function CategoryTransactionsPanel({
+export function CategoryTransactionsTable({
   categoryName,
-  month,
-  onPrevMonth,
-  onNextMonth,
-  onGoToToday,
-  onBack,
   isLoading,
   error,
   categoryUpdateError,
   onDismissCategoryUpdateError,
   ...listProps
-}: CategoryTransactionsPanelProps) {
+}: CategoryTransactionsTableProps) {
   return (
-    <Box>
-      <Title order={3} mb="md">
-        {categoryName}
-      </Title>
-      <MonthNavigationBar
-        selectedMonth={month}
-        onPrev={onPrevMonth}
-        onNext={onNextMonth}
-        onGoToToday={onGoToToday}
-        leftSection={
-          <Button
-            variant="subtle"
-            size="sm"
-            leftSection={<IconArrowLeft size={16} />}
-            onClick={onBack}
-          >
-            Back to budget
-          </Button>
-        }
-      />
+    <>
       <CategoryUpdateErrorAlert
         error={categoryUpdateError}
         onDismiss={onDismissCategoryUpdateError}
@@ -79,6 +47,6 @@ export function CategoryTransactionsPanel({
           emptyMessage={`No ${categoryName} transactions this month.`}
         />
       )}
-    </Box>
+    </>
   );
 }

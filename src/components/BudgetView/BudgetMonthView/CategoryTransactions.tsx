@@ -1,7 +1,8 @@
 import type { Category } from "../../../models";
 import type { YearMonth } from "../../../utils/monthRange.js";
 import { useTransactionCategoryEditing } from "../../TransactionsView/useTransactionCategoryEditing.js";
-import { CategoryTransactionsPanel } from "./CategoryTransactionsPanel.js";
+import { CategoryTransactionsHeader } from "./CategoryTransactionsHeader.js";
+import { CategoryTransactionsTable } from "./CategoryTransactionsTable.js";
 import { useCategoryTransactionsData } from "./useCategoryTransactionsData.js";
 
 type CategoryTransactionsProps = {
@@ -23,22 +24,27 @@ export function CategoryTransactions({
     disabled: data.isPlaceholderData,
   });
   return (
-    <CategoryTransactionsPanel
-      transactions={data.transactions}
-      totalCount={data.totalCount}
-      page={data.page}
-      onPageChange={data.setPage}
-      pageSize={data.pageSize}
-      accountNameById={data.accountNameById}
-      categoryNameById={data.categoryNameById}
-      renderCategory={categoryEditing.renderCategory}
-      categoryUpdateError={categoryEditing.error}
-      onDismissCategoryUpdateError={categoryEditing.dismissError}
-      categoryName={category.name}
-      month={month}
-      isLoading={data.isLoading}
-      error={data.error}
-      {...navigation}
-    />
+    <>
+      <CategoryTransactionsHeader
+        categoryName={category.name}
+        month={month}
+        {...navigation}
+      />
+      <CategoryTransactionsTable
+        transactions={data.transactions}
+        totalCount={data.totalCount}
+        page={data.page}
+        onPageChange={data.setPage}
+        pageSize={data.pageSize}
+        accountNameById={data.accountNameById}
+        categoryNameById={data.categoryNameById}
+        renderCategory={categoryEditing.renderCategory}
+        categoryName={category.name}
+        isLoading={data.isLoading}
+        error={data.error}
+        categoryUpdateError={categoryEditing.error}
+        onDismissCategoryUpdateError={categoryEditing.dismissError}
+      />
+    </>
   );
 }
