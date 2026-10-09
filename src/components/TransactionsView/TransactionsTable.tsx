@@ -93,15 +93,15 @@ function DateSectionHeader({ label }: { label: string }) {
       <Table.Th
         scope="rowgroup"
         colSpan={COLUMN_COUNT}
-        fz={11}
+        fz={10}
         fw={600}
         c="dimmed"
         tt="uppercase"
-        py={3}
+        py={1}
         style={{
           backgroundColor: "var(--mantine-color-default-hover)",
           letterSpacing: "0.04em",
-          lineHeight: 1.2,
+          lineHeight: 1.1,
         }}
       >
         {label}
