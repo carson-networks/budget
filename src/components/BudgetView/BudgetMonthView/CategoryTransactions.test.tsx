@@ -5,7 +5,8 @@ import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { theme } from "../../../theme.js";
-import { MonthTransactions } from "./MonthTransactions.js";
+import { CategoryKind } from "../../../models";
+import { CategoryTransactions } from "./CategoryTransactions.js";
 
 const api = vi.hoisted(() => ({
   listAccounts: vi.fn(),
@@ -18,8 +19,16 @@ vi.mock("../../../connectRPC/connect.js", () => ({
   transactionClient: { listTransactions: api.listTransactions },
 }));
 
-function renderMonthTransactions(
-  props: Partial<ComponentProps<typeof MonthTransactions>> = {},
+const groceries = {
+  id: "groceries",
+  name: "Groceries",
+  isParent: false,
+  isDisabled: false,
+  categoryKind: CategoryKind.Expense,
+};
+
+function renderCategoryTransactions(
+  props: Partial<ComponentProps<typeof CategoryTransactions>> = {},
 ) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -27,9 +36,10 @@ function renderMonthTransactions(
   return render(
     <MantineProvider theme={theme}>
       <QueryClientProvider client={client}>
-        <MonthTransactions
+        <CategoryTransactions
           month={{ year: 2025, month: 3 }}
-          onClearCategory={() => {}}
+          category={groceries}
+          onBack={() => {}}
           {...props}
         />
       </QueryClientProvider>
@@ -68,36 +78,33 @@ beforeEach(() => {
   });
 });
 
-describe("MonthTransactions", () => {
-  it("lists the selected month's transactions with account and category names", async () => {
-    renderMonthTransactions();
+describe("CategoryTransactions", () => {
+  it("lists the category's transactions for the month with account and category names", async () => {
+    renderCategoryTransactions();
     expect(await screen.findByText("Market run")).toBeInTheDocument();
     expect(screen.getByText("Checking")).toBeInTheDocument();
-    expect(screen.getByText("Groceries")).toBeInTheDocument();
-    expect(api.listTransactions).toHaveBeenCalledWith({
-      month: { year: 2025, month: 3 },
-      cursor: { position: 0, limit: 25, maxCreationTime: undefined },
-    });
-  });
-
-  it("narrows to the selected category and labels the filter", async () => {
-    const onClearCategory = vi.fn();
-    renderMonthTransactions({ categoryId: "groceries", onClearCategory });
-    expect(await screen.findByText("Market run")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Groceries transactions" }),
+    ).toBeInTheDocument();
     expect(api.listTransactions).toHaveBeenCalledWith({
       categoryId: "groceries",
       month: { year: 2025, month: 3 },
       cursor: { position: 0, limit: 25, maxCreationTime: undefined },
     });
+  });
+
+  it("goes back to the budget", async () => {
+    const onBack = vi.fn();
+    renderCategoryTransactions({ onBack });
     await userEvent.click(
-      screen.getByRole("button", { name: "Clear category filter" }),
+      screen.getByRole("button", { name: "Back to budget" }),
     );
-    expect(onClearCategory).toHaveBeenCalledOnce();
+    expect(onBack).toHaveBeenCalledOnce();
   });
 
   it("shows the category's empty message", async () => {
     api.listTransactions.mockResolvedValue({ transactions: [], totalCount: 0 });
-    renderMonthTransactions({ categoryId: "groceries" });
+    renderCategoryTransactions();
     expect(
       await screen.findByText("No Groceries transactions this month."),
     ).toBeInTheDocument();
@@ -107,7 +114,7 @@ describe("MonthTransactions", () => {
     "shows errors from %s",
     async (method) => {
       api[method].mockRejectedValue(new Error("Request failed"));
-      renderMonthTransactions();
+      renderCategoryTransactions();
       expect(await screen.findByText("Request failed")).toBeInTheDocument();
       expect(screen.queryByText("Market run")).not.toBeInTheDocument();
     },

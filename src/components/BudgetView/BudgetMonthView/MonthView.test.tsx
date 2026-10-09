@@ -18,19 +18,19 @@ vi.mock("../../../hooks/useTransactionTotals.js", () => ({
   useTransactionTotalsForRange: vi.fn(),
 }));
 
-vi.mock("./MonthTransactions.js", () => ({
-  MonthTransactions: ({
+vi.mock("./CategoryTransactions.js", () => ({
+  CategoryTransactions: ({
     month,
-    categoryId,
-    onClearCategory,
+    category,
+    onBack,
   }: {
     month: { year: number; month: number };
-    categoryId?: string;
-    onClearCategory: () => void;
+    category: Category;
+    onBack: () => void;
   }) => (
-    <div data-testid="month-transactions">
-      {`${month.year}-${month.month}:${categoryId ?? "all"}`}
-      <button onClick={onClearCategory}>Clear stub filter</button>
+    <div data-testid="category-transactions">
+      {`${category.name} ${month.year}-${month.month}`}
+      <button onClick={onBack}>Back stub</button>
     </div>
   ),
 }));
@@ -182,37 +182,33 @@ describe("BudgetMonthView", () => {
     renderMonthView();
     expect(screen.getByText("budgets down")).toBeInTheDocument();
   });
-  it("drills into a category's transactions from its actual amount", () => {
+  it("opens a category's transactions in place of the budget tables and goes back", () => {
     renderMonthView();
-    const transactions = screen.getByTestId("month-transactions");
-    expect(transactions).toHaveTextContent("2025-3:all");
-
-    const groceriesActual = screen.getByRole("button", {
-      name: "Show Groceries transactions",
-    });
-    fireEvent.click(groceriesActual);
-    expect(transactions).toHaveTextContent("2025-3:groceries");
-    expect(groceriesActual).toHaveAttribute("aria-pressed", "true");
-
-    fireEvent.click(groceriesActual);
-    expect(transactions).toHaveTextContent("2025-3:all");
-
     fireEvent.click(
-      screen.getByRole("button", { name: "Show Salary transactions" }),
+      screen.getByRole("button", { name: "Open Groceries transactions" }),
     );
-    expect(transactions).toHaveTextContent("2025-3:salary");
-    fireEvent.click(screen.getByRole("button", { name: "Clear stub filter" }));
-    expect(transactions).toHaveTextContent("2025-3:all");
+
+    expect(screen.getByTestId("category-transactions")).toHaveTextContent(
+      "Groceries 2025-3",
+    );
+    expect(screen.queryByText("Month totals")).not.toBeInTheDocument();
+    expect(screen.getByText("Mar 2025")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Back stub" }));
+    expect(
+      screen.queryByTestId("category-transactions"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Month totals")).toBeInTheDocument();
   });
 
-  it("keeps the category drill-in when changing months", () => {
+  it("keeps the open category when changing months", () => {
     renderMonthView();
     fireEvent.click(
-      screen.getByRole("button", { name: "Show Groceries transactions" }),
+      screen.getByRole("button", { name: "Open Salary transactions" }),
     );
     fireEvent.click(screen.getByRole("button", { name: "Next month" }));
-    expect(screen.getByTestId("month-transactions")).toHaveTextContent(
-      "2025-4:groceries",
+    expect(screen.getByTestId("category-transactions")).toHaveTextContent(
+      "Salary 2025-4",
     );
   });
 });

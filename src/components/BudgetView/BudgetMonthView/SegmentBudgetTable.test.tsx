@@ -112,40 +112,89 @@ describe("SegmentBudgetTable", () => {
       overwriteFutureMonths: true,
     });
   });
-  it("drills into root and child categories from their actual amounts", async () => {
-    vi.mocked(useSetBudget).mockReturnValue({
-      mutateAsync: vi.fn(),
-      isPending: false,
-      variables: undefined,
-    } as unknown as ReturnType<typeof useSetBudget>);
-    const onSelectCategory = vi.fn();
-    render(
-      <MantineProvider theme={theme}>
-        <SegmentBudgetTable
-          segment={segment}
-          selectedMonth={{ year: 2025, month: 3 }}
-          budgetByCategoryId={new Map()}
-          actualByCategoryId={
-            new Map([
-              ["food", -5],
-              ["groceries", -320],
-            ])
-          }
-          selectedCategoryId="groceries"
-          onSelectCategory={onSelectCategory}
-        />
-      </MantineProvider>,
-    );
+  describe("opening category transactions", () => {
+    const salary: Category = {
+      id: "salary",
+      name: "Salary",
+      isParent: false,
+      isDisabled: false,
+      categoryKind: CategoryKind.Income,
+    };
 
-    const groceries = screen.getByRole("button", {
-      name: "Show Groceries transactions",
+    function renderOpenable(table: CategorySegment, onOpenCategory = vi.fn()) {
+      vi.mocked(useSetBudget).mockReturnValue({
+        mutateAsync: vi.fn().mockResolvedValue(undefined),
+        isPending: false,
+        variables: undefined,
+      } as unknown as ReturnType<typeof useSetBudget>);
+      render(
+        <MantineProvider theme={theme}>
+          <SegmentBudgetTable
+            segment={table}
+            selectedMonth={{ year: 2025, month: 3 }}
+            budgetByCategoryId={new Map([["groceries", "400"]])}
+            actualByCategoryId={new Map([["groceries", -320]])}
+            onOpenCategory={onOpenCategory}
+          />
+        </MantineProvider>,
+      );
+      return onOpenCategory;
+    }
+
+    it("opens a leaf category from its row or name button", async () => {
+      const onOpenCategory = renderOpenable(segment);
+      await userEvent.click(screen.getByText("-$320.00"));
+      expect(onOpenCategory).toHaveBeenLastCalledWith(groceries);
+
+      screen
+        .getByRole("button", { name: "Open Groceries transactions" })
+        .focus();
+      await userEvent.keyboard("{Enter}");
+      expect(onOpenCategory).toHaveBeenCalledTimes(2);
     });
-    const food = screen.getByRole("button", { name: "Show Food transactions" });
-    expect(groceries).toHaveAttribute("aria-pressed", "true");
-    expect(food).toHaveAttribute("aria-pressed", "false");
 
-    await userEvent.click(food);
-    await userEvent.click(groceries);
-    expect(onSelectCategory.mock.calls).toEqual([["food"], ["groceries"]]);
+    it("keeps budget editing from opening the category", async () => {
+      const onOpenCategory = renderOpenable(segment);
+      await userEvent.click(screen.getByRole("textbox"));
+      expect(onOpenCategory).not.toHaveBeenCalled();
+    });
+
+    it("does not open parent categories", async () => {
+      const onOpenCategory = renderOpenable(segment);
+      await userEvent.click(screen.getByText("Food"));
+      expect(onOpenCategory).not.toHaveBeenCalled();
+      expect(
+        screen.queryByRole("button", { name: "Open Food transactions" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("opens a root category that is not a parent", async () => {
+      const onOpenCategory = renderOpenable({ root: salary, children: [] });
+      await userEvent.click(
+        screen.getByRole("button", { name: "Open Salary transactions" }),
+      );
+      expect(onOpenCategory).toHaveBeenCalledExactlyOnceWith(salary);
+    });
+
+    it("renders plain names without an open handler", () => {
+      vi.mocked(useSetBudget).mockReturnValue({
+        mutateAsync: vi.fn(),
+        isPending: false,
+        variables: undefined,
+      } as unknown as ReturnType<typeof useSetBudget>);
+      render(
+        <MantineProvider theme={theme}>
+          <SegmentBudgetTable
+            segment={segment}
+            selectedMonth={{ year: 2025, month: 3 }}
+            budgetByCategoryId={new Map()}
+            actualByCategoryId={new Map()}
+          />
+        </MantineProvider>,
+      );
+      expect(
+        screen.queryByRole("button", { name: /transactions/ }),
+      ).not.toBeInTheDocument();
+    });
   });
 });

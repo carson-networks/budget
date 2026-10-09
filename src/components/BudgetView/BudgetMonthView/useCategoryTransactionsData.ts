@@ -7,9 +7,9 @@ import {
 } from "../../../hooks/useTransactions.js";
 import type { YearMonth } from "../../../utils/monthRange.js";
 
-export function useMonthTransactionsData(
+export function useCategoryTransactionsData(
   month: YearMonth,
-  categoryId: string | undefined,
+  categoryId: string,
 ) {
   const transactionsQuery = useAllTransactions(TRANSACTIONS_PAGE_SIZE, {
     month,
@@ -35,7 +35,6 @@ export function useMonthTransactionsData(
     pageSize: transactionsQuery.pageSize,
     accountNameById,
     categoryNameById,
-    categoryName: categoryId ? categoryNameById.get(categoryId) : undefined,
     isLoading:
       (transactionsQuery.isLoading && !transactionsQuery.isPlaceholderData) ||
       accountsQuery.isLoading ||

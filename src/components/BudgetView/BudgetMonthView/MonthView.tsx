@@ -9,12 +9,13 @@ import { useBudgetMonthData } from "./useBudgetMonthData.js";
 import { MonthNavigationBar } from "./MonthNavigationBar.js";
 import { SegmentBudgetTable } from "./SegmentBudgetTable.js";
 import { MonthTotalsTable } from "./MonthTotalsTable.js";
-import { MonthTransactions } from "./MonthTransactions.js";
+import { CategoryTransactions } from "./CategoryTransactions.js";
+import type { Category } from "../../../models";
 
 export default function BudgetMonthView() {
   const { selectedMonth, goPrev, goNext, goToToday } = useSelectedYearMonth();
   const [applyToFollowingMonths, setApplyToFollowingMonths] = useState(false);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>();
+  const [openCategory, setOpenCategory] = useState<Category>();
   const canApplyToFollowingMonths =
     compareYearMonth(selectedMonth, currentYearMonth()) >= 0;
   const overwriteFutureMonths =
@@ -59,36 +60,35 @@ export default function BudgetMonthView() {
         onApplyToFollowingMonthsChange={setApplyToFollowingMonths}
       />
 
-      {segments.length === 0 ? (
-        <Text size="sm" c="dimmed">
-          No categories yet.
-        </Text>
-      ) : null}
-
-      {segments.map((segment) => (
-        <SegmentBudgetTable
-          key={segment.root.id}
-          segment={segment}
-          selectedMonth={selectedMonth}
-          budgetByCategoryId={budgetByCategoryId}
-          actualByCategoryId={actualByCategoryId}
-          overwriteFutureMonths={overwriteFutureMonths}
-          selectedCategoryId={selectedCategoryId}
-          onSelectCategory={(categoryId) =>
-            setSelectedCategoryId((current) =>
-              current === categoryId ? undefined : categoryId,
-            )
-          }
+      {openCategory ? (
+        <CategoryTransactions
+          month={selectedMonth}
+          category={openCategory}
+          onBack={() => setOpenCategory(undefined)}
         />
-      ))}
+      ) : (
+        <>
+          {segments.length === 0 ? (
+            <Text size="sm" c="dimmed">
+              No categories yet.
+            </Text>
+          ) : null}
 
-      <MonthTotalsTable monthSummary={monthSummary} />
+          {segments.map((segment) => (
+            <SegmentBudgetTable
+              key={segment.root.id}
+              segment={segment}
+              selectedMonth={selectedMonth}
+              budgetByCategoryId={budgetByCategoryId}
+              actualByCategoryId={actualByCategoryId}
+              overwriteFutureMonths={overwriteFutureMonths}
+              onOpenCategory={setOpenCategory}
+            />
+          ))}
 
-      <MonthTransactions
-        month={selectedMonth}
-        categoryId={selectedCategoryId}
-        onClearCategory={() => setSelectedCategoryId(undefined)}
-      />
+          <MonthTotalsTable monthSummary={monthSummary} />
+        </>
+      )}
     </Box>
   );
 }
