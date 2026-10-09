@@ -34,7 +34,9 @@ export function useCategoryTransactionsData(
     setPage: transactionsQuery.setPage,
     pageSize: transactionsQuery.pageSize,
     accountNameById,
+    categories: categoriesQuery.categories,
     categoryNameById,
+    isPlaceholderData: transactionsQuery.isPlaceholderData,
     isLoading:
       (transactionsQuery.isLoading && !transactionsQuery.isPlaceholderData) ||
       accountsQuery.isLoading ||

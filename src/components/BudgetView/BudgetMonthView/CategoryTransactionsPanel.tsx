@@ -5,6 +5,7 @@ import {
   TransactionsList,
   type TransactionsListProps,
 } from "../../TransactionsView/TransactionsList.js";
+import { CategoryUpdateErrorAlert } from "../../TransactionsView/CategoryUpdateErrorAlert.js";
 import { MonthNavigationBar } from "./MonthNavigationBar.js";
 
 type CategoryTransactionsPanelProps = Omit<
@@ -19,6 +20,8 @@ type CategoryTransactionsPanelProps = Omit<
   onBack: () => void;
   isLoading: boolean;
   error: Error | null;
+  categoryUpdateError: Error | null;
+  onDismissCategoryUpdateError: () => void;
 };
 
 export function CategoryTransactionsPanel({
@@ -30,6 +33,8 @@ export function CategoryTransactionsPanel({
   onBack,
   isLoading,
   error,
+  categoryUpdateError,
+  onDismissCategoryUpdateError,
   ...listProps
 }: CategoryTransactionsPanelProps) {
   return (
@@ -52,6 +57,10 @@ export function CategoryTransactionsPanel({
             Back to budget
           </Button>
         }
+      />
+      <CategoryUpdateErrorAlert
+        error={categoryUpdateError}
+        onDismiss={onDismissCategoryUpdateError}
       />
       {error ? (
         <Alert color="red" title="Could not load transactions">

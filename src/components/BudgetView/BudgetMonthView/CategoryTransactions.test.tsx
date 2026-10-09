@@ -1,6 +1,6 @@
 import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,11 +12,15 @@ const api = vi.hoisted(() => ({
   listAccounts: vi.fn(),
   listCategories: vi.fn(),
   listTransactions: vi.fn(),
+  updateTransaction: vi.fn(),
 }));
 vi.mock("../../../connectRPC/connect.js", () => ({
   accountClient: { listAccounts: api.listAccounts },
   categoryClient: { listCategories: api.listCategories },
-  transactionClient: { listTransactions: api.listTransactions },
+  transactionClient: {
+    listTransactions: api.listTransactions,
+    updateTransaction: api.updateTransaction,
+  },
 }));
 
 const groceries = {
@@ -36,7 +40,7 @@ function renderCategoryTransactions(
     defaultOptions: { queries: { retry: false } },
   });
   return render(
-    <MantineProvider theme={theme}>
+    <MantineProvider theme={theme} env="test">
       <QueryClientProvider client={queryClient}>
         <CategoryTransactions
           month={{ year: 2025, month: 3 }}
@@ -67,7 +71,10 @@ beforeEach(() => {
     ],
   });
   api.listCategories.mockResolvedValue({
-    categories: [{ id: "groceries", name: "Groceries", categoryType: 1 }],
+    categories: [
+      { id: "groceries", name: "Groceries", categoryType: 1 },
+      { id: "dining", name: "Dining", categoryType: 1 },
+    ],
   });
   api.listTransactions.mockResolvedValue({
     transactions: [
@@ -144,7 +151,7 @@ describe("CategoryTransactions", () => {
     expect(await screen.findByText("Shop in month 3")).toBeInTheDocument();
 
     rerender(
-      <MantineProvider theme={theme}>
+      <MantineProvider theme={theme} env="test">
         <QueryClientProvider client={queryClient}>
           <CategoryTransactions
             month={{ year: 2025, month: 4 }}
@@ -160,5 +167,47 @@ describe("CategoryTransactions", () => {
     expect(await screen.findByText("Shop in month 4")).toBeInTheDocument();
     expect(screen.queryByText("Shop in month 3")).not.toBeInTheDocument();
     expect(screen.getByText("Apr 2025")).toBeInTheDocument();
+  });
+
+  it("moves a transaction out of the table when its category changes", async () => {
+    let finishSave!: () => void;
+    api.updateTransaction.mockReturnValue(
+      new Promise<void>((resolve) => {
+        finishSave = resolve;
+      }),
+    );
+    const user = userEvent.setup();
+    renderCategoryTransactions();
+    await user.click(
+      await screen.findByRole("textbox", { name: "Category for Market run" }),
+    );
+    await user.click(screen.getByRole("option", { name: "Dining" }));
+
+    expect(api.updateTransaction).toHaveBeenCalledExactlyOnceWith({
+      id: "txn-1",
+      categoryId: "dining",
+    });
+    expect(
+      await screen.findByText("No Groceries transactions this month."),
+    ).toBeInTheDocument();
+
+    api.listTransactions.mockResolvedValue({ transactions: [], totalCount: 0 });
+    finishSave();
+    await waitFor(() => expect(api.listTransactions).toHaveBeenCalledTimes(2));
+    expect(
+      screen.getByText("No Groceries transactions this month."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a category update failure and restores the row", async () => {
+    api.updateTransaction.mockRejectedValue(new Error("Save failed"));
+    const user = userEvent.setup();
+    renderCategoryTransactions();
+    await user.click(
+      await screen.findByRole("textbox", { name: "Category for Market run" }),
+    );
+    await user.click(screen.getByRole("option", { name: "Dining" }));
+    expect(await screen.findByText("Save failed")).toBeInTheDocument();
+    expect(screen.getByText("Market run")).toBeInTheDocument();
   });
 });

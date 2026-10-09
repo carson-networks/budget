@@ -34,6 +34,8 @@ function renderPanel(
         onBack={() => {}}
         isLoading={false}
         error={null}
+        categoryUpdateError={null}
+        onDismissCategoryUpdateError={() => {}}
         {...props}
       />
     </MantineProvider>,
@@ -97,5 +99,28 @@ describe("CategoryTransactionsPanel", () => {
     expect(
       screen.getByRole("button", { name: "Back to budget" }),
     ).toBeInTheDocument();
+  });
+
+  it("renders injected category cells", () => {
+    renderPanel({
+      renderCategory: (transaction) => (
+        <span>Editor for {transaction.transactionName}</span>
+      ),
+    });
+    expect(screen.getByText("Editor for Market run")).toBeInTheDocument();
+  });
+
+  it("shows and dismisses category update errors above the list", async () => {
+    const onDismissCategoryUpdateError = vi.fn();
+    renderPanel({
+      categoryUpdateError: new Error("Save failed"),
+      onDismissCategoryUpdateError,
+    });
+    expect(screen.getByText("Could not update category")).toBeInTheDocument();
+    expect(screen.getByText("Market run")).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Dismiss category update error" }),
+    );
+    expect(onDismissCategoryUpdateError).toHaveBeenCalledOnce();
   });
 });

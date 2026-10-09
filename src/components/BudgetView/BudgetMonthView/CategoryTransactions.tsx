@@ -1,5 +1,6 @@
 import type { Category } from "../../../models";
 import type { YearMonth } from "../../../utils/monthRange.js";
+import { useTransactionCategoryEditing } from "../../TransactionsView/useTransactionCategoryEditing.js";
 import { CategoryTransactionsPanel } from "./CategoryTransactionsPanel.js";
 import { useCategoryTransactionsData } from "./useCategoryTransactionsData.js";
 
@@ -18,6 +19,9 @@ export function CategoryTransactions({
   ...navigation
 }: CategoryTransactionsProps) {
   const data = useCategoryTransactionsData(month, category.id);
+  const categoryEditing = useTransactionCategoryEditing(data.categories, {
+    disabled: data.isPlaceholderData,
+  });
   return (
     <CategoryTransactionsPanel
       transactions={data.transactions}
@@ -27,6 +31,9 @@ export function CategoryTransactions({
       pageSize={data.pageSize}
       accountNameById={data.accountNameById}
       categoryNameById={data.categoryNameById}
+      renderCategory={categoryEditing.renderCategory}
+      categoryUpdateError={categoryEditing.error}
+      onDismissCategoryUpdateError={categoryEditing.dismissError}
       categoryName={category.name}
       month={month}
       isLoading={data.isLoading}
