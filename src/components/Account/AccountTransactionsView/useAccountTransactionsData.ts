@@ -1,16 +1,11 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
+import { useReferenceData } from "../../../hooks/useReferenceData.js";
 import { useTransactionsPager } from "../../../hooks/useTransactionsPager.js";
-import { accountQueries } from "../../../queries/accounts.js";
-import { categoryQueries } from "../../../queries/categories.js";
-import { nameById } from "../../../utils/nameById.js";
 
 export function useAccountTransactionsData(accountId: string) {
-  const accountsQuery = useInfiniteQuery(accountQueries.list());
-  const categoriesQuery = useInfiniteQuery(categoryQueries.list());
-  const accounts = accountsQuery.data;
-  const categories = categoriesQuery.data;
-  const account = accounts?.find(
+  const { accountsQuery, categoriesQuery, accountNameById, categoryNameById } =
+    useReferenceData();
+  const account = accountsQuery.data?.find(
     (account) => account.id === accountId,
   );
   const {
@@ -62,11 +57,6 @@ export function useAccountTransactionsData(accountId: string) {
   const transactionsQuery = useTransactionsPager(
     { accountId },
     { enabled: account !== undefined },
-  );
-  const accountNameById = useMemo(() => nameById(accounts ?? []), [accounts]);
-  const categoryNameById = useMemo(
-    () => nameById(categories ?? []),
-    [categories],
   );
 
   return {

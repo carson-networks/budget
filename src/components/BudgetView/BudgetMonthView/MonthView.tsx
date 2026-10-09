@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Box, Loader, Stack, Text } from "@mantine/core";
+import { Box, Text } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 import {
   compareYearMonth,
@@ -13,6 +13,8 @@ import { MonthOptionsMenu } from "./MonthOptionsMenu.js";
 import { SegmentBudgetTable } from "./SegmentBudgetTable.js";
 import { MonthTotalsTable } from "./MonthTotalsTable.js";
 import type { Category } from "../../../models";
+import { LoadingState } from "../../shared/LoadingState.js";
+import { ErrorAlert } from "../../shared/ErrorAlert.js";
 
 export default function BudgetMonthView() {
   const { selectedMonth, goPrev, goNext, goToToday } = useSelectedYearMonth();
@@ -37,22 +39,11 @@ export default function BudgetMonthView() {
     );
 
   if (showFullLoader) {
-    return (
-      <Stack align="center" justify="center" gap="sm" py="xl">
-        <Loader size="md" />
-        <Text size="sm" c="dimmed">
-          Loading…
-        </Text>
-      </Stack>
-    );
+    return <LoadingState />;
   }
 
   if (error) {
-    return (
-      <Alert color="red" title="Something went wrong">
-        {error.message}
-      </Alert>
-    );
+    return <ErrorAlert error={error} />;
   }
 
   return (

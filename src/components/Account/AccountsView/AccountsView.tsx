@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Alert, Box, Loader, Stack, Text } from "@mantine/core";
+import { Alert, Box, Stack, Text } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 import { AccountKind, type Account } from "../../../models";
 import { accountQueries } from "../../../queries/accounts.js";
@@ -13,6 +13,8 @@ import { ViewShell } from "../../shared/ViewShell.js";
 import { AccountTable } from "./AccountTable.js";
 import { AddAccountMenu } from "./AddAccountMenu.js";
 import { groupAccountsByKind } from "./accountSegments.js";
+import { LoadingState } from "../../shared/LoadingState.js";
+import { ErrorAlert } from "../../shared/ErrorAlert.js";
 
 const KIND_LABELS: Record<AccountKind, string> = {
   [AccountKind.Unspecified]: "Unspecified",
@@ -23,9 +25,11 @@ const KIND_LABELS: Record<AccountKind, string> = {
 export default function AccountsView() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: accounts = [], isLoading, error } = useInfiniteQuery(
-    accountQueries.list(),
-  );
+  const {
+    data: accounts = [],
+    isLoading,
+    error,
+  } = useInfiniteQuery(accountQueries.list());
   const [manualModalOpen, setManualModalOpen] = useState(false);
   const [settingsAccount, setSettingsAccount] = useState<Account | null>(null);
 
@@ -40,22 +44,11 @@ export default function AccountsView() {
   const segments = useMemo(() => groupAccountsByKind(accounts), [accounts]);
 
   if (isLoading) {
-    return (
-      <Stack align="center" justify="center" gap="sm" py="xl">
-        <Loader size="md" />
-        <Text size="sm" c="dimmed">
-          Loading…
-        </Text>
-      </Stack>
-    );
+    return <LoadingState />;
   }
 
   if (error) {
-    return (
-      <Alert color="red" title="Something went wrong">
-        {error.message}
-      </Alert>
-    );
+    return <ErrorAlert error={error} />;
   }
 
   return (
@@ -83,7 +76,9 @@ export default function AccountsView() {
           </Alert>
         ) : null}
 
-        <Box style={{ flex: 1, minHeight: 0, overflow: "auto", paddingRight: 2 }}>
+        <Box
+          style={{ flex: 1, minHeight: 0, overflow: "auto", paddingRight: 2 }}
+        >
           {accounts.length === 0 ? (
             <Text size="sm" c="dimmed">
               No accounts yet. Use the + button to add one.
