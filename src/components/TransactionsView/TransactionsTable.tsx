@@ -13,12 +13,6 @@ type TransactionsTableProps = {
   renderCategory?: (transaction: Transaction) => ReactNode;
 };
 
-/**
- * Leading and amount columns stay fixed; the text columns take a share of the
- * table width so they grow with the viewport instead of leaving all spare
- * space to the transaction name. Below `TABLE_MIN_WIDTH` the table scrolls
- * horizontally, which keeps these shares close to the old fixed widths.
- */
 const COLUMN_WIDTHS = {
   leading: rem(48),
   merchant: "20%",
