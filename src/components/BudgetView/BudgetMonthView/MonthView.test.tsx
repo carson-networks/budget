@@ -18,6 +18,23 @@ vi.mock("../../../hooks/useTransactionTotals.js", () => ({
   useTransactionTotalsForRange: vi.fn(),
 }));
 
+vi.mock("./MonthTransactions.js", () => ({
+  MonthTransactions: ({
+    month,
+    categoryId,
+    onClearCategory,
+  }: {
+    month: { year: number; month: number };
+    categoryId?: string;
+    onClearCategory: () => void;
+  }) => (
+    <div data-testid="month-transactions">
+      {`${month.year}-${month.month}:${categoryId ?? "all"}`}
+      <button onClick={onClearCategory}>Clear stub filter</button>
+    </div>
+  ),
+}));
+
 import { useAllCategories } from "../../../hooks/useCategories.js";
 import { useBudgetsForRange, useSetBudget } from "../../../hooks/useBudgets.js";
 import { useTransactionTotalsForRange } from "../../../hooks/useTransactionTotals.js";
@@ -164,5 +181,38 @@ describe("BudgetMonthView", () => {
     mockMonthData({ error: new Error("budgets down") });
     renderMonthView();
     expect(screen.getByText("budgets down")).toBeInTheDocument();
+  });
+  it("drills into a category's transactions from its actual amount", () => {
+    renderMonthView();
+    const transactions = screen.getByTestId("month-transactions");
+    expect(transactions).toHaveTextContent("2025-3:all");
+
+    const groceriesActual = screen.getByRole("button", {
+      name: "Show Groceries transactions",
+    });
+    fireEvent.click(groceriesActual);
+    expect(transactions).toHaveTextContent("2025-3:groceries");
+    expect(groceriesActual).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(groceriesActual);
+    expect(transactions).toHaveTextContent("2025-3:all");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Show Salary transactions" }),
+    );
+    expect(transactions).toHaveTextContent("2025-3:salary");
+    fireEvent.click(screen.getByRole("button", { name: "Clear stub filter" }));
+    expect(transactions).toHaveTextContent("2025-3:all");
+  });
+
+  it("keeps the category drill-in when changing months", () => {
+    renderMonthView();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Show Groceries transactions" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Next month" }));
+    expect(screen.getByTestId("month-transactions")).toHaveTextContent(
+      "2025-4:groceries",
+    );
   });
 });

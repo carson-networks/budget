@@ -112,4 +112,40 @@ describe("SegmentBudgetTable", () => {
       overwriteFutureMonths: true,
     });
   });
+  it("drills into root and child categories from their actual amounts", async () => {
+    vi.mocked(useSetBudget).mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      variables: undefined,
+    } as unknown as ReturnType<typeof useSetBudget>);
+    const onSelectCategory = vi.fn();
+    render(
+      <MantineProvider theme={theme}>
+        <SegmentBudgetTable
+          segment={segment}
+          selectedMonth={{ year: 2025, month: 3 }}
+          budgetByCategoryId={new Map()}
+          actualByCategoryId={
+            new Map([
+              ["food", -5],
+              ["groceries", -320],
+            ])
+          }
+          selectedCategoryId="groceries"
+          onSelectCategory={onSelectCategory}
+        />
+      </MantineProvider>,
+    );
+
+    const groceries = screen.getByRole("button", {
+      name: "Show Groceries transactions",
+    });
+    const food = screen.getByRole("button", { name: "Show Food transactions" });
+    expect(groceries).toHaveAttribute("aria-pressed", "true");
+    expect(food).toHaveAttribute("aria-pressed", "false");
+
+    await userEvent.click(food);
+    await userEvent.click(groceries);
+    expect(onSelectCategory.mock.calls).toEqual([["food"], ["groceries"]]);
+  });
 });

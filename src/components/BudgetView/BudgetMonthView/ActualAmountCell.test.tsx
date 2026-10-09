@@ -20,9 +20,14 @@ describe("ActualAmountCell", () => {
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
-  it("renders a dash when there is no actual", () => {
-    renderCell({ value: undefined, categoryName: "Groceries" });
+  it("renders a dash without a drill-in when there is no actual", () => {
+    renderCell({
+      value: undefined,
+      categoryName: "Groceries",
+      onSelect: () => {},
+    });
     expect(screen.getByText("—")).toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
   it("selects the category when clicked", async () => {
@@ -39,7 +44,7 @@ describe("ActualAmountCell", () => {
 
   it("marks the selected category as pressed", () => {
     renderCell({
-      value: undefined,
+      value: 12,
       categoryName: "Groceries",
       selected: true,
       onSelect: () => {},

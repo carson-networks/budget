@@ -9,10 +9,12 @@ import { useBudgetMonthData } from "./useBudgetMonthData.js";
 import { MonthNavigationBar } from "./MonthNavigationBar.js";
 import { SegmentBudgetTable } from "./SegmentBudgetTable.js";
 import { MonthTotalsTable } from "./MonthTotalsTable.js";
+import { MonthTransactions } from "./MonthTransactions.js";
 
 export default function BudgetMonthView() {
   const { selectedMonth, goPrev, goNext, goToToday } = useSelectedYearMonth();
   const [applyToFollowingMonths, setApplyToFollowingMonths] = useState(false);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>();
   const canApplyToFollowingMonths =
     compareYearMonth(selectedMonth, currentYearMonth()) >= 0;
   const overwriteFutureMonths =
@@ -71,10 +73,22 @@ export default function BudgetMonthView() {
           budgetByCategoryId={budgetByCategoryId}
           actualByCategoryId={actualByCategoryId}
           overwriteFutureMonths={overwriteFutureMonths}
+          selectedCategoryId={selectedCategoryId}
+          onSelectCategory={(categoryId) =>
+            setSelectedCategoryId((current) =>
+              current === categoryId ? undefined : categoryId,
+            )
+          }
         />
       ))}
 
       <MonthTotalsTable monthSummary={monthSummary} />
+
+      <MonthTransactions
+        month={selectedMonth}
+        categoryId={selectedCategoryId}
+        onClearCategory={() => setSelectedCategoryId(undefined)}
+      />
     </Box>
   );
 }

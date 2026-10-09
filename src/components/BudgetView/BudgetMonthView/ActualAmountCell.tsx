@@ -16,14 +16,16 @@ export function ActualAmountCell({
 }: ActualAmountCellProps) {
   const label = value === undefined ? "—" : formatCurrency(value.toFixed(2));
 
-  if (!onSelect) {
-    return value === undefined ? (
+  if (value === undefined) {
+    return (
       <Text span c="dimmed" size="sm">
         {label}
       </Text>
-    ) : (
-      <>{label}</>
     );
+  }
+
+  if (!onSelect) {
+    return <>{label}</>;
   }
 
   return (
@@ -32,7 +34,7 @@ export function ActualAmountCell({
       aria-label={`Show ${categoryName} transactions`}
       aria-pressed={selected}
       fz="sm"
-      c={selected ? "brand.7" : value === undefined ? "dimmed" : undefined}
+      c={selected ? "brand.7" : undefined}
       fw={selected ? 700 : undefined}
       td="underline dotted"
     >
