@@ -20,9 +20,7 @@ export function CategoryTransactions({
   ...navigation
 }: CategoryTransactionsProps) {
   const data = useCategoryTransactionsData(month, category.id);
-  const categoryEditing = useTransactionCategoryEditing(data.categories, {
-    disabled: data.isPlaceholderData,
-  });
+  const categoryEditing = useTransactionCategoryEditing(data.categories);
   return (
     <>
       <CategoryTransactionsHeader
@@ -33,9 +31,10 @@ export function CategoryTransactions({
       <CategoryTransactionsTable
         transactions={data.transactions}
         totalCount={data.totalCount}
-        page={data.page}
-        onPageChange={data.setPage}
-        pageSize={data.pageSize}
+        hasNextPage={data.hasNextPage}
+        isFetchingNextPage={data.isFetchingNextPage}
+        loadMoreError={data.loadMoreError}
+        onLoadMore={data.loadMore}
         accountNameById={data.accountNameById}
         categoryNameById={data.categoryNameById}
         renderCategory={categoryEditing.renderCategory}

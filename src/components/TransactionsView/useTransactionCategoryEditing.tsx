@@ -7,7 +7,6 @@ import { buildTransactionCategorySelectData } from "./transactionCategorySelectD
 
 export function useTransactionCategoryEditing(
   categories: readonly Category[],
-  { disabled = false }: { disabled?: boolean } = {},
 ) {
   const updateCategory = useMutation(transactionMutations.updateCategory);
   const data = useMemo(
@@ -21,7 +20,7 @@ export function useTransactionCategoryEditing(
       data={data}
       currentCategoryId={transaction.categoryId}
       transactionName={transaction.transactionName}
-      pending={updateCategory.isPending || disabled}
+      pending={updateCategory.isPending}
       onCategoryChange={(categoryId) =>
         updateCategory.mutate({ transactionId: transaction.id, categoryId })
       }

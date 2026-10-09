@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { PAGE_PARAM } from "../../../hooks/useTransactionsPager.js";
 import {
   addMonths,
   currentYearMonth,
@@ -20,7 +19,6 @@ export function useSelectedYearMonth() {
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
-          next.delete(PAGE_PARAM); // a different month starts at page 1
           const month = parseYearMonthKey(prev.get(MONTH_PARAM));
           next.set(
             MONTH_PARAM,
@@ -41,7 +39,6 @@ export function useSelectedYearMonth() {
         (prev) => {
           const next = new URLSearchParams(prev);
           next.delete(MONTH_PARAM);
-          next.delete(PAGE_PARAM);
           return next;
         },
         { replace: true },

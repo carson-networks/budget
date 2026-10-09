@@ -1,7 +1,9 @@
 import {
+  infiniteQueryOptions,
   keepPreviousData,
   mutationOptions,
   queryOptions,
+  type InfiniteData,
 } from "@tanstack/react-query";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { transactionClient } from "../connectRPC/connect.js";
@@ -12,7 +14,7 @@ import { invalidatesOnSettled } from "./invalidate.js";
 import { patchQueries } from "./optimistic.js";
 import { rpc } from "./rpc.js";
 
-/** UI + API page size for transaction lists. */
+/** Rows fetched per request while scrolling through a transaction list. */
 export const TRANSACTIONS_PAGE_SIZE = 25;
 
 export type TransactionsFilter = {
@@ -21,17 +23,11 @@ export type TransactionsFilter = {
   month?: YearMonth;
 };
 
-export type TransactionsListParams = {
-  page: number;
-  pageSize: number;
-} & TransactionsFilter;
-
-/**
- * Frozen `maxCreationTime` per filter scope. The first response for a scope
- * pins the window so later pages don't shift as new transactions arrive; the
- * owner (one pager) decides how long that window lives.
- */
-export type TransactionWindows = Map<string, Timestamp>;
+type TransactionsCursor = {
+  position: number;
+  limit: number;
+  maxCreationTime?: Timestamp;
+};
 
 export function definedFilter({
   accountId,
@@ -47,70 +43,49 @@ export function definedFilter({
   };
 }
 
-/** Identifies a filter + page size, independent of the page number. */
-export function transactionsScope(
-  filter: TransactionsFilter,
-  pageSize: number,
-): string {
-  return JSON.stringify([
-    filter.accountId,
-    filter.categoryId,
-    filter.month?.year,
-    filter.month?.month,
-    pageSize,
-  ]);
-}
-
 export const transactionQueries = {
   all: () => ["transactions"] as const,
   lists: () => [...transactionQueries.all(), "list"] as const,
 
   /**
-   * One server page (UI page is 1-based). Uses offset/`limit` matching the page
-   * size and the server `total_count` for pager totals — never a client guess.
+   * Transactions for `filter`, newest first, fetched `TRANSACTIONS_PAGE_SIZE`
+   * rows at a time (offset/`limit`) and flattened by `select`. `totalCount` is
+   * the server's, never derived from what has loaded so far. The first response
+   * pins `maxCreationTime`, so rows created while scrolling don't shift later
+   * pages; a refetch re-pins it.
    */
-  list: (params: TransactionsListParams, windows: TransactionWindows) => {
-    const { page, pageSize, ...rest } = params;
-    const filter = definedFilter(rest);
-    const scope = transactionsScope(filter, pageSize);
-    return queryOptions({
-      queryKey: [
-        ...transactionQueries.lists(),
-        { page, pageSize, ...filter },
-      ] as const,
-      queryFn: async () => {
-        const response = await rpc(
-          transactionClient.listTransactions({
-            ...filter,
-            cursor: {
-              position: (page - 1) * pageSize,
-              limit: pageSize,
-              maxCreationTime: windows.get(scope),
-            },
-          }),
+  list: (filter: TransactionsFilter = {}) => {
+    const scope = definedFilter(filter);
+    return infiniteQueryOptions({
+      queryKey: [...transactionQueries.lists(), scope] as const,
+      queryFn: ({ pageParam }) =>
+        rpc(transactionClient.listTransactions({ ...scope, cursor: pageParam })),
+      initialPageParam: {
+        position: 0,
+        limit: TRANSACTIONS_PAGE_SIZE,
+      } as TransactionsCursor,
+      getNextPageParam: (lastPage, allPages): TransactionsCursor | undefined => {
+        const loaded = allPages.reduce(
+          (count, page) => count + page.transactions.length,
+          0,
         );
-        const frozen = response.nextCursor?.maxCreationTime;
-        if (!windows.has(scope) && frozen !== undefined) {
-          windows.set(scope, frozen);
+        if (lastPage.transactions.length === 0 || loaded >= lastPage.totalCount) {
+          return undefined;
         }
-        return response;
+        return {
+          position: loaded,
+          limit: TRANSACTIONS_PAGE_SIZE,
+          maxCreationTime: allPages[0].nextCursor?.maxCreationTime,
+        };
       },
-      select: (response) => ({
-        transactions: response.transactions.filter(Boolean).map(mapTransaction),
-        /** Server `total_count`; never derived from the loaded slice. */
-        totalCount: response.totalCount,
+      select: (data) => ({
+        transactions: data.pages
+          .flatMap((page) => page.transactions)
+          .filter(Boolean)
+          .map(mapTransaction),
+        /** Server `total_count`; never derived from the loaded rows. */
+        totalCount: data.pages.at(-1)?.totalCount ?? 0,
       }),
-      // Keep the previous page on screen while paging, never across filters.
-      placeholderData: (previousData, previousQuery) => {
-        const previous = previousQuery?.queryKey[2] as
-          | TransactionsListParams
-          | undefined;
-        return previous &&
-          transactionsScope(definedFilter(previous), previous.pageSize) ===
-            scope
-          ? previousData
-          : undefined;
-      },
     });
   },
 
@@ -160,33 +135,39 @@ export const transactionMutations = {
         }),
       ),
     onMutate: ({ transactionId, categoryId }, context) =>
-      patchQueries<ListTransactionsResponse>(
+      patchQueries<InfiniteData<ListTransactionsResponse>>(
         context.client,
         { queryKey: transactionQueries.lists() },
         (data, queryKey) => {
-          const filter = queryKey[2] as TransactionsListParams | undefined;
+          const filter = queryKey[2] as TransactionsFilter | undefined;
           const movesOutOfFilter =
             filter?.categoryId !== undefined &&
             filter.categoryId !== categoryId;
-          if (
-            movesOutOfFilter &&
-            data.transactions.some(({ id }) => id === transactionId)
-          ) {
+          const holdsRow = data.pages.some((page) =>
+            page.transactions.some(({ id }) => id === transactionId),
+          );
+          if (movesOutOfFilter && holdsRow) {
             return {
               ...data,
-              transactions: data.transactions.filter(
-                ({ id }) => id !== transactionId,
-              ),
-              totalCount: data.totalCount - 1,
+              pages: data.pages.map((page) => ({
+                ...page,
+                transactions: page.transactions.filter(
+                  ({ id }) => id !== transactionId,
+                ),
+                totalCount: page.totalCount - 1,
+              })),
             };
           }
           return {
             ...data,
-            transactions: data.transactions.map((transaction) =>
-              transaction.id === transactionId
-                ? { ...transaction, categoryId }
-                : transaction,
-            ),
+            pages: data.pages.map((page) => ({
+              ...page,
+              transactions: page.transactions.map((transaction) =>
+                transaction.id === transactionId
+                  ? { ...transaction, categoryId }
+                  : transaction,
+              ),
+            })),
           };
         },
       ),

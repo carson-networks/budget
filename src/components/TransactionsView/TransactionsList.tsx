@@ -1,48 +1,47 @@
-import { Box, Pagination, Paper, Text } from "@mantine/core";
-import type { ReactNode } from "react";
+import { Box, Button, Group, Loader, Paper, Text } from "@mantine/core";
+import { useEffect, useRef, type ReactNode } from "react";
 import type { Transaction } from "../../models";
-import { TRANSACTIONS_PAGE_SIZE } from "../../queries/transactions.js";
 import { TransactionsTable } from "./TransactionsTable.js";
 
-export const DEFAULT_TRANSACTIONS_PAGE_SIZE = TRANSACTIONS_PAGE_SIZE;
-
-/** ~10 numbered slots: 1 boundary each side + 4 siblings around current. */
-const PAGINATION_SIBLINGS = 4;
-const PAGINATION_BOUNDARIES = 1;
+/** Start loading this far before the end of the list scrolls into view. */
+const LOAD_MORE_ROOT_MARGIN = "400px";
 
 export type TransactionsListProps = {
-  /** Current server page of transactions (not the full corpus). */
+  /** Transactions loaded so far (not necessarily the full corpus). */
   transactions: readonly Transaction[];
-  /** Server `total_count` for the same filter as this page. */
+  /** Server `total_count` for the same filter. */
   totalCount: number;
-  page: number;
-  onPageChange: (page: number) => void;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  /** Set when the last `onLoadMore` failed; shows a retry instead of auto-loading. */
+  loadMoreError?: Error | null;
+  /** Called when the end of the list nears the viewport, and on retry. */
+  onLoadMore: () => void;
   accountNameById: ReadonlyMap<string, string>;
   categoryNameById: ReadonlyMap<string, string>;
   /** Optional row click (e.g. open edit). Omitted when no detail handler exists yet. */
   onRowOpen?: (transaction: Transaction) => void;
   renderCategory?: (transaction: Transaction) => ReactNode;
-  pageSize?: number;
   emptyMessage?: string;
 };
 
 /**
- * Reusable paginated transactions table for the all-transactions view and later
- * account / search surfaces. Presentation only — callers own data fetching.
+ * Reusable infinite-scroll transactions table for the all-transactions view and
+ * later account / search surfaces. Presentation only — callers own data fetching.
  */
 export function TransactionsList({
   transactions,
   totalCount,
-  page,
-  onPageChange,
+  hasNextPage,
+  isFetchingNextPage,
+  loadMoreError = null,
+  onLoadMore,
   accountNameById,
   categoryNameById,
   onRowOpen,
   renderCategory,
-  pageSize = DEFAULT_TRANSACTIONS_PAGE_SIZE,
   emptyMessage = "No transactions yet.",
 }: TransactionsListProps) {
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize) || 1);
   const isEmpty = totalCount === 0;
 
   return (
@@ -65,37 +64,80 @@ export function TransactionsList({
             {emptyMessage}
           </Text>
         ) : (
-          <TransactionsTable
-            transactions={transactions}
-            accountNameById={accountNameById}
-            categoryNameById={categoryNameById}
-            onRowOpen={onRowOpen}
-            renderCategory={renderCategory}
-          />
+          <>
+            <TransactionsTable
+              transactions={transactions}
+              accountNameById={accountNameById}
+              categoryNameById={categoryNameById}
+              onRowOpen={onRowOpen}
+              renderCategory={renderCategory}
+            />
+            <LoadMoreFooter
+              hasNextPage={hasNextPage}
+              isFetchingNextPage={isFetchingNextPage}
+              error={loadMoreError}
+              onLoadMore={onLoadMore}
+            />
+          </>
         )}
       </Box>
 
-      {!isEmpty ? (
-        <Box
-          py="md"
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            borderTop: "1px solid var(--mantine-color-default-border)",
-          }}
-        >
-          <Pagination
-            total={totalPages}
-            value={page}
-            onChange={onPageChange}
-            size="sm"
-            color="brand"
-            withEdges
-            siblings={PAGINATION_SIBLINGS}
-            boundaries={PAGINATION_BOUNDARIES}
-          />
-        </Box>
-      ) : null}
     </Paper>
   );
+}
+
+type LoadMoreFooterProps = {
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  error: Error | null;
+  onLoadMore: () => void;
+};
+
+/**
+ * Loads the next batch when it scrolls near the viewport. The observer is
+ * re-created after each load, so it also keeps loading while the list is still
+ * too short to scroll.
+ */
+function LoadMoreFooter({
+  hasNextPage,
+  isFetchingNextPage,
+  error,
+  onLoadMore,
+}: LoadMoreFooterProps) {
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const canAutoLoad = hasNextPage && !isFetchingNextPage && !error;
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!canAutoLoad || !sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) onLoadMore();
+      },
+      { rootMargin: LOAD_MORE_ROOT_MARGIN },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [canAutoLoad, onLoadMore]);
+
+  if (error) {
+    return (
+      <Group justify="center" gap="sm" py="md">
+        <Text size="sm" c="red">
+          Could not load more transactions.
+        </Text>
+        <Button size="compact-sm" variant="light" onClick={onLoadMore}>
+          Try again
+        </Button>
+      </Group>
+    );
+  }
+  if (isFetchingNextPage) {
+    return (
+      <Group justify="center" py="md">
+        <Loader size="sm" aria-label="Loading more transactions" />
+      </Group>
+    );
+  }
+  return hasNextPage ? <div ref={sentinelRef} aria-hidden /> : null;
 }

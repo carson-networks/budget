@@ -1,8 +1,9 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AccountIntegration, AccountKind, CategoryKind } from "../../models";
 import type { Account, Category } from "../../models";
+import { stubIntersectionObserver } from "../../test/intersectionObserver.js";
 import { renderWithProviders } from "../../test/renderWithProviders.js";
 import { wireAccount, wireCategory } from "../../test/wire.js";
 import TransactionsView from "./TransactionsView.js";
@@ -54,6 +55,8 @@ function renderView() {
 }
 
 describe("TransactionsView", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
   beforeEach(() => {
     vi.resetAllMocks();
     api.listAccounts.mockResolvedValue({ accounts: [wireAccount(account)] });
@@ -136,17 +139,52 @@ describe("TransactionsView", () => {
     ).toBeDisabled();
   });
 
-  it("disables category editing while the next page loads", async () => {
-    const user = userEvent.setup();
+  it("loads the next batch as the end of the list scrolls into view", async () => {
+    const io = stubIntersectionObserver();
     api.listTransactions
-      .mockResolvedValueOnce({ transactions: [transaction], totalCount: 26 })
-      .mockReturnValue(new Promise(() => {}));
+      .mockResolvedValueOnce({ transactions: [transaction], totalCount: 2 })
+      .mockResolvedValue({
+        transactions: [
+          { ...transaction, id: "txn-2", transactionName: "Dinner" },
+        ],
+        totalCount: 2,
+      });
     renderView();
     await screen.findByText("Lunch");
-    await user.click(screen.getByRole("button", { name: "2" }));
+    expect(api.listTransactions).toHaveBeenCalledTimes(1);
+
+    io.scrollIntoView();
+    expect(await screen.findByText("Dinner")).toBeInTheDocument();
+    expect(screen.getByText("Lunch")).toBeInTheDocument();
+    expect(api.listTransactions).toHaveBeenLastCalledWith({
+      cursor: { position: 1, limit: 25, maxCreationTime: undefined },
+    });
+    await waitFor(() => expect(io.observedCount()).toBe(0));
+  });
+
+  it("keeps the list and offers a retry when loading more fails", async () => {
+    const user = userEvent.setup();
+    const io = stubIntersectionObserver();
+    api.listTransactions
+      .mockResolvedValueOnce({ transactions: [transaction], totalCount: 2 })
+      .mockRejectedValueOnce(new Error("Network down"))
+      .mockResolvedValue({
+        transactions: [
+          { ...transaction, id: "txn-2", transactionName: "Dinner" },
+        ],
+        totalCount: 2,
+      });
+    renderView();
+    await screen.findByText("Lunch");
+
+    io.scrollIntoView();
     expect(
-      await screen.findByRole("textbox", { name: "Category for Lunch" }),
-    ).toBeDisabled();
+      await screen.findByText("Could not load more transactions."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Lunch")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Dinner")).toBeInTheDocument();
   });
 
   it("shows a dismissible save error and restores the previous category", async () => {

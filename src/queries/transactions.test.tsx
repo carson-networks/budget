@@ -1,6 +1,11 @@
 import { create } from "@bufbuild/protobuf";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  type InfiniteData,
+} from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -19,7 +24,6 @@ import {
   TRANSACTIONS_PAGE_SIZE,
   transactionMutations,
   transactionQueries,
-  type TransactionWindows,
 } from "./transactions.js";
 
 const api = vi.hoisted(() => ({
@@ -98,127 +102,116 @@ describe("transactionQueries.list", () => {
     });
   });
 
-  function render(
-    params: Parameters<typeof transactionQueries.list>[0],
-    windows: TransactionWindows = new Map(),
-  ) {
+  function render(filter: Parameters<typeof transactionQueries.list>[0] = {}) {
     return renderHook(
-      (p) => useQuery(transactionQueries.list(p, windows)),
-      {
-        initialProps: params,
-        wrapper: createWrapper(createTestQueryClient()),
-      },
+      // Spread so every result field is tracked and changes re-render.
+      () => ({ ...useInfiniteQuery(transactionQueries.list(filter)) }),
+      { wrapper: createWrapper(createTestQueryClient()) },
     );
   }
 
-  it("requests the offset for the page and maps rows and the server total", async () => {
-    const { result } = render({ page: 1, pageSize: 25 });
+  it("requests the first batch and maps rows and the server total", async () => {
+    const { result } = render();
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(api.listTransactions).toHaveBeenCalledWith({
-      cursor: { position: 0, limit: 25, maxCreationTime: undefined },
+      cursor: { position: 0, limit: 25 },
     });
     expect(result.current.data).toEqual({
       transactions: [expect.objectContaining({ id: "txn-1", transactionName: "A" })],
       totalCount: 60,
     });
+    expect(result.current.hasNextPage).toBe(true);
   });
 
-  it("pins the window from the first response and reuses it for later pages", async () => {
-    const windows: TransactionWindows = new Map();
-    const { result, rerender } = render({ page: 1, pageSize: 25 }, windows);
+  it("appends the next batch at the loaded offset with the pinned window", async () => {
+    const { result } = render();
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(windows.size).toBe(1);
+    api.listTransactions.mockResolvedValue({
+      transactions: [wireTxn("txn-2", "B")],
+      totalCount: 60,
+    });
 
-    rerender({ page: 3, pageSize: 25 });
+    await act(() => result.current.fetchNextPage());
+    expect(api.listTransactions).toHaveBeenLastCalledWith({
+      cursor: { position: 1, limit: 25, maxCreationTime: frozen },
+    });
     await waitFor(() =>
-      expect(api.listTransactions).toHaveBeenLastCalledWith({
-        cursor: { position: 50, limit: 25, maxCreationTime: frozen },
-      }),
+      expect(result.current.data?.transactions.map((t) => t.id)).toEqual([
+        "txn-1",
+        "txn-2",
+      ]),
     );
   });
 
-  it("keeps separate windows per filter", async () => {
-    const windows: TransactionWindows = new Map();
-    const { result, rerender } = render({ page: 1, pageSize: 25 }, windows);
+  it("has no next batch once everything is loaded", async () => {
+    api.listTransactions.mockResolvedValue({
+      transactions: [wireTxn("txn-1")],
+      totalCount: 1,
+    });
+    const { result } = render();
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-
-    rerender({ page: 2, pageSize: 25, accountId: "acc-1" });
-    await waitFor(() =>
-      expect(api.listTransactions).toHaveBeenLastCalledWith({
-        accountId: "acc-1",
-        cursor: { position: 25, limit: 25, maxCreationTime: undefined },
-      }),
-    );
+    expect(result.current.hasNextPage).toBe(false);
   });
 
-  it("sends month and category filters", async () => {
+  it("stops paging when the server returns an empty batch", async () => {
+    api.listTransactions.mockResolvedValue({ transactions: [], totalCount: 60 });
+    const { result } = render();
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.hasNextPage).toBe(false);
+  });
+
+  it("sends account, month and category filters", async () => {
     const { result } = render({
-      page: 1,
-      pageSize: 25,
+      accountId: "acc-1",
       month: march,
       categoryId: "cat-1",
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(api.listTransactions).toHaveBeenCalledWith({
+      accountId: "acc-1",
       categoryId: "cat-1",
       month: march,
-      cursor: { position: 0, limit: 25, maxCreationTime: undefined },
+      cursor: { position: 0, limit: 25 },
     });
-  });
-
-  it("keeps the previous page while the same filter's next page loads", async () => {
-    api.listTransactions
-      .mockResolvedValueOnce({
-        transactions: [wireTxn("txn", "Coffee")],
-        totalCount: 60,
-      })
-      .mockImplementation(() => new Promise(() => {}));
-    const { result, rerender } = render({
-      page: 1,
-      pageSize: 25,
-      accountId: "acc-1",
-    });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-
-    rerender({ page: 2, pageSize: 25, accountId: "acc-1" });
-    await waitFor(() => expect(result.current.isPlaceholderData).toBe(true));
-    expect(result.current.data?.transactions[0].transactionName).toBe("Coffee");
   });
 
   it("never shows another filter's rows while loading", async () => {
     api.listTransactions
       .mockResolvedValueOnce({ transactions: [wireTxn("txn", "Mine")], totalCount: 1 })
       .mockImplementation(() => new Promise(() => {}));
-    const { result, rerender } = render({
-      page: 1,
-      pageSize: 25,
-      accountId: "acc-1",
-    });
+    const { result, rerender } = renderHook(
+      ({ accountId }) =>
+        useInfiniteQuery(transactionQueries.list({ accountId })),
+      {
+        initialProps: { accountId: "acc-1" },
+        wrapper: createWrapper(createTestQueryClient()),
+      },
+    );
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    rerender({ page: 1, pageSize: 25, accountId: "acc-2" });
+    rerender({ accountId: "acc-2" });
     await waitFor(() => expect(result.current.isPending).toBe(true));
     expect(result.current.data).toBeUndefined();
-    expect(result.current.isPlaceholderData).toBe(false);
   });
 });
 
 describe("transactionMutations.updateCategory", () => {
   const input = { transactionId: "txn-1", categoryId: "new-category" };
   const rpcInput = { id: "txn-1", categoryId: "new-category" };
-  const pageKey = (page: number) => ["transactions", "list", { page, pageSize: 25 }];
-  const accountPageKey = [
-    "transactions",
-    "list",
-    { page: 1, pageSize: 25, accountId: "acc-1" },
-  ];
+  const listKey = (filter: object = {}) => ["transactions", "list", filter];
+  const accountListKey = listKey({ accountId: "acc-1" });
+  const infinite = (...pages: ListTransactionsResponse[]) => ({
+    pages,
+    pageParams: pages.map(() => undefined),
+  });
+  const otherKey = listKey({ accountId: "acc-2" });
   const totalsKey = ["transactions", "totals", 2026, 1, 2026, 12];
 
   beforeEach(() => vi.resetAllMocks());
 
   function setup() {
     const client = createTestQueryClient();
-    const existing = create(ListTransactionsResponseSchema, {
+    const page1 = create(ListTransactionsResponseSchema, {
       transactions: [
         create(TransactionSchema, {
           id: "txn-1",
@@ -232,77 +225,89 @@ describe("transactionMutations.updateCategory", () => {
       totalCount: 60,
       nextCursor: { position: 25, limit: 25, maxCreationTime: { seconds: 3000n } },
     });
-    client.setQueryData(pageKey(1), existing);
-    client.setQueryData(pageKey(2), existing);
-    client.setQueryData(accountPageKey, existing);
+    const page2 = create(ListTransactionsResponseSchema, {
+      transactions: [
+        create(TransactionSchema, { id: "txn-3", categoryId: "unchanged" }),
+      ],
+      totalCount: 60,
+    });
+    const existing = infinite(page1, page2);
+    client.setQueryData(listKey(), existing);
+    client.setQueryData(accountListKey, existing);
     client.setQueryData(
-      pageKey(3),
-      create(ListTransactionsResponseSchema, {
-        transactions: [
-          create(TransactionSchema, { id: "txn-3", categoryId: "unchanged" }),
-        ],
-        totalCount: 60,
-      }),
+      otherKey,
+      infinite(
+        create(ListTransactionsResponseSchema, {
+          transactions: [
+            create(TransactionSchema, { id: "txn-9", categoryId: "unchanged" }),
+          ],
+          totalCount: 1,
+        }),
+      ),
     );
     client.setQueryData(totalsKey, { byMonth: [] });
     const { result } = renderHook(
       () => useMutation(transactionMutations.updateCategory),
       { wrapper: createWrapper(client) },
     );
-    return { client, existing, result };
+    return { client, existing, page1, page2, result };
   }
 
-  it("optimistically recategorizes every cached page that holds the row, then refetches lists and totals", async () => {
+  it("optimistically recategorizes the row in every cached list, then refetches lists and totals", async () => {
     let complete!: () => void;
     api.updateTransaction.mockReturnValue(
       new Promise<void>((resolve) => {
         complete = resolve;
       }),
     );
-    const { client, existing, result } = setup();
+    const { client, page1, page2, result } = setup();
     act(() => result.current.mutate(input));
     await waitFor(() =>
       expect(api.updateTransaction).toHaveBeenCalledExactlyOnceWith(rpcInput),
     );
     expect(result.current.isPending).toBe(true);
-    for (const key of [pageKey(1), pageKey(2), accountPageKey]) {
-      expect(client.getQueryData(key)).toEqual({
-        ...existing,
-        transactions: [
-          { ...existing.transactions[0], categoryId: "new-category" },
-          existing.transactions[1],
-        ],
-      });
+    for (const key of [listKey(), accountListKey]) {
+      expect(client.getQueryData(key)).toEqual(
+        infinite(
+          {
+            ...page1,
+            transactions: [
+              { ...page1.transactions[0], categoryId: "new-category" },
+              page1.transactions[1],
+            ],
+          } as ListTransactionsResponse,
+          page2,
+        ),
+      );
     }
     expect(
-      client.getQueryData<ListTransactionsResponse>(pageKey(3))?.transactions[0]
-        .categoryId,
+      client.getQueryData<InfiniteData<ListTransactionsResponse>>(otherKey)
+        ?.pages[0].transactions[0].categoryId,
     ).toBe("unchanged");
 
     await act(async () => complete());
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    for (const key of [pageKey(1), pageKey(2), pageKey(3), accountPageKey, totalsKey]) {
+    for (const key of [listKey(), accountListKey, otherKey, totalsKey]) {
       expect(client.getQueryState(key)?.isInvalidated).toBe(true);
     }
   });
 
   it.each([new Error("Save failed"), "Save failed"])(
-    "rolls back all pages and exposes a readable error (%s)",
+    "rolls back every list and exposes a readable error (%s)",
     async (failure) => {
       api.updateTransaction.mockRejectedValue(failure);
       const { client, existing, result } = setup();
       act(() => result.current.mutate(input));
       await waitFor(() => expect(result.current.isError).toBe(true));
       expect(result.current.error?.message).toBe("Save failed");
-      expect(client.getQueryData(pageKey(1))).toEqual(existing);
-      expect(client.getQueryData(pageKey(2))).toEqual(existing);
-      expect(client.getQueryData(accountPageKey)).toEqual(existing);
-      expect(client.getQueryState(pageKey(1))?.isInvalidated).toBe(true);
+      expect(client.getQueryData(listKey())).toEqual(existing);
+      expect(client.getQueryData(accountListKey)).toEqual(existing);
+      expect(client.getQueryState(listKey())?.isInvalidated).toBe(true);
       expect(client.getQueryState(totalsKey)?.isInvalidated).toBe(true);
     },
   );
 
-  it("can save without a cached transaction page", async () => {
+  it("can save without a cached transaction list", async () => {
     api.updateTransaction.mockResolvedValue({});
     const { client, result } = setup();
     client.removeQueries({ queryKey: ["transactions"] });
@@ -311,16 +316,16 @@ describe("transactionMutations.updateCategory", () => {
     expect(client.getQueriesData({ queryKey: ["transactions"] })).toEqual([]);
   });
 
-  it("cancels an in-flight page fetch before applying the optimistic category", async () => {
+  it("cancels an in-flight list fetch before applying the optimistic category", async () => {
     api.updateTransaction.mockResolvedValue({});
-    const { client, existing, result } = setup();
+    const { client, page1, result } = setup();
     let signal!: AbortSignal;
     const fetch = client
       .fetchQuery({
-        queryKey: pageKey(1),
+        queryKey: listKey(),
         queryFn: (context) => {
           signal = context.signal;
-          return new Promise<ListTransactionsResponse>(() => {});
+          return new Promise<InfiniteData<ListTransactionsResponse>>(() => {});
         },
       })
       .catch(() => undefined);
@@ -328,31 +333,35 @@ describe("transactionMutations.updateCategory", () => {
     await fetch;
     expect(signal.aborted).toBe(true);
     expect(
-      client.getQueryData<ListTransactionsResponse>(pageKey(1))?.transactions[0],
-    ).toEqual({ ...existing.transactions[0], categoryId: input.categoryId });
+      client.getQueryData<InfiniteData<ListTransactionsResponse>>(listKey())
+        ?.pages[0].transactions[0],
+    ).toEqual({ ...page1.transactions[0], categoryId: input.categoryId });
   });
 
-  it("drops the transaction from category-filtered pages it moves out of", async () => {
+  it("drops the transaction from category-filtered lists it moves out of", async () => {
     api.updateTransaction.mockReturnValue(new Promise<void>(() => {}));
-    const { client, existing, result } = setup();
-    const filteredKey = (categoryId: string) => [
-      "transactions",
-      "list",
-      { page: 1, pageSize: 25, categoryId, month: { year: 2026, month: 1 } },
-    ];
+    const { client, existing, page1, page2, result } = setup();
+    const filteredKey = (categoryId: string) =>
+      listKey({ categoryId, month: { year: 2026, month: 1 } });
     client.setQueryData(filteredKey("old-category"), existing);
     client.setQueryData(filteredKey("new-category"), existing);
     act(() => result.current.mutate(input));
     await waitFor(() => expect(result.current.isPending).toBe(true));
 
-    expect(client.getQueryData(filteredKey("old-category"))).toEqual({
-      ...existing,
-      transactions: [existing.transactions[1]],
-      totalCount: 59,
-    });
+    expect(client.getQueryData(filteredKey("old-category"))).toEqual(
+      infinite(
+        {
+          ...page1,
+          transactions: [page1.transactions[1]],
+          totalCount: 59,
+        } as ListTransactionsResponse,
+        { ...page2, totalCount: 59 } as ListTransactionsResponse,
+      ),
+    );
     expect(
-      client.getQueryData<ListTransactionsResponse>(filteredKey("new-category"))
-        ?.transactions[0].categoryId,
+      client.getQueryData<InfiniteData<ListTransactionsResponse>>(
+        filteredKey("new-category"),
+      )?.pages[0].transactions[0].categoryId,
     ).toBe("new-category");
   });
 });
