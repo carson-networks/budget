@@ -1,6 +1,7 @@
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { Alert, Box, Loader, Stack, Text } from "@mantine/core";
 import { useNavigate, useParams } from "react-router-dom";
-import { useAllCategories } from "../../../hooks/useCategories.js";
+import { categoryQueries } from "../../../queries/categories.js";
 import { yearMonthKey } from "../../../utils/monthRange.js";
 import { CategoryTransactions } from "./CategoryTransactions.js";
 import { useSelectedYearMonth } from "./useSelectedYearMonth.js";
@@ -9,7 +10,11 @@ export default function BudgetCategoryTransactionsView() {
   const { categoryId = "" } = useParams<{ categoryId: string }>();
   const navigate = useNavigate();
   const { selectedMonth, goPrev, goNext, goToToday } = useSelectedYearMonth();
-  const { categories, isLoading, error } = useAllCategories();
+  const {
+    data: categories = [],
+    isLoading,
+    error,
+  } = useInfiniteQuery(categoryQueries.list());
   const category = categories.find((c) => c.id === categoryId);
 
   const goBack = () =>

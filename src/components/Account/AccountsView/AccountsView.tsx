@@ -1,9 +1,9 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Alert, Box, Loader, Stack, Text } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 import { AccountKind, type Account } from "../../../models";
-import { useAllAccounts } from "../../../hooks/useAccounts.js";
+import { accountQueries } from "../../../queries/accounts.js";
 import { useConnectedAccountFlow } from "../../../plaid/useConnectedAccountFlow.js";
 import { prefetchPlaidLinkToken } from "../../../plaid/usePlaidLinkToken.js";
 import CreateManualAccountModal from "../CreateManualAccountModal/Modal.js";
@@ -23,7 +23,9 @@ const KIND_LABELS: Record<AccountKind, string> = {
 export default function AccountsView() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { accounts, isLoading, error } = useAllAccounts();
+  const { data: accounts = [], isLoading, error } = useInfiniteQuery(
+    accountQueries.list(),
+  );
   const [manualModalOpen, setManualModalOpen] = useState(false);
   const [settingsAccount, setSettingsAccount] = useState<Account | null>(null);
 

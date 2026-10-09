@@ -1,6 +1,7 @@
+import { useMutation } from "@tanstack/react-query";
 import { useMemo } from "react";
 import type { Category, Transaction } from "../../models";
-import { useUpdateTransactionCategory } from "../../hooks/useUpdateTransactionCategory.js";
+import { transactionMutations } from "../../queries/transactions.js";
 import { CategorySelect } from "./CategorySelect.js";
 import { buildTransactionCategorySelectData } from "./transactionCategorySelectData.js";
 
@@ -8,7 +9,7 @@ export function useTransactionCategoryEditing(
   categories: readonly Category[],
   { disabled = false }: { disabled?: boolean } = {},
 ) {
-  const updateCategory = useUpdateTransactionCategory();
+  const updateCategory = useMutation(transactionMutations.updateCategory);
   const data = useMemo(
     () => buildTransactionCategorySelectData(categories),
     [categories],

@@ -1,3 +1,4 @@
+import { useMutation } from "@tanstack/react-query";
 import {
   Badge,
   Box,
@@ -10,7 +11,7 @@ import {
 } from "@mantine/core";
 import type { MouseEvent } from "react";
 import type { Category } from "../../../models";
-import { useSetBudget } from "../../../hooks/useBudgets.js";
+import { budgetMutations } from "../../../queries/budgets.js";
 import type { CategorySegment } from "../../Category/CategoriesView/categorySegments.js";
 import { displayCategoryKind } from "../../Category/CategoriesView/categoryDisplay.js";
 import type { YearMonth } from "../../../utils/monthRange.js";
@@ -41,7 +42,7 @@ export function SegmentBudgetTable({
   overwriteFutureMonths = false,
   onOpenCategory,
 }: SegmentBudgetTableProps) {
-  const setBudget = useSetBudget();
+  const setBudget = useMutation(budgetMutations.set);
   const theme = useMantineTheme();
   const colorScheme = useComputedColorScheme("light");
   const rootStripColor =

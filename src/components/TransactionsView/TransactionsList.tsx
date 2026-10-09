@@ -1,7 +1,7 @@
 import { Box, Pagination, Paper, Text } from "@mantine/core";
 import type { ReactNode } from "react";
 import type { Transaction } from "../../models";
-import { TRANSACTIONS_PAGE_SIZE } from "../../hooks/useTransactions.js";
+import { TRANSACTIONS_PAGE_SIZE } from "../../queries/transactions.js";
 import { TransactionsTable } from "./TransactionsTable.js";
 
 export const DEFAULT_TRANSACTIONS_PAGE_SIZE = TRANSACTIONS_PAGE_SIZE;

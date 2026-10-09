@@ -1,30 +1,28 @@
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { useAllAccounts } from "../../../hooks/useAccounts.js";
-import { useAllCategories } from "../../../hooks/useCategories.js";
-import {
-  TRANSACTIONS_PAGE_SIZE,
-  useAllTransactions,
-} from "../../../hooks/useTransactions.js";
+import { useTransactionsPager } from "../../../hooks/useTransactionsPager.js";
+import { accountQueries } from "../../../queries/accounts.js";
+import { categoryQueries } from "../../../queries/categories.js";
+import type { Category } from "../../../models";
 import type { YearMonth } from "../../../utils/monthRange.js";
+import { nameById } from "../../../utils/nameById.js";
+
+const NO_CATEGORIES: Category[] = [];
 
 export function useCategoryTransactionsData(
   month: YearMonth,
   categoryId: string,
 ) {
-  const transactionsQuery = useAllTransactions(TRANSACTIONS_PAGE_SIZE, {
-    month,
-    categoryId,
-  });
-  const accountsQuery = useAllAccounts();
-  const categoriesQuery = useAllCategories();
+  const transactionsQuery = useTransactionsPager({ month, categoryId });
+  const accountsQuery = useInfiniteQuery(accountQueries.list());
+  const categoriesQuery = useInfiniteQuery(categoryQueries.list());
+  const accounts = accountsQuery.data;
+  const categories = categoriesQuery.data;
 
-  const accountNameById = useMemo(
-    () => new Map(accountsQuery.accounts.map((a) => [a.id, a.name])),
-    [accountsQuery.accounts],
-  );
+  const accountNameById = useMemo(() => nameById(accounts ?? []), [accounts]);
   const categoryNameById = useMemo(
-    () => new Map(categoriesQuery.categories.map((c) => [c.id, c.name])),
-    [categoriesQuery.categories],
+    () => nameById(categories ?? []),
+    [categories],
   );
 
   return {
@@ -34,7 +32,7 @@ export function useCategoryTransactionsData(
     setPage: transactionsQuery.setPage,
     pageSize: transactionsQuery.pageSize,
     accountNameById,
-    categories: categoriesQuery.categories,
+    categories: categories ?? NO_CATEGORIES,
     categoryNameById,
     isPlaceholderData: transactionsQuery.isPlaceholderData,
     isLoading:

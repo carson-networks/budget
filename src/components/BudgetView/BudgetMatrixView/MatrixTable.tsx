@@ -1,5 +1,6 @@
+import { useMutation } from "@tanstack/react-query";
 import { Badge, Group, Table, Text } from "@mantine/core";
-import { useSetBudget } from "../../../hooks/useBudgets.js";
+import { budgetMutations } from "../../../queries/budgets.js";
 import type { CategorySegment } from "../../Category/CategoriesView/categorySegments.js";
 import { displayCategoryKind } from "../../Category/CategoriesView/categoryDisplay.js";
 import {
@@ -38,7 +39,7 @@ export function MatrixTable({
   applyToFutureMonths,
   isRefreshing,
 }: Props) {
-  const setBudget = useSetBudget();
+  const setBudget = useMutation(budgetMutations.set);
   const rows = segments.flatMap((segment) => [
     { category: segment.root, root: true },
     ...segment.children.map((category) => ({ category, root: false })),
