@@ -37,7 +37,7 @@ describe("useCreateManualAccountForm", () => {
 
   it("starts with isFormValid false until all trimmed fields are set", () => {
     const { result } = renderHook(() =>
-      useCreateManualAccountForm(true, vi.fn()),
+      useCreateManualAccountForm(vi.fn()),
     );
 
     expect(result.current.isFormValid).toBe(false);
@@ -60,7 +60,7 @@ describe("useCreateManualAccountForm", () => {
 
   it("does not call mutate when handleSubmit runs with empty trimmed fields", () => {
     const { result } = renderHook(() =>
-      useCreateManualAccountForm(true, vi.fn()),
+      useCreateManualAccountForm(vi.fn()),
     );
 
     act(() => {
@@ -78,7 +78,7 @@ describe("useCreateManualAccountForm", () => {
 
   it("does not call mutate when type is null", () => {
     const { result } = renderHook(() =>
-      useCreateManualAccountForm(true, vi.fn()),
+      useCreateManualAccountForm(vi.fn()),
     );
 
     act(() => {
@@ -98,7 +98,7 @@ describe("useCreateManualAccountForm", () => {
   it("calls mutate with trimmed fields and invokes onClose on success", () => {
     const onClose = vi.fn();
     const { result } = renderHook(() =>
-      useCreateManualAccountForm(true, onClose),
+      useCreateManualAccountForm(onClose),
     );
 
     act(() => {
@@ -125,7 +125,7 @@ describe("useCreateManualAccountForm", () => {
 
   it("uses CreditCards AccountType when type state is credit kind", () => {
     const { result } = renderHook(() =>
-      useCreateManualAccountForm(true, vi.fn()),
+      useCreateManualAccountForm(vi.fn()),
     );
 
     act(() => {
@@ -150,7 +150,7 @@ describe("useCreateManualAccountForm", () => {
   it("handleClose resets fields, calls mutation reset, and onClose", () => {
     const onClose = vi.fn();
     const { result } = renderHook(() =>
-      useCreateManualAccountForm(true, onClose),
+      useCreateManualAccountForm(onClose),
     );
 
     act(() => {
@@ -169,16 +169,5 @@ describe("useCreateManualAccountForm", () => {
     expect(result.current.subType).toBe("");
     expect(result.current.startingBalance).toBe("");
     expect(result.current.type).toBe(String(AccountKind.Cash));
-  });
-
-  it("calls reset when open becomes false", () => {
-    const { rerender } = renderHook(
-      ({ open }) => useCreateManualAccountForm(open, vi.fn()),
-      { initialProps: { open: true } },
-    );
-
-    rerender({ open: false });
-
-    expect(resetMock).toHaveBeenCalled();
   });
 });

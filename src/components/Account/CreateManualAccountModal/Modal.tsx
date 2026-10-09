@@ -34,7 +34,7 @@ export default function CreateManualAccountModal({
     handleClose,
     handleSubmit,
     isFormValid,
-  } = useCreateManualAccountForm(open, onClose);
+  } = useCreateManualAccountForm(onClose);
 
   return (
     <Modal
