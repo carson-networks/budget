@@ -1,5 +1,5 @@
 import { MantineProvider } from "@mantine/core";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -136,6 +136,36 @@ describe("TransactionsTable", () => {
     await user.click(screen.getByText("Coffee"));
     // No handler - click should not throw; row has no button role.
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("sections rows under a header per transaction date", () => {
+    renderTable({
+      transactions: [
+        {
+          ...sample,
+          id: "a",
+          transactionName: "Older",
+          transactionDate: new Date("2024-03-01T00:00:00Z"),
+        },
+        {
+          ...sample,
+          id: "b",
+          transactionName: "Newer",
+          transactionDate: new Date("2024-03-05T00:00:00Z"),
+        },
+      ],
+    });
+
+    const sections = screen.getAllByRole("rowgroup").slice(1);
+    expect(sections).toHaveLength(2);
+    expect(within(sections[0]).getByRole("rowheader")).toHaveTextContent(
+      /March 5, 2024/,
+    );
+    expect(within(sections[0]).getByText("Newer")).toBeInTheDocument();
+    expect(within(sections[1]).getByRole("rowheader")).toHaveTextContent(
+      /March 1, 2024/,
+    );
+    expect(within(sections[1]).getByText("Older")).toBeInTheDocument();
   });
 
   it("renders vertical column divider lines", () => {

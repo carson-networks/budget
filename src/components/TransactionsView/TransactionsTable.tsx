@@ -1,6 +1,7 @@
 import { Box, Table, rem } from "@mantine/core";
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { formatSignedCurrency, type Transaction } from "../../models";
+import { groupTransactionsByDate } from "./groupTransactionsByDate.js";
 
 /** Matches Mantine `ActionIcon` `size="md"` height used in Accounts settings column. */
 const TABLE_LEADING_CELL_HEIGHT_PX = 28;
@@ -24,6 +25,8 @@ const COLUMN_WIDTHS = {
 
 const TABLE_MIN_WIDTH = rem(880);
 
+const COLUMN_COUNT = 6;
+
 export function TransactionsTable({
   transactions,
   accountNameById,
@@ -31,10 +34,14 @@ export function TransactionsTable({
   onRowOpen,
   renderCategory,
 }: TransactionsTableProps) {
+  const sections = useMemo(
+    () => groupTransactionsByDate(transactions),
+    [transactions],
+  );
+
   return (
     <Table.ScrollContainer minWidth={TABLE_MIN_WIDTH}>
       <Table
-        striped
         highlightOnHover
         withTableBorder
         withColumnBorders
@@ -60,73 +67,109 @@ export function TransactionsTable({
             <Table.Th>Amount</Table.Th>
           </Table.Tr>
         </Table.Thead>
-        <Table.Tbody>
-          {transactions.map((txn) => {
-            const accountName =
-              accountNameById.get(txn.accountId) ?? txn.accountId;
-            const merchantName = txn.merchantName?.trim()
-              ? txn.merchantName
-              : "—";
-            const categoryName = txn.categoryId
-              ? (categoryNameById.get(txn.categoryId) ?? txn.categoryId)
-              : "—";
-
-            return (
-              <Table.Tr
+        {sections.map((section) => (
+          <Table.Tbody key={section.key}>
+            <DateSectionHeader label={section.label} />
+            {section.transactions.map((txn) => (
+              <TransactionRow
                 key={txn.id}
-                style={onRowOpen ? { cursor: "pointer" } : undefined}
-                onClick={onRowOpen ? () => onRowOpen(txn) : undefined}
-              >
-                <Table.Td
-                  style={{ verticalAlign: "middle", textAlign: "center" }}
-                >
-                  <Box
-                    style={{
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      minHeight: TABLE_LEADING_CELL_HEIGHT_PX,
-                    }}
-                  >
-                    <Box
-                      style={{
-                        width: 24,
-                        height: 24,
-                        backgroundColor: "var(--mantine-color-brand-1)",
-                        borderRadius: 5,
-                        flexShrink: 0,
-                      }}
-                      aria-hidden
-                    />
-                  </Box>
-                </Table.Td>
-                <Table.Td style={{ verticalAlign: "middle" }}>
-                  {merchantName}
-                </Table.Td>
-                <Table.Td style={{ verticalAlign: "middle" }}>
-                  {txn.transactionName}
-                </Table.Td>
-                <Table.Td style={{ verticalAlign: "middle" }}>
-                  {accountName}
-                </Table.Td>
-                <Table.Td
-                  style={{ verticalAlign: "middle" }}
-                  onClick={
-                    renderCategory
-                      ? (event) => event.stopPropagation()
-                      : undefined
-                  }
-                >
-                  {renderCategory ? renderCategory(txn) : categoryName}
-                </Table.Td>
-                <Table.Td fw={500} style={{ verticalAlign: "middle" }}>
-                  {formatSignedCurrency(txn.amount)}
-                </Table.Td>
-              </Table.Tr>
-            );
-          })}
-        </Table.Tbody>
+                transaction={txn}
+                accountNameById={accountNameById}
+                categoryNameById={categoryNameById}
+                onRowOpen={onRowOpen}
+                renderCategory={renderCategory}
+              />
+            ))}
+          </Table.Tbody>
+        ))}
       </Table>
     </Table.ScrollContainer>
+  );
+}
+
+function DateSectionHeader({ label }: { label: string }) {
+  return (
+    <Table.Tr>
+      <Table.Th
+        scope="rowgroup"
+        colSpan={COLUMN_COUNT}
+        fz="xs"
+        fw={600}
+        c="dimmed"
+        tt="uppercase"
+        style={{
+          backgroundColor: "var(--mantine-color-default-hover)",
+          letterSpacing: "0.04em",
+        }}
+      >
+        {label}
+      </Table.Th>
+    </Table.Tr>
+  );
+}
+
+type TransactionRowProps = Omit<TransactionsTableProps, "transactions"> & {
+  transaction: Transaction;
+};
+
+function TransactionRow({
+  transaction,
+  accountNameById,
+  categoryNameById,
+  onRowOpen,
+  renderCategory,
+}: TransactionRowProps) {
+  const accountName =
+    accountNameById.get(transaction.accountId) ?? transaction.accountId;
+  const merchantName = transaction.merchantName?.trim()
+    ? transaction.merchantName
+    : "—";
+  const categoryName = transaction.categoryId
+    ? (categoryNameById.get(transaction.categoryId) ?? transaction.categoryId)
+    : "—";
+
+  return (
+    <Table.Tr
+      style={onRowOpen ? { cursor: "pointer" } : undefined}
+      onClick={onRowOpen ? () => onRowOpen(transaction) : undefined}
+    >
+      <Table.Td style={{ verticalAlign: "middle", textAlign: "center" }}>
+        <Box
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            minHeight: TABLE_LEADING_CELL_HEIGHT_PX,
+          }}
+        >
+          <Box
+            style={{
+              width: 24,
+              height: 24,
+              backgroundColor: "var(--mantine-color-brand-1)",
+              borderRadius: 5,
+              flexShrink: 0,
+            }}
+            aria-hidden
+          />
+        </Box>
+      </Table.Td>
+      <Table.Td style={{ verticalAlign: "middle" }}>{merchantName}</Table.Td>
+      <Table.Td style={{ verticalAlign: "middle" }}>
+        {transaction.transactionName}
+      </Table.Td>
+      <Table.Td style={{ verticalAlign: "middle" }}>{accountName}</Table.Td>
+      <Table.Td
+        style={{ verticalAlign: "middle" }}
+        onClick={
+          renderCategory ? (event) => event.stopPropagation() : undefined
+        }
+      >
+        {renderCategory ? renderCategory(transaction) : categoryName}
+      </Table.Td>
+      <Table.Td fw={500} style={{ verticalAlign: "middle" }}>
+        {formatSignedCurrency(transaction.amount)}
+      </Table.Td>
+    </Table.Tr>
   );
 }
