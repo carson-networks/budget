@@ -201,4 +201,63 @@ describe("useAllTransactions", () => {
     expect(result.current.isPlaceholderData).toBe(true);
     expect(result.current.transactions[0].transactionName).toBe("Coffee");
   });
+  it("filters by month and category and resets paging when the month changes", async () => {
+    listTransactionsMock.mockImplementation(({ month }) =>
+      Promise.resolve({
+        transactions: [
+          {
+            id: `txn-${month.month}`,
+            accountId: "acc-1",
+            amount: "1",
+            transactionName: `Month ${month.month}`,
+          },
+        ],
+        totalCount: 60,
+      }),
+    );
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const { result, rerender } = renderHook(
+      ({ month }: { month: { year: number; month: number } }) =>
+        useAllTransactions(25, { month, categoryId: "cat-1" }),
+      {
+        initialProps: { month: { year: 2025, month: 3 } },
+        wrapper: wrapper(client),
+      },
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(listTransactionsMock).toHaveBeenCalledWith({
+      categoryId: "cat-1",
+      month: { year: 2025, month: 3 },
+      cursor: { position: 0, limit: 25, maxCreationTime: undefined },
+    });
+    expect(
+      client.getQueryData([
+        "transactions",
+        {
+          page: 1,
+          pageSize: 25,
+          categoryId: "cat-1",
+          month: { year: 2025, month: 3 },
+        },
+      ]),
+    ).toBeDefined();
+
+    await act(async () => result.current.setPage(2));
+    rerender({ month: { year: 2025, month: 3 } });
+    expect(result.current.page).toBe(2);
+
+    rerender({ month: { year: 2025, month: 4 } });
+    expect(result.current.page).toBe(1);
+    expect(result.current.transactions).toEqual([]);
+    await waitFor(() =>
+      expect(result.current.transactions[0]?.transactionName).toBe("Month 4"),
+    );
+    expect(listTransactionsMock).toHaveBeenLastCalledWith({
+      categoryId: "cat-1",
+      month: { year: 2025, month: 4 },
+      cursor: { position: 0, limit: 25, maxCreationTime: undefined },
+    });
+  });
 });

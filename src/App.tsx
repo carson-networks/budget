@@ -3,6 +3,7 @@ import { Route, Routes } from "react-router-dom";
 import AppShell from "./components/AppShell/AppShell";
 import AccountsView from "./components/Account/AccountsView/AccountsView";
 import AccountTransactionsView from "./components/Account/AccountTransactionsView/AccountTransactionsView";
+import BudgetCategoryTransactionsView from "./components/BudgetView/BudgetMonthView/BudgetCategoryTransactionsView";
 import BudgetView from "./components/BudgetView/BudgetView";
 import CategoriesView from "./components/Category/CategoriesView/CategoriesView";
 import TransactionsView from "./components/TransactionsView/TransactionsView";
@@ -25,6 +26,10 @@ function App() {
           <Route path="/" element={<AppShell />}>
             <Route index element={<HomePage />} />
             <Route path="budget" element={<BudgetView />} />
+            <Route
+              path="budget/categories/:categoryId"
+              element={<BudgetCategoryTransactionsView />}
+            />
             <Route path="transactions" element={<TransactionsView />} />
             <Route path="accounts" element={<AccountsView />} />
             <Route

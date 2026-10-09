@@ -5,14 +5,45 @@ import { transactionClient } from "../connectRPC/connect.js";
 import { connectErrorMessage } from "../connectRPC/errors.js";
 import type { ListTransactionsResponse } from "../connectRPC/types.js";
 import { mapTransaction, type Transaction } from "../models";
+import type { YearMonth } from "../utils/monthRange.js";
 
 /** UI + API page size for the all-transactions list. */
 export const TRANSACTIONS_PAGE_SIZE = 25;
 
+export type TransactionsFilter = {
+  accountId?: string;
+  categoryId?: string;
+  month?: YearMonth;
+};
+
 export type TransactionsPageQueryKey = readonly [
   "transactions",
-  { page: number; pageSize: number; accountId?: string },
+  { page: number; pageSize: number } & TransactionsFilter,
 ];
+
+function definedFilter({
+  accountId,
+  categoryId,
+  month,
+}: TransactionsFilter): TransactionsFilter {
+  return {
+    ...(accountId === undefined ? {} : { accountId }),
+    ...(categoryId === undefined ? {} : { categoryId }),
+    ...(month === undefined
+      ? {}
+      : { month: { year: month.year, month: month.month } }),
+  };
+}
+
+function filterScope(filter: TransactionsFilter, pageSize: number): string {
+  return JSON.stringify([
+    filter.accountId,
+    filter.categoryId,
+    filter.month?.year,
+    filter.month?.month,
+    pageSize,
+  ]);
+}
 
 /**
  * Fetches one server page of transactions for UI page `page` (1-based).
@@ -21,27 +52,25 @@ export type TransactionsPageQueryKey = readonly [
  */
 export function useAllTransactions(
   pageSize: number = TRANSACTIONS_PAGE_SIZE,
-  { accountId, enabled = true }: { accountId?: string; enabled?: boolean } = {},
+  {
+    enabled = true,
+    ...filterOptions
+  }: TransactionsFilter & { enabled?: boolean } = {},
 ) {
-  const [pagination, setPagination] = useState({
-    accountId,
-    pageSize,
-    page: 1,
-  });
-  const scopeChanged =
-    pagination.accountId !== accountId || pagination.pageSize !== pageSize;
+  const filter = definedFilter(filterOptions);
+  const scope = filterScope(filter, pageSize);
+  const [pagination, setPagination] = useState({ scope, page: 1 });
+  const scopeChanged = pagination.scope !== scope;
   const page = scopeChanged ? 1 : pagination.page;
-  if (scopeChanged) setPagination({ accountId, pageSize, page: 1 });
-  const setPage = (page: number) =>
-    setPagination({ accountId, pageSize, page });
+  if (scopeChanged) setPagination({ scope, page: 1 });
+  const setPage = (page: number) => setPagination({ scope, page });
 
   /** Keep each filter's frozen window separate, including concurrent requests. */
   const maxCreationTimes = useRef(new Map<string, Timestamp>());
-  const scope = JSON.stringify([accountId, pageSize]);
 
   const queryKey: TransactionsPageQueryKey = [
     "transactions",
-    { page, pageSize, ...(accountId === undefined ? {} : { accountId }) },
+    { page, pageSize, ...filter },
   ];
 
   const query = useQuery<ListTransactionsResponse, Error>({
@@ -50,7 +79,7 @@ export function useAllTransactions(
     queryFn: async () => {
       try {
         const response = await transactionClient.listTransactions({
-          ...(accountId === undefined ? {} : { accountId }),
+          ...filter,
           cursor: {
             position: (page - 1) * pageSize,
             limit: pageSize,
@@ -72,11 +101,11 @@ export function useAllTransactions(
       }
     },
     placeholderData: (previousData, previousQuery) => {
-      const previousScope = previousQuery?.queryKey[1] as
+      const previousKey = previousQuery?.queryKey[1] as
         | TransactionsPageQueryKey[1]
         | undefined;
-      return previousScope?.accountId === accountId &&
-        previousScope?.pageSize === pageSize
+      return previousKey &&
+        filterScope(previousKey, previousKey.pageSize) === scope
         ? previousData
         : undefined;
     },

@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file transaction/v1/transaction.proto.
  */
 export const file_transaction_v1_transaction: GenFile = /*@__PURE__*/
-  fileDesc("CiB0cmFuc2FjdGlvbi92MS90cmFuc2FjdGlvbi5wcm90bxIOdHJhbnNhY3Rpb24udjEilQIKC1RyYW5zYWN0aW9uEgoKAmlkGAEgASgJEhIKCmFjY291bnRfaWQYAiABKAkSGAoLY2F0ZWdvcnlfaWQYAyABKAlIAIgBARIOCgZhbW91bnQYBCABKAkSGAoQdHJhbnNhY3Rpb25fbmFtZRgFIAEoCRI0ChB0cmFuc2FjdGlvbl9kYXRlGAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpjcmVhdGVkX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIaCg1tZXJjaGFudF9uYW1lGAggASgJSAGIAQFCDgoMX2NhdGVnb3J5X2lkQhAKDl9tZXJjaGFudF9uYW1lInAKFkxpc3RUcmFuc2FjdGlvbnNDdXJzb3ISEAoIcG9zaXRpb24YASABKAUSDQoFbGltaXQYAiABKAUSNQoRbWF4X2NyZWF0aW9uX3RpbWUYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIokBChdMaXN0VHJhbnNhY3Rpb25zUmVxdWVzdBI7CgZjdXJzb3IYASABKAsyJi50cmFuc2FjdGlvbi52MS5MaXN0VHJhbnNhY3Rpb25zQ3Vyc29ySACIAQESFwoKYWNjb3VudF9pZBgCIAEoCUgBiAEBQgkKB19jdXJzb3JCDQoLX2FjY291bnRfaWQitAEKGExpc3RUcmFuc2FjdGlvbnNSZXNwb25zZRIxCgx0cmFuc2FjdGlvbnMYASADKAsyGy50cmFuc2FjdGlvbi52MS5UcmFuc2FjdGlvbhJACgtuZXh0X2N1cnNvchgCIAEoCzImLnRyYW5zYWN0aW9uLnYxLkxpc3RUcmFuc2FjdGlvbnNDdXJzb3JIAIgBARITCgt0b3RhbF9jb3VudBgDIAEoBUIOCgxfbmV4dF9jdXJzb3IiawobR2V0VHJhbnNhY3Rpb25Ub3RhbHNSZXF1ZXN0EhMKC3N0YXJ0X21vbnRoGAEgASgFEhIKCnN0YXJ0X3llYXIYAiABKAUSEQoJZW5kX21vbnRoGAMgASgFEhAKCGVuZF95ZWFyGAQgASgFIj8KGVRyYW5zYWN0aW9uVG90YWxzQ2F0ZWdvcnkSEwoLY2F0ZWdvcnlfaWQYASABKAkSDQoFdG90YWwYAiABKAkidQoWVHJhbnNhY3Rpb25Ub3RhbHNNb250aBIMCgR5ZWFyGAEgASgFEg0KBW1vbnRoGAIgASgFEj4KC2J5X2NhdGVnb3J5GAMgAygLMikudHJhbnNhY3Rpb24udjEuVHJhbnNhY3Rpb25Ub3RhbHNDYXRlZ29yeSJYChxHZXRUcmFuc2FjdGlvblRvdGFsc1Jlc3BvbnNlEjgKCGJ5X21vbnRoGAEgAygLMiYudHJhbnNhY3Rpb24udjEuVHJhbnNhY3Rpb25Ub3RhbHNNb250aCK9AQoYQ3JlYXRlVHJhbnNhY3Rpb25SZXF1ZXN0EhIKCmFjY291bnRfaWQYASABKAkSEwoLY2F0ZWdvcnlfaWQYAiABKAkSDgoGYW1vdW50GAMgASgJEhgKEHRyYW5zYWN0aW9uX25hbWUYBCABKAkSOQoQdHJhbnNhY3Rpb25fZGF0ZRgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIAIgBAUITChFfdHJhbnNhY3Rpb25fZGF0ZSIrChlDcmVhdGVUcmFuc2FjdGlvblJlc3BvbnNlEg4KBnN0YXR1cxgBIAEoBSKiAgoYVXBkYXRlVHJhbnNhY3Rpb25SZXF1ZXN0EgoKAmlkGAEgASgJEhgKC2NhdGVnb3J5X2lkGAIgASgJSACIAQESEwoGYW1vdW50GAMgASgJSAGIAQESHQoQdHJhbnNhY3Rpb25fbmFtZRgEIAEoCUgCiAEBEjkKEHRyYW5zYWN0aW9uX2RhdGUYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAOIAQESGgoNbWVyY2hhbnRfbmFtZRgGIAEoCUgEiAEBQg4KDF9jYXRlZ29yeV9pZEIJCgdfYW1vdW50QhMKEV90cmFuc2FjdGlvbl9uYW1lQhMKEV90cmFuc2FjdGlvbl9kYXRlQhAKDl9tZXJjaGFudF9uYW1lIhsKGVVwZGF0ZVRyYW5zYWN0aW9uUmVzcG9uc2UywgMKElRyYW5zYWN0aW9uU2VydmljZRJlChBMaXN0VHJhbnNhY3Rpb25zEicudHJhbnNhY3Rpb24udjEuTGlzdFRyYW5zYWN0aW9uc1JlcXVlc3QaKC50cmFuc2FjdGlvbi52MS5MaXN0VHJhbnNhY3Rpb25zUmVzcG9uc2UScQoUR2V0VHJhbnNhY3Rpb25Ub3RhbHMSKy50cmFuc2FjdGlvbi52MS5HZXRUcmFuc2FjdGlvblRvdGFsc1JlcXVlc3QaLC50cmFuc2FjdGlvbi52MS5HZXRUcmFuc2FjdGlvblRvdGFsc1Jlc3BvbnNlEmgKEUNyZWF0ZVRyYW5zYWN0aW9uEigudHJhbnNhY3Rpb24udjEuQ3JlYXRlVHJhbnNhY3Rpb25SZXF1ZXN0GikudHJhbnNhY3Rpb24udjEuQ3JlYXRlVHJhbnNhY3Rpb25SZXNwb25zZRJoChFVcGRhdGVUcmFuc2FjdGlvbhIoLnRyYW5zYWN0aW9uLnYxLlVwZGF0ZVRyYW5zYWN0aW9uUmVxdWVzdBopLnRyYW5zYWN0aW9uLnYxLlVwZGF0ZVRyYW5zYWN0aW9uUmVzcG9uc2VCVlpUZ2l0aHViLmNvbS9jYXJzb24tbmV0d29ya3MvYnVkZ2V0LXNlcnZlci9pbnRlcm5hbC9jb25uZWN0aGFuZGxlcnMvZ2VuL3RyYW5zYWN0aW9uL3YxYgZwcm90bzM", [file_google_protobuf_timestamp]);
+  fileDesc("CiB0cmFuc2FjdGlvbi92MS90cmFuc2FjdGlvbi5wcm90bxIOdHJhbnNhY3Rpb24udjEilQIKC1RyYW5zYWN0aW9uEgoKAmlkGAEgASgJEhIKCmFjY291bnRfaWQYAiABKAkSGAoLY2F0ZWdvcnlfaWQYAyABKAlIAIgBARIOCgZhbW91bnQYBCABKAkSGAoQdHJhbnNhY3Rpb25fbmFtZRgFIAEoCRI0ChB0cmFuc2FjdGlvbl9kYXRlGAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpjcmVhdGVkX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIaCg1tZXJjaGFudF9uYW1lGAggASgJSAGIAQFCDgoMX2NhdGVnb3J5X2lkQhAKDl9tZXJjaGFudF9uYW1lInAKFkxpc3RUcmFuc2FjdGlvbnNDdXJzb3ISEAoIcG9zaXRpb24YASABKAUSDQoFbGltaXQYAiABKAUSNQoRbWF4X2NyZWF0aW9uX3RpbWUYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIi8KEFRyYW5zYWN0aW9uTW9udGgSDAoEeWVhchgBIAEoBRINCgVtb250aBgCIAEoBSLzAQoXTGlzdFRyYW5zYWN0aW9uc1JlcXVlc3QSOwoGY3Vyc29yGAEgASgLMiYudHJhbnNhY3Rpb24udjEuTGlzdFRyYW5zYWN0aW9uc0N1cnNvckgAiAEBEhcKCmFjY291bnRfaWQYAiABKAlIAYgBARIYCgtjYXRlZ29yeV9pZBgDIAEoCUgCiAEBEjQKBW1vbnRoGAQgASgLMiAudHJhbnNhY3Rpb24udjEuVHJhbnNhY3Rpb25Nb250aEgDiAEBQgkKB19jdXJzb3JCDQoLX2FjY291bnRfaWRCDgoMX2NhdGVnb3J5X2lkQggKBl9tb250aCK0AQoYTGlzdFRyYW5zYWN0aW9uc1Jlc3BvbnNlEjEKDHRyYW5zYWN0aW9ucxgBIAMoCzIbLnRyYW5zYWN0aW9uLnYxLlRyYW5zYWN0aW9uEkAKC25leHRfY3Vyc29yGAIgASgLMiYudHJhbnNhY3Rpb24udjEuTGlzdFRyYW5zYWN0aW9uc0N1cnNvckgAiAEBEhMKC3RvdGFsX2NvdW50GAMgASgFQg4KDF9uZXh0X2N1cnNvciJrChtHZXRUcmFuc2FjdGlvblRvdGFsc1JlcXVlc3QSEwoLc3RhcnRfbW9udGgYASABKAUSEgoKc3RhcnRfeWVhchgCIAEoBRIRCgllbmRfbW9udGgYAyABKAUSEAoIZW5kX3llYXIYBCABKAUiPwoZVHJhbnNhY3Rpb25Ub3RhbHNDYXRlZ29yeRITCgtjYXRlZ29yeV9pZBgBIAEoCRINCgV0b3RhbBgCIAEoCSJ1ChZUcmFuc2FjdGlvblRvdGFsc01vbnRoEgwKBHllYXIYASABKAUSDQoFbW9udGgYAiABKAUSPgoLYnlfY2F0ZWdvcnkYAyADKAsyKS50cmFuc2FjdGlvbi52MS5UcmFuc2FjdGlvblRvdGFsc0NhdGVnb3J5IlgKHEdldFRyYW5zYWN0aW9uVG90YWxzUmVzcG9uc2USOAoIYnlfbW9udGgYASADKAsyJi50cmFuc2FjdGlvbi52MS5UcmFuc2FjdGlvblRvdGFsc01vbnRoIr0BChhDcmVhdGVUcmFuc2FjdGlvblJlcXVlc3QSEgoKYWNjb3VudF9pZBgBIAEoCRITCgtjYXRlZ29yeV9pZBgCIAEoCRIOCgZhbW91bnQYAyABKAkSGAoQdHJhbnNhY3Rpb25fbmFtZRgEIAEoCRI5ChB0cmFuc2FjdGlvbl9kYXRlGAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgAiAEBQhMKEV90cmFuc2FjdGlvbl9kYXRlIisKGUNyZWF0ZVRyYW5zYWN0aW9uUmVzcG9uc2USDgoGc3RhdHVzGAEgASgFIqICChhVcGRhdGVUcmFuc2FjdGlvblJlcXVlc3QSCgoCaWQYASABKAkSGAoLY2F0ZWdvcnlfaWQYAiABKAlIAIgBARITCgZhbW91bnQYAyABKAlIAYgBARIdChB0cmFuc2FjdGlvbl9uYW1lGAQgASgJSAKIAQESOQoQdHJhbnNhY3Rpb25fZGF0ZRgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIA4gBARIaCg1tZXJjaGFudF9uYW1lGAYgASgJSASIAQFCDgoMX2NhdGVnb3J5X2lkQgkKB19hbW91bnRCEwoRX3RyYW5zYWN0aW9uX25hbWVCEwoRX3RyYW5zYWN0aW9uX2RhdGVCEAoOX21lcmNoYW50X25hbWUiGwoZVXBkYXRlVHJhbnNhY3Rpb25SZXNwb25zZTLCAwoSVHJhbnNhY3Rpb25TZXJ2aWNlEmUKEExpc3RUcmFuc2FjdGlvbnMSJy50cmFuc2FjdGlvbi52MS5MaXN0VHJhbnNhY3Rpb25zUmVxdWVzdBooLnRyYW5zYWN0aW9uLnYxLkxpc3RUcmFuc2FjdGlvbnNSZXNwb25zZRJxChRHZXRUcmFuc2FjdGlvblRvdGFscxIrLnRyYW5zYWN0aW9uLnYxLkdldFRyYW5zYWN0aW9uVG90YWxzUmVxdWVzdBosLnRyYW5zYWN0aW9uLnYxLkdldFRyYW5zYWN0aW9uVG90YWxzUmVzcG9uc2USaAoRQ3JlYXRlVHJhbnNhY3Rpb24SKC50cmFuc2FjdGlvbi52MS5DcmVhdGVUcmFuc2FjdGlvblJlcXVlc3QaKS50cmFuc2FjdGlvbi52MS5DcmVhdGVUcmFuc2FjdGlvblJlc3BvbnNlEmgKEVVwZGF0ZVRyYW5zYWN0aW9uEigudHJhbnNhY3Rpb24udjEuVXBkYXRlVHJhbnNhY3Rpb25SZXF1ZXN0GikudHJhbnNhY3Rpb24udjEuVXBkYXRlVHJhbnNhY3Rpb25SZXNwb25zZUJWWlRnaXRodWIuY29tL2NhcnNvbi1uZXR3b3Jrcy9idWRnZXQtc2VydmVyL2ludGVybmFsL2Nvbm5lY3RoYW5kbGVycy9nZW4vdHJhbnNhY3Rpb24vdjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message transaction.v1.Transaction
@@ -94,6 +94,28 @@ export const ListTransactionsCursorSchema: GenMessage<ListTransactionsCursor> = 
   messageDesc(file_transaction_v1_transaction, 1);
 
 /**
+ * @generated from message transaction.v1.TransactionMonth
+ */
+export type TransactionMonth = Message<"transaction.v1.TransactionMonth"> & {
+  /**
+   * @generated from field: int32 year = 1;
+   */
+  year: number;
+
+  /**
+   * @generated from field: int32 month = 2;
+   */
+  month: number;
+};
+
+/**
+ * Describes the message transaction.v1.TransactionMonth.
+ * Use `create(TransactionMonthSchema)` to create a new message.
+ */
+export const TransactionMonthSchema: GenMessage<TransactionMonth> = /*@__PURE__*/
+  messageDesc(file_transaction_v1_transaction, 2);
+
+/**
  * @generated from message transaction.v1.ListTransactionsRequest
  */
 export type ListTransactionsRequest = Message<"transaction.v1.ListTransactionsRequest"> & {
@@ -106,6 +128,18 @@ export type ListTransactionsRequest = Message<"transaction.v1.ListTransactionsRe
    * @generated from field: optional string account_id = 2;
    */
   accountId?: string;
+
+  /**
+   * @generated from field: optional string category_id = 3;
+   */
+  categoryId?: string;
+
+  /**
+   * Matches transactions whose transaction_date falls in this UTC calendar month.
+   *
+   * @generated from field: optional transaction.v1.TransactionMonth month = 4;
+   */
+  month?: TransactionMonth;
 };
 
 /**
@@ -113,7 +147,7 @@ export type ListTransactionsRequest = Message<"transaction.v1.ListTransactionsRe
  * Use `create(ListTransactionsRequestSchema)` to create a new message.
  */
 export const ListTransactionsRequestSchema: GenMessage<ListTransactionsRequest> = /*@__PURE__*/
-  messageDesc(file_transaction_v1_transaction, 2);
+  messageDesc(file_transaction_v1_transaction, 3);
 
 /**
  * @generated from message transaction.v1.ListTransactionsResponse
@@ -140,7 +174,7 @@ export type ListTransactionsResponse = Message<"transaction.v1.ListTransactionsR
  * Use `create(ListTransactionsResponseSchema)` to create a new message.
  */
 export const ListTransactionsResponseSchema: GenMessage<ListTransactionsResponse> = /*@__PURE__*/
-  messageDesc(file_transaction_v1_transaction, 3);
+  messageDesc(file_transaction_v1_transaction, 4);
 
 /**
  * @generated from message transaction.v1.GetTransactionTotalsRequest
@@ -172,7 +206,7 @@ export type GetTransactionTotalsRequest = Message<"transaction.v1.GetTransaction
  * Use `create(GetTransactionTotalsRequestSchema)` to create a new message.
  */
 export const GetTransactionTotalsRequestSchema: GenMessage<GetTransactionTotalsRequest> = /*@__PURE__*/
-  messageDesc(file_transaction_v1_transaction, 4);
+  messageDesc(file_transaction_v1_transaction, 5);
 
 /**
  * @generated from message transaction.v1.TransactionTotalsCategory
@@ -194,7 +228,7 @@ export type TransactionTotalsCategory = Message<"transaction.v1.TransactionTotal
  * Use `create(TransactionTotalsCategorySchema)` to create a new message.
  */
 export const TransactionTotalsCategorySchema: GenMessage<TransactionTotalsCategory> = /*@__PURE__*/
-  messageDesc(file_transaction_v1_transaction, 5);
+  messageDesc(file_transaction_v1_transaction, 6);
 
 /**
  * @generated from message transaction.v1.TransactionTotalsMonth
@@ -221,7 +255,7 @@ export type TransactionTotalsMonth = Message<"transaction.v1.TransactionTotalsMo
  * Use `create(TransactionTotalsMonthSchema)` to create a new message.
  */
 export const TransactionTotalsMonthSchema: GenMessage<TransactionTotalsMonth> = /*@__PURE__*/
-  messageDesc(file_transaction_v1_transaction, 6);
+  messageDesc(file_transaction_v1_transaction, 7);
 
 /**
  * @generated from message transaction.v1.GetTransactionTotalsResponse
@@ -238,7 +272,7 @@ export type GetTransactionTotalsResponse = Message<"transaction.v1.GetTransactio
  * Use `create(GetTransactionTotalsResponseSchema)` to create a new message.
  */
 export const GetTransactionTotalsResponseSchema: GenMessage<GetTransactionTotalsResponse> = /*@__PURE__*/
-  messageDesc(file_transaction_v1_transaction, 7);
+  messageDesc(file_transaction_v1_transaction, 8);
 
 /**
  * @generated from message transaction.v1.CreateTransactionRequest
@@ -275,7 +309,7 @@ export type CreateTransactionRequest = Message<"transaction.v1.CreateTransaction
  * Use `create(CreateTransactionRequestSchema)` to create a new message.
  */
 export const CreateTransactionRequestSchema: GenMessage<CreateTransactionRequest> = /*@__PURE__*/
-  messageDesc(file_transaction_v1_transaction, 8);
+  messageDesc(file_transaction_v1_transaction, 9);
 
 /**
  * @generated from message transaction.v1.CreateTransactionResponse
@@ -292,7 +326,7 @@ export type CreateTransactionResponse = Message<"transaction.v1.CreateTransactio
  * Use `create(CreateTransactionResponseSchema)` to create a new message.
  */
 export const CreateTransactionResponseSchema: GenMessage<CreateTransactionResponse> = /*@__PURE__*/
-  messageDesc(file_transaction_v1_transaction, 9);
+  messageDesc(file_transaction_v1_transaction, 10);
 
 /**
  * Omitted fields are left unchanged. An empty merchant_name clears its label.
@@ -336,7 +370,7 @@ export type UpdateTransactionRequest = Message<"transaction.v1.UpdateTransaction
  * Use `create(UpdateTransactionRequestSchema)` to create a new message.
  */
 export const UpdateTransactionRequestSchema: GenMessage<UpdateTransactionRequest> = /*@__PURE__*/
-  messageDesc(file_transaction_v1_transaction, 10);
+  messageDesc(file_transaction_v1_transaction, 11);
 
 /**
  * @generated from message transaction.v1.UpdateTransactionResponse
@@ -349,7 +383,7 @@ export type UpdateTransactionResponse = Message<"transaction.v1.UpdateTransactio
  * Use `create(UpdateTransactionResponseSchema)` to create a new message.
  */
 export const UpdateTransactionResponseSchema: GenMessage<UpdateTransactionResponse> = /*@__PURE__*/
-  messageDesc(file_transaction_v1_transaction, 11);
+  messageDesc(file_transaction_v1_transaction, 12);
 
 /**
  * @generated from service transaction.v1.TransactionService

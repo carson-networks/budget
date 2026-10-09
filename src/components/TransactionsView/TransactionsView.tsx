@@ -3,14 +3,12 @@ import { Alert, Loader, Stack, Text } from "@mantine/core";
 import { useAllAccounts } from "../../hooks/useAccounts.js";
 import { useAllCategories } from "../../hooks/useCategories.js";
 import { useAllTransactions } from "../../hooks/useTransactions.js";
-import { useUpdateTransactionCategory } from "../../hooks/useUpdateTransactionCategory.js";
 import { ViewShell } from "../shared/ViewShell.js";
 import { TransactionsList } from "./TransactionsList.js";
-import { CategorySelect } from "./CategorySelect.js";
-import { buildTransactionCategorySelectData } from "./transactionCategorySelectData.js";
+import { CategoryUpdateErrorAlert } from "./CategoryUpdateErrorAlert.js";
+import { useTransactionCategoryEditing } from "./useTransactionCategoryEditing.js";
 
 export default function TransactionsView() {
-  const updateCategory = useUpdateTransactionCategory();
   const {
     transactions,
     totalCount,
@@ -42,10 +40,9 @@ export default function TransactionsView() {
     [categories],
   );
 
-  const categorySelectData = useMemo(
-    () => buildTransactionCategorySelectData(categories),
-    [categories],
-  );
+  const categoryEditing = useTransactionCategoryEditing(categories, {
+    disabled: isPlaceholderData,
+  });
 
   const isLoading =
     (transactionsLoading && !isPlaceholderData) ||
@@ -74,17 +71,10 @@ export default function TransactionsView() {
 
   return (
     <ViewShell title="Transactions">
-      {updateCategory.isError && (
-        <Alert
-          color="red"
-          title="Could not update category"
-          withCloseButton
-          closeButtonLabel="Dismiss category update error"
-          onClose={() => updateCategory.reset()}
-        >
-          {updateCategory.error.message}
-        </Alert>
-      )}
+      <CategoryUpdateErrorAlert
+        error={categoryEditing.error}
+        onDismiss={categoryEditing.dismissError}
+      />
       <TransactionsList
         transactions={transactions}
         totalCount={totalCount}
@@ -93,21 +83,7 @@ export default function TransactionsView() {
         pageSize={pageSize}
         accountNameById={accountNameById}
         categoryNameById={categoryNameById}
-        renderCategory={(transaction) => (
-          <CategorySelect
-            categories={categories}
-            data={categorySelectData}
-            currentCategoryId={transaction.categoryId}
-            transactionName={transaction.transactionName}
-            pending={updateCategory.isPending || isPlaceholderData}
-            onCategoryChange={(categoryId) =>
-              updateCategory.mutate({
-                transactionId: transaction.id,
-                categoryId,
-              })
-            }
-          />
-        )}
+        renderCategory={categoryEditing.renderCategory}
       />
     </ViewShell>
   );

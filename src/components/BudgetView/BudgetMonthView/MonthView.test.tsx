@@ -1,6 +1,7 @@
 import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CategoryKind, type Category } from "../../../models";
 import { theme } from "../../../theme.js";
@@ -96,14 +97,22 @@ function mockMonthData(opts?: {
   } as unknown as ReturnType<typeof useSetBudget>);
 }
 
-function renderMonthView() {
+function LocationDisplay() {
+  const { pathname, search } = useLocation();
+  return <div data-testid="location">{`${pathname}${search}`}</div>;
+}
+
+function renderMonthView(initialEntry = "/budget") {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <MantineProvider theme={theme}>
       <QueryClientProvider client={queryClient}>
-        <BudgetMonthView />
+        <MemoryRouter initialEntries={[initialEntry]}>
+          <BudgetMonthView />
+          <LocationDisplay />
+        </MemoryRouter>
       </QueryClientProvider>
     </MantineProvider>,
   );
@@ -164,5 +173,29 @@ describe("BudgetMonthView", () => {
     mockMonthData({ error: new Error("budgets down") });
     renderMonthView();
     expect(screen.getByText("budgets down")).toBeInTheDocument();
+  });
+
+  it("opens a category's transactions for the selected month", () => {
+    renderMonthView();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open Groceries transactions" }),
+    );
+
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      "/budget/categories/groceries?month=2025-03",
+    );
+  });
+
+  it("opens a category for the month picked in the URL", () => {
+    renderMonthView("/budget?view=month&month=2025-06");
+    expect(screen.getByText("Jun 2025")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open Salary transactions" }),
+    );
+
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      "/budget/categories/salary?month=2025-06",
+    );
   });
 });

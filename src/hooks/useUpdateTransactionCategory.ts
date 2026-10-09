@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { transactionClient } from "../connectRPC/connect.js";
 import { connectErrorMessage } from "../connectRPC/errors.js";
 import type { ListTransactionsResponse } from "../connectRPC/types.js";
+import type { TransactionsPageQueryKey } from "./useTransactions.js";
 
 export type UpdateTransactionCategoryInput = {
   transactionId: string;
@@ -27,20 +28,32 @@ export function useUpdateTransactionCategory() {
       const previous = queryClient.getQueriesData<ListTransactionsResponse>({
         queryKey: ["transactions"],
       });
-      queryClient.setQueriesData<ListTransactionsResponse>(
-        { queryKey: ["transactions"] },
-        (old) =>
-          old
+      for (const [key, data] of previous) {
+        if (!data) continue;
+        const filter = key[1] as TransactionsPageQueryKey[1] | undefined;
+        const movesOutOfFilter =
+          filter?.categoryId !== undefined && filter.categoryId !== categoryId;
+        queryClient.setQueryData<ListTransactionsResponse>(
+          key,
+          movesOutOfFilter &&
+            data.transactions.some(({ id }) => id === transactionId)
             ? {
-                ...old,
-                transactions: old.transactions.map((transaction) =>
+                ...data,
+                transactions: data.transactions.filter(
+                  ({ id }) => id !== transactionId,
+                ),
+                totalCount: data.totalCount - 1,
+              }
+            : {
+                ...data,
+                transactions: data.transactions.map((transaction) =>
                   transaction.id === transactionId
                     ? { ...transaction, categoryId }
                     : transaction,
                 ),
-              }
-            : old,
-      );
+              },
+        );
+      }
       return { previous };
     },
     onError: (_error, _variables, context) => {

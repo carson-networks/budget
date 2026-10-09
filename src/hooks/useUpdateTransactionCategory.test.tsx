@@ -169,4 +169,31 @@ describe("useUpdateTransactionCategory", () => {
       categoryId: input.categoryId,
     });
   });
+  it("drops the transaction from category-filtered pages it moves out of", async () => {
+    updateCategory.mockReturnValue(new Promise<void>(() => {}));
+    const { client, existing, result } = setup();
+    const filteredKey = (categoryId: string) => [
+      "transactions",
+      {
+        page: 1,
+        pageSize: 25,
+        categoryId,
+        month: { year: 2026, month: 1 },
+      },
+    ];
+    client.setQueryData(filteredKey("old-category"), existing);
+    client.setQueryData(filteredKey("new-category"), existing);
+    act(() => result.current.mutate(input));
+    await waitFor(() => expect(result.current.isPending).toBe(true));
+
+    expect(client.getQueryData(filteredKey("old-category"))).toEqual({
+      ...existing,
+      transactions: [existing.transactions[1]],
+      totalCount: 59,
+    });
+    expect(
+      client.getQueryData<ListTransactionsResponse>(filteredKey("new-category"))
+        ?.transactions[0].categoryId,
+    ).toBe("new-category");
+  });
 });

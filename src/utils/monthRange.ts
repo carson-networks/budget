@@ -52,3 +52,11 @@ export function formatYearMonthLabel(ym: YearMonth): string {
 export function yearMonthKey(ym: YearMonth): string {
   return `${ym.year}-${String(ym.month).padStart(2, "0")}`;
 }
+
+export function parseYearMonthKey(key: string | null): YearMonth | undefined {
+  const match = /^(\d{4})-(\d{2})$/.exec(key ?? "");
+  if (!match) return undefined;
+  const month = Number(match[2]);
+  if (month < 1 || month > 12) return undefined;
+  return { year: Number(match[1]), month };
+}
