@@ -1,7 +1,7 @@
 version: v2
 inputs:
   - git_repo: https://github.com/carson-networks/budget-server.git
-    branch: claude/monthly-drill-in-transactions-q1ey5s
+    tag: v0.13.0
     subdir: proto
 plugins:
   - remote: buf.build/bufbuild/es:v2.2.3
