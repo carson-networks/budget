@@ -31,23 +31,23 @@ function renderBudgetView(entry: string) {
 }
 
 describe("BudgetView", () => {
-  it("defaults to the matrix view", () => {
+  it("defaults to the month view", () => {
     renderBudgetView("/budget");
-    expect(screen.getByText("matrix stub")).toBeInTheDocument();
+    expect(screen.getByText("month stub")).toBeInTheDocument();
   });
 
-  it("shows the month view from the URL", () => {
-    renderBudgetView("/budget?view=month&month=2025-03");
-    expect(screen.getByText("month stub")).toBeInTheDocument();
+  it("shows the matrix view from the URL", () => {
+    renderBudgetView("/budget?view=matrix");
+    expect(screen.getByText("matrix stub")).toBeInTheDocument();
   });
 
   it("keeps the month when switching views", async () => {
     renderBudgetView("/budget?month=2025-03");
-    await userEvent.click(screen.getByText("Month"));
+    await userEvent.click(screen.getByText("Matrix"));
 
-    expect(screen.getByText("month stub")).toBeInTheDocument();
+    expect(screen.getByText("matrix stub")).toBeInTheDocument();
     expect(screen.getByTestId("search")).toHaveTextContent(
-      "?month=2025-03&view=month",
+      "?month=2025-03&view=matrix",
     );
   });
 });

@@ -5,7 +5,7 @@ import BudgetMatrixView from "./BudgetMatrixView/MatrixView.js";
 
 export default function BudgetView() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const mode = searchParams.get("view") === "month" ? "month" : "matrix";
+  const mode = searchParams.get("view") === "matrix" ? "matrix" : "month";
   const setMode = (value: string) =>
     setSearchParams(
       (prev) => {
