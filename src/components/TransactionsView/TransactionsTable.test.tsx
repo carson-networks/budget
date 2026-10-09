@@ -35,7 +35,9 @@ describe("TransactionsTable", () => {
   it("renders transaction fields with resolved account and category labels", () => {
     renderTable();
 
-    const headers = screen.getAllByRole("columnheader").map((h) => h.textContent);
+    const headers = screen
+      .getAllByRole("columnheader")
+      .map((h) => h.textContent);
     expect(headers).toEqual([
       "",
       "Merchant",
@@ -104,6 +106,27 @@ describe("TransactionsTable", () => {
 
     await user.click(screen.getByText("Coffee"));
     expect(onRowOpen).toHaveBeenCalledWith(sample);
+  });
+
+  it("renders a category editor without opening the transaction row", async () => {
+    const user = userEvent.setup();
+    const onRowOpen = vi.fn();
+    const onChange = vi.fn();
+    renderTable({
+      onRowOpen,
+      renderCategory: (transaction) => (
+        <button onClick={() => onChange(transaction.id)}>
+          Change category
+        </button>
+      ),
+    });
+
+    await user.click(screen.getByRole("button", { name: "Change category" }));
+    expect(onChange).toHaveBeenCalledExactlyOnceWith("txn-1");
+    expect(onRowOpen).not.toHaveBeenCalled();
+    expect(screen.queryByText("Dining")).not.toBeInTheDocument();
+    await user.click(screen.getByText("Coffee"));
+    expect(onRowOpen).toHaveBeenCalledExactlyOnceWith(sample);
   });
 
   it("does not treat the row as a button when onRowOpen is omitted", async () => {

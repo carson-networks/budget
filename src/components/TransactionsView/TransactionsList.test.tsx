@@ -98,4 +98,14 @@ describe("TransactionsList", () => {
     await user.click(screen.getByText("Txn 1"));
     expect(onRowOpen).toHaveBeenCalledWith(txn);
   });
+
+  it("forwards the category editor for each transaction", () => {
+    renderList({
+      renderCategory: (transaction) => <button>Edit {transaction.id}</button>,
+    });
+    expect(
+      screen.getByRole("button", { name: "Edit txn-1" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Dining")).not.toBeInTheDocument();
+  });
 });
