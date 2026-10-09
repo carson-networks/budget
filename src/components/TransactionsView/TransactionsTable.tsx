@@ -15,12 +15,14 @@ type TransactionsTableProps = {
 
 const COLUMN_WIDTHS = {
   leading: rem(48),
-  merchant: rem(180),
+  merchant: "20%",
   name: undefined,
-  account: rem(160),
-  category: rem(180),
+  account: "18%",
+  category: "20%",
   amount: rem(120),
 } as const;
+
+const TABLE_MIN_WIDTH = rem(880);
 
 export function TransactionsTable({
   transactions,
@@ -30,7 +32,7 @@ export function TransactionsTable({
   renderCategory,
 }: TransactionsTableProps) {
   return (
-    <Table.ScrollContainer minWidth={rem(880)}>
+    <Table.ScrollContainer minWidth={TABLE_MIN_WIDTH}>
       <Table
         striped
         highlightOnHover
