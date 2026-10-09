@@ -15,6 +15,7 @@ import { displayCategoryKind } from "../../Category/CategoriesView/categoryDispl
 import type { YearMonth } from "../../../utils/monthRange.js";
 import { categoryBudgetDifference } from "../budgetRollups.js";
 import { BudgetCellInput } from "../shared/BudgetCellInput.js";
+import { ActualAmountCell } from "./ActualAmountCell.js";
 
 type SegmentBudgetTableProps = {
   segment: CategorySegment;
@@ -23,23 +24,14 @@ type SegmentBudgetTableProps = {
   actualByCategoryId: Map<string, number>;
   /** When true, SetBudget also overwrites following months. Default false. */
   overwriteFutureMonths?: boolean;
+  selectedCategoryId?: string;
+  onSelectCategory?: (categoryId: string) => void;
 };
 
 function parseBudgetAmount(raw: string | undefined): number | undefined {
   if (raw === undefined) return undefined;
   const n = parseFloat(raw);
   return Number.isNaN(n) ? undefined : n;
-}
-
-function ActualCell({ value }: { value: number | undefined }) {
-  if (value === undefined) {
-    return (
-      <Text span c="dimmed" size="sm">
-        —
-      </Text>
-    );
-  }
-  return <>{formatCurrency(value.toFixed(2))}</>;
 }
 
 function DifferenceCell({
@@ -76,6 +68,8 @@ export function SegmentBudgetTable({
   budgetByCategoryId,
   actualByCategoryId,
   overwriteFutureMonths = false,
+  selectedCategoryId,
+  onSelectCategory,
 }: SegmentBudgetTableProps) {
   const setBudget = useSetBudget();
   const theme = useMantineTheme();
@@ -167,7 +161,14 @@ export function SegmentBudgetTable({
               )}
             </Table.Td>
             <Table.Td style={{ textAlign: "right", verticalAlign: "middle" }}>
-              <ActualCell value={rootActual} />
+              <ActualAmountCell
+                value={rootActual}
+                categoryName={root.name}
+                selected={selectedCategoryId === root.id}
+                onSelect={
+                  onSelectCategory ? () => onSelectCategory(root.id) : undefined
+                }
+              />
             </Table.Td>
             <Table.Td style={{ textAlign: "right", verticalAlign: "middle" }}>
               <DifferenceCell
@@ -205,7 +206,16 @@ export function SegmentBudgetTable({
                 <Table.Td
                   style={{ textAlign: "right", verticalAlign: "middle" }}
                 >
-                  <ActualCell value={actualNum} />
+                  <ActualAmountCell
+                    value={actualNum}
+                    categoryName={row.name}
+                    selected={selectedCategoryId === row.id}
+                    onSelect={
+                      onSelectCategory
+                        ? () => onSelectCategory(row.id)
+                        : undefined
+                    }
+                  />
                 </Table.Td>
                 <Table.Td
                   style={{ textAlign: "right", verticalAlign: "middle" }}
