@@ -45,9 +45,10 @@ function AccountTransactionsContent({ accountId }: { accountId: string }) {
         <TransactionsList
           transactions={data.transactions}
           totalCount={data.totalCount}
-          page={data.page}
-          onPageChange={data.setPage}
-          pageSize={data.pageSize}
+          hasNextPage={data.hasNextPage}
+          isFetchingNextPage={data.isFetchingNextPage}
+          loadMoreError={data.loadMoreError}
+          onLoadMore={data.loadMore}
           accountNameById={data.accountNameById}
           categoryNameById={data.categoryNameById}
           emptyMessage="No transactions for this account yet."

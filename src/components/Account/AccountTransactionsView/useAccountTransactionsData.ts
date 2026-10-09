@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useReferenceData } from "../../../hooks/useReferenceData.js";
-import { useTransactionsPager } from "../../../hooks/useTransactionsPager.js";
+import { useTransactions } from "../../../hooks/useTransactions.js";
 
 export function useAccountTransactionsData(accountId: string) {
   const { accountsQuery, categoriesQuery, accountNameById, categoryNameById } =
@@ -54,7 +54,7 @@ export function useAccountTransactionsData(accountId: string) {
     categoriesQuery.error,
   ]);
 
-  const transactionsQuery = useTransactionsPager(
+  const transactionsQuery = useTransactions(
     { accountId },
     { enabled: account !== undefined },
   );
@@ -68,9 +68,7 @@ export function useAccountTransactionsData(accountId: string) {
       accountsQuery.isLoading ||
       (!account && !!hasMoreAccounts && !accountsQuery.error) ||
       (!!account &&
-        (categoriesQuery.isLoading ||
-          (transactionsQuery.isLoading &&
-            !transactionsQuery.isPlaceholderData))),
+        (categoriesQuery.isLoading || transactionsQuery.isLoading)),
     error:
       accountsQuery.error ?? categoriesQuery.error ?? transactionsQuery.error,
   };

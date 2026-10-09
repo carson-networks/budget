@@ -22,8 +22,9 @@ function renderTable(
           },
         ]}
         totalCount={1}
-        page={1}
-        onPageChange={() => {}}
+        hasNextPage={false}
+        isFetchingNextPage={false}
+        onLoadMore={() => {}}
         accountNameById={new Map([["acc-1", "Checking"]])}
         categoryNameById={new Map([["groceries", "Groceries"]])}
         categoryName="Groceries"
