@@ -83,26 +83,25 @@ describe("App routes", () => {
     ).toBeInTheDocument();
   });
 
-  it("serves the budget matrix at /budget and can switch to the month view", () => {
+  it("serves the budget month view at /budget and can switch to the matrix", () => {
     renderApp("/budget");
     expect(
       screen.getByRole("heading", { name: "Budget", level: 4 }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("table", { name: "Budget matrix" }),
-    ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("radio", { name: "Month" }));
     expect(screen.getByText("Month totals")).toBeInTheDocument();
     expect(
       screen.queryByRole("table", { name: "Budget matrix" }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.getAllByRole("heading", { name: "Budget", level: 4 }),
-    ).toHaveLength(1);
     fireEvent.click(screen.getByRole("radio", { name: "Matrix" }));
     expect(
       screen.getByRole("table", { name: "Budget matrix" }),
     ).toBeInTheDocument();
+    expect(screen.queryByText("Month totals")).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole("heading", { name: "Budget", level: 4 }),
+    ).toHaveLength(1);
+    fireEvent.click(screen.getByRole("radio", { name: "Month" }));
+    expect(screen.getByText("Month totals")).toBeInTheDocument();
   });
 
   it("serves the categories list at /categories", () => {

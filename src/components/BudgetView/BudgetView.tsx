@@ -4,7 +4,7 @@ import BudgetMonthView from "./BudgetMonthView/MonthView.js";
 import BudgetMatrixView from "./BudgetMatrixView/MatrixView.js";
 
 export default function BudgetView() {
-  const [mode, setMode] = useState("matrix");
+  const [mode, setMode] = useState("month");
   return (
     <Box
       style={{
