@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { plaidClient } from "../connectRPC/connect.js";
-import { connectErrorMessage } from "../connectRPC/errors.js";
+import { rpc } from "../queries/rpc.js";
 
 /** TanStack Query cache key for Plaid Link token (createLinkToken RPC). */
 export const plaidLinkTokenQueryKey = ["plaidLinkToken"] as const;
@@ -11,12 +11,8 @@ export const plaidLinkTokenQueryKey = ["plaidLinkToken"] as const;
 const STALE_MS = 1000 * 60 * 30; // 30 minutes
 
 export async function fetchPlaidLinkToken(): Promise<string> {
-  try {
-    const res = await plaidClient.createLinkToken({});
-    return res.linkToken;
-  } catch (e) {
-    throw new Error(connectErrorMessage(e));
-  }
+  const res = await rpc(plaidClient.createLinkToken({}));
+  return res.linkToken;
 }
 
 /** Shared options for prefetch + connect flow (same cache entry). */

@@ -1,12 +1,10 @@
-import { MantineProvider } from "@mantine/core";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AccountIntegration, AccountKind } from "../../../models";
 import type { Account } from "../../../models";
-import { theme } from "../../../theme.js";
+import { renderWithProviders } from "../../../test/renderWithProviders.js";
+import { wireAccount } from "../../../test/wire.js";
 
 const { navigateMock } = vi.hoisted(() => ({
   navigateMock: vi.fn(),
@@ -20,8 +18,9 @@ vi.mock(import("react-router-dom"), async (importOriginal) => {
   };
 });
 
-vi.mock(import("../../../hooks/useAccounts.js"), () => ({
-  useAllAccounts: vi.fn(),
+const api = vi.hoisted(() => ({ listAccounts: vi.fn() }));
+vi.mock("../../../connectRPC/connect.js", () => ({
+  accountClient: api,
 }));
 
 vi.mock(import("../../../plaid/usePlaidLinkToken.js"), () => ({
@@ -59,7 +58,6 @@ vi.mock(import("../EditAccountModal/Modal.js"), () => ({
     ),
 }));
 
-import { useAllAccounts } from "../../../hooks/useAccounts.js";
 import AccountsView from "./AccountsView.js";
 
 const cashAccount: Account = {
@@ -72,52 +70,23 @@ const cashAccount: Account = {
   integration: AccountIntegration.Manual,
 };
 
-function mockAccountQuery(
-  partial: Partial<ReturnType<typeof useAllAccounts>>,
-) {
-  vi.mocked(useAllAccounts).mockReturnValue({
-    accounts: [],
-    isLoading: false,
-    error: null,
-    isError: false,
-    isPending: false,
-    isFetching: false,
-    status: "success",
-    ...partial,
-  } as ReturnType<typeof useAllAccounts>);
+function mockAccounts(accounts: Account[]) {
+  api.listAccounts.mockResolvedValue({ accounts: accounts.map(wireAccount) });
 }
 
 function renderAccountsView() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <MantineProvider theme={theme}>
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <AccountsView />
-        </MemoryRouter>
-      </QueryClientProvider>
-    </MantineProvider>,
-  );
+  return renderWithProviders(<AccountsView />);
 }
 
 describe("AccountsView", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   beforeEach(() => {
     navigateMock.mockClear();
-    mockAccountQuery({
-      accounts: [],
-      isLoading: false,
-      error: null,
-    });
+    api.listAccounts.mockReset();
+    mockAccounts([]);
   });
 
   it("shows loading state while accounts are loading", () => {
-    mockAccountQuery({ isLoading: true, accounts: [] });
+    api.listAccounts.mockReturnValue(new Promise(() => {}));
 
     renderAccountsView();
 
@@ -125,62 +94,59 @@ describe("AccountsView", () => {
     expect(screen.queryByRole("heading", { name: "Accounts" })).not.toBeInTheDocument();
   });
 
-  it("shows an error alert when the accounts query fails", () => {
-    mockAccountQuery({
-      isLoading: false,
-      error: new Error("network failed"),
-      accounts: [],
-    });
+  it("shows an error alert when the accounts query fails", async () => {
+    api.listAccounts.mockRejectedValue(new Error("network failed"));
 
     renderAccountsView();
 
-    expect(screen.getByText("network failed")).toBeInTheDocument();
+    expect(await screen.findByText("network failed")).toBeInTheDocument();
     expect(screen.getByRole("alert")).toBeInTheDocument();
   });
 
-  it("shows an empty-state hint when there are no accounts", () => {
+  it("shows an empty-state hint when there are no accounts", async () => {
     renderAccountsView();
 
     expect(
-      screen.getByText(/No accounts yet\. Use the \+ button to add one\./),
+      await screen.findByText(/No accounts yet\. Use the \+ button to add one\./),
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Accounts" })).toBeInTheDocument();
   });
 
-  it("renders segment headers and account rows when accounts exist", () => {
-    mockAccountQuery({ accounts: [cashAccount] });
+  it("renders segment headers and account rows when accounts exist", async () => {
+    mockAccounts([cashAccount]);
 
     renderAccountsView();
 
-    expect(screen.getByText("Cash")).toBeInTheDocument();
+    expect(await screen.findByText("Cash")).toBeInTheDocument();
     expect(screen.getByText("House Fund")).toBeInTheDocument();
     expect(screen.queryByText(/No accounts yet/)).not.toBeInTheDocument();
   });
 
   it("navigates to the account detail route when a row is clicked", async () => {
     const user = userEvent.setup();
-    mockAccountQuery({ accounts: [cashAccount] });
+    mockAccounts([cashAccount]);
 
     renderAccountsView();
 
-    await user.click(screen.getByText("House Fund"));
+    await user.click(await screen.findByText("House Fund"));
 
     expect(navigateMock).toHaveBeenCalledWith("/accounts/acc-budget");
   });
 
   it("opens account settings when the row settings button is clicked", async () => {
     const user = userEvent.setup();
-    mockAccountQuery({ accounts: [cashAccount] });
+    mockAccounts([cashAccount]);
 
     renderAccountsView();
 
+    const settings = await screen.findByRole("button", {
+      name: "Settings for House Fund",
+    });
     expect(
       screen.queryByRole("dialog", { name: "Account settings" }),
     ).not.toBeInTheDocument();
 
-    await user.click(
-      screen.getByRole("button", { name: "Settings for House Fund" }),
-    );
+    await user.click(settings);
 
     expect(
       screen.getByRole("dialog", { name: "Account settings" }),

@@ -16,35 +16,40 @@ into client stores.
 ## Guiding Principles
 
 1. **Never copy server data into Zustand.** TanStack Query's cache is the single
-  source of truth for anything that comes from a ConnectRPC service. Reading
-   server data means calling a query hook, not subscribing to a Zustand store.
+   source of truth for anything that comes from a ConnectRPC service. Reading
+   server data means calling `useQuery` / `useInfiniteQuery` with a factory from
+   **`src/queries/`**, not subscribing to a Zustand store.
 2. **Zustand stores are small and focused.** Each store covers one concern
-  (filters, UI layout, a feature's client-side selections). Stores do not
+   (filters, UI layout, a feature's client-side selections). Stores do not
    contain `async` actions that call RPCs.
-3. **Mutations live in custom hooks, not stores.** A `useMutation` hook wraps
-  each write RPC, handles optimistic updates against the TanStack Query cache,
-   and invalidates the relevant query keys on success. This keeps cache
-   consistency logic co-located with the RPC call.
+3. **Queries and mutations are defined once, in `src/queries/`, as options
+   objects, not hooks.** Each domain module exports `queryOptions` /
+   `infiniteQueryOptions` factories and `mutationOptions` constants. Components
+   pass them to `useQuery` / `useMutation`. Do not add a `useXxx` hook that only
+   wraps one of these. See "Query Layer Conventions" below.
 4. **Prefer query key composition over `useEffect`.** If a piece of client state
-  should trigger a refetch, include it in the query key. TanStack Query handles
+   should trigger a refetch, include it in the query key. TanStack Query handles
    the rest.
 5. **Wire types stay in `connectRPC/gen/` and `connectRPC/types.ts`.** Only
    **`src/connectRPC/`** imports generated protobuf modules under **`connectRPC/gen/`**.
-   **`src/models/`** is the sole consumer of **`src/connectRPC/`** for wire shapes (types
-   and clients used in mappers). **`src/hooks/`** (when added) uses **`connectRPC`**
-   clients and **`models/`** mappers/types only—not **`connectRPC/gen/`** imports.
-   Components use **`models/`** for types and data via hooks.
+   **`src/queries/`** (and `src/plaid/`) call the **`connectRPC/`** clients and map
+   responses with **`models/`**; nothing else touches the clients. Components get
+   **`models/`** types and never see protobuf messages.
 6. **`models/` is what client code imports for UI-facing model types.** Types, `map*`
-   functions (wire → model), and pure helpers live under **`src/models/`**. Hooks call
-   ConnectRPC through **`connectRPC/`**, map responses with **`models/`** helpers, and
-   expose model-shaped data through TanStack Query.
-7. **Colocate constants and utilities with the code that owns them.** Do not use a
-  top-level `constants/` directory. Shared literals (enums, lookup tables,
-   labels) live next to the components, hooks, or **`models/`** modules that consume
-   them. The same applies to small pure helpers: keep them beside their primary
-   caller (e.g. `components/BudgetView/monthRange.ts`) rather than a global
-   `utils/` junk drawer. Promote shared logic into **`models/`** when it is
-   cross-cutting and not wire-specific.
+   functions (wire → model), and pure helpers live under **`src/models/`**. Query
+   factories map responses with them in `select`.
+7. **Keep logic in pure functions, keep hooks thin.** Validation, request
+   building, and view-data derivation are plain functions with plain unit tests
+   (`accountForm.ts`, `categoryForm.ts`, `buildBudgetMonthData.ts`,
+   `buildBudgetMatrixData.ts`). A component or hook calls the queries, calls the
+   function, and renders.
+8. **Colocate constants and utilities with the code that owns them.** Do not use a
+   top-level `constants/` directory. Shared literals (enums, lookup tables,
+   labels) live next to the components, queries, or **`models/`** modules that
+   consume them. Small pure helpers live beside their primary caller; promote
+   shared logic into **`models/`** when it is cross-cutting and not wire-specific.
+   `src/utils/` holds only small, genuinely cross-feature helpers (`monthRange`,
+   `nameById`); do not let it grow into a junk drawer.
 
 ## Project Structure
 
@@ -54,110 +59,89 @@ src/
     connect.ts                  # createConnectTransport + per-service createClient singletons
     types.ts                    # re-exports message types/schemas from gen/ for mappers
     runtime.ts                  # demo mode via URL `?mock=true` (isFakeDataMode)
-    runtime.test.ts
     gen/                        # generated protobuf types + service descriptors (buf)
-      account/v1/
-      budget/v1/
-      category/v1/
-      plaid/v1/
-      transaction/v1/
 
   models/                       # UI-facing models + wire→model mappers; imports connectRPC/ only
-    account.ts, budget.ts, …    # types, enums, and map* for each area (`Account.integration`: TODO until API)
-    money.ts                    # display helpers for amounts (e.g. formatCurrency)
-    timestamp.ts                # protobuf Timestamp → Date helpers
-    index.ts                    # re-exports types + map* for hooks / UI
+    account.ts, budget.ts, …    # types, enums, and map* for each area
+    money.ts, timestamp.ts      # display / conversion helpers
+    index.ts                    # re-exports types + map*
     *_test.ts                   # colocated model tests
 
-  hooks/                        # TanStack Query wrappers over connectRPC clients + models mappers
-    useAccounts.ts              # list/create accounts
-    useTransactions.ts        # (planned) list transactions
-    cachePatches.ts             # infinite-query cache helpers for mutations
-    *.test.ts
+  queries/                      # ALL server state: query/mutation option factories
+    rpc.ts                      # rpc(call): rethrows any failure as Error(message)
+    invalidate.ts               # invalidatesOnSettled(...keys) for mutationOptions
+    optimistic.ts               # patchQueries(): snapshot + patch + rollback (use sparingly)
+    register.ts                 # registers Error as TanStack's default error type
+    accounts.ts                 # accountQueries.{all,list}, accountMutations.{createManual,update,delete}
+    categories.ts               # categoryQueries.{all,list}, categoryMutations.{create,update}
+    budgets.ts                  # budgetQueries.{all,range}, budgetMutations.set
+    transactions.ts             # transactionQueries.{all,lists,list,totals}, transactionMutations.updateCategory
+    *.test.tsx                  # mock connectRPC/connect.js and run the options through a QueryClient
 
-  plaid/                        # Plaid Link: types, wire encoding, react-plaid-link flow (under src/, not models/)
-    types.ts                    # ExchangeTokenInput + PlaidSyncAccount (AccountKind from models)
-    exchangeTokenRequestWire.ts # domain → ConnectRPC ExchangeTokenRequest
-    plaidWire.ts               # Plaid Link metadata → ExchangeTokenInput
-    usePlaidLinkToken.ts        # link token query + prefetchPlaidLinkToken
-    useExchangePlaidToken.ts    # exchange Plaid public_token (invalidates accounts)
+  hooks/                        # Hooks that glue queries to React/router state (not plain wrappers)
+    useTransactionsPager.ts     # page lives in the URL (?page=) + transactionQueries.list
+
+  plaid/                        # Plaid Link: types, wire encoding, react-plaid-link flow
+    usePlaidLinkToken.ts        # plaidLinkTokenQueryOptions + prefetchPlaidLinkToken
+    useExchangePlaidToken.ts    # exchangePlaidTokenMutation (invalidates accounts)
     useConnectedAccountFlow.ts  # Link open + exchange; used from AccountsView
-    *.test.ts
 
   persistence/                  # client-side storage adapters (typed disk slices)
-    shell/
-      types.ts                  # ColorSchemePreference + ShellPersistedState
-      storage.ts                # JSON localStorage adapter for shell persist
+  stores/                       # Zustand stores (client-only state): shell chrome + color scheme
 
-  stores/                       # Zustand stores (client-only state)
-    shellPersistOptions.ts      # persist key + createShellStorePersistOptions
-    useShellStore.ts            # app chrome: sidebar + color scheme
-    *.test.ts
+  utils/                        # monthRange, nameById: small cross-feature pure helpers
 
   test/
     setup.ts                    # Vitest + RTL global setup
+    renderWithProviders.tsx     # Mantine + QueryClient + MemoryRouter; createWrapper() for renderHook
+    wire.ts                     # domain model -> wire shape for mocked RPC responses
 
-  App.tsx
-  main.tsx
-  theme.ts
-  index.css
+  App.tsx, main.tsx, theme.ts, index.css
 
-  components/                   # React components
+  components/                   # React components, feature folders with colocated tests
     AppShell/
-      AppShell.tsx
-      AppHeader.tsx
-      AppSidebar.tsx
-      SidebarNavItem.tsx
-      navItems.ts
-      *.test.tsx
-    Account/                      # accounts feature: views + modals colocated
-      AccountsView/
-      AccountTransactionsView/    # (planned) per-account transactions route
-      CreateManualAccountModal/
-      EditAccountModal/
-    shared/                       # cross-feature presentation primitives (shells, layout)
-      SectionCard.tsx
-      ViewShell.tsx
-      DeleteConfirmModal.tsx      # second-step delete confirm (edit flows)
+    Account/
+      accountForm.ts            # pure form values, validation, request builders (create + edit)
+      AccountsView/, AccountTransactionsView/
+      CreateManualAccountModal/, EditAccountModal/
+    Category/
+      categoryForm.ts           # same, for categories
+      CategoriesView/, CreateCategoryModal/, EditCategoryModal/
     BudgetView/
+      BudgetMonthView/          # buildBudgetMonthData.ts (pure) + useBudgetMonthData.ts (queries + memo)
+      BudgetMatrixView/         # buildBudgetMatrixData.ts (pure) + useBudgetMatrixData.ts
     TransactionsView/
-    ...
+    shared/                     # cross-feature presentation primitives (shells, layout)
 ```
 
-Feature folders such as **`components/Account/`** group screens and modals for one domain; **`components/shared/`** holds Mantine shells used across routes.
-
-TanStack Query hooks live under **`src/hooks/`** and depend on **`connectRPC/`** + **`models/`**; Plaid-specific modules live under **`src/plaid/`** (no **`connectRPC/gen/`** imports from hooks).
-
-Until the tree matches this spec, any legacy top-level `constants/` or `utils/`
-folders should be merged into the owning feature or **`models/`** incrementally.
+Feature folders such as **`components/Account/`** group screens and modals for one
+domain; **`components/shared/`** holds Mantine shells used across routes.
 
 ## State Ownership Rules
 
 ### Server State (TanStack Query)
 
 Anything returned by a ConnectRPC service is server state. The query cache owns
-it, and components read it through hooks.
+it, and components read it through the factories in `src/queries/`.
 
+| Data                  | Read with                                              | Query key                                              |
+| --------------------- | ------------------------------------------------------ | ------------------------------------------------------ |
+| Accounts              | `useInfiniteQuery(accountQueries.list())` → `Account[]`   | `["accounts", "list"]`                                 |
+| Categories            | `useInfiniteQuery(categoryQueries.list())` → `Category[]` | `["categories", "list"]`                               |
+| Budgets for a range   | `useQuery(budgetQueries.range(start, end))` → `Budget[]`  | `["budgets", "range", y, m, y, m]`                     |
+| Transaction totals    | `useQuery(transactionQueries.totals(start, end))`         | `["transactions", "totals", y, m, y, m]`               |
+| Transactions page     | `useTransactionsPager(filter, { enabled })`               | `["transactions", "list", { page, pageSize, ...filter }]` |
 
-| Data                     | Hook                             | Query Key                                                            |
-| ------------------------ | -------------------------------- | -------------------------------------------------------------------- |
-| Accounts list            | `useAllAccounts()`               | `["accounts"]`                                                       |
-| Transactions list        | `useAllTransactions()`           | `["transactions"]`                                                   |
-| Transactions for account | `useTransactionsForAccount(id)`  | `["transactions", { accountId }]` (planned; server filter TODO)      |
-| Categories list          | `useAllCategories()`             | `["categories"]`                                                     |
-| Budgets for a date range | `useBudgetsForRange(start, end)` | `["budgets", startYear, startMonth, endYear, endMonth, categoryKey]` |
-
-
-Mutations (`useCreateManualAccount`, `useSetBudget`, etc.) perform optimistic cache
-updates via shared cache helpers under **`hooks/cachePatches.ts`** (when applicable),
-then invalidate the corresponding query key so the cache reconciles with the server.
+`all()` on each factory object is the key root used for invalidation. Totals
+share the `["transactions"]` root with lists, so invalidating
+`transactionQueries.all()` refreshes both.
 
 ### Server RPC gaps (tracked in client)
 
-Some UI flows are implemented ahead of backend support. Hooks carry **`// TODO(server): ...`** markers at the exact call sites:
+Some UI flows are implemented ahead of backend support. Query modules carry **`// TODO(server): ...`** markers at the exact call sites:
 
 - **`account.v1.Account` integration + linked-account IDs** — Add an enum such as `AccountIntegration { UNSPECIFIED, MANUAL, PLAID }` plus fields needed to identify the linked institution/account (e.g. persist Plaid item/account ids from exchange). Wire mapping lives in **`src/models/account.ts`** (**`mapAccount`** / **`integrationFromWireAccount`**); extend **`Account`** when protos add linked-account ids. UI reads **`Account.integration`** (see **`spec/plans/account-integration-api.md`**). Until then the UI treats every account as manual for integration display.
-- **`ListTransactions` filtered by account** — `useTransactionsForAccount` will pass `account_id` on the wire once the cursor/request supports it; until then filtering may be client-side.
+- **`ListTransactions` filtered by account** — the account transactions query passes `account_id` on the wire once the cursor/request supports it; until then filtering may be client-side.
 
 ### Client State (Zustand)
 
@@ -187,16 +171,10 @@ export const useFilterStore = create<FilterStore>((set) => ({
 ```
 
 ```tsx
-// A query hook that reads from the store and includes filters in its key
-export function useFilteredTransactions() {
-  const status = useFilterStore((s) => s.status);
-  const search = useFilterStore((s) => s.search);
-
-  return useAllTransactions({
-    queryKey: ["transactions", { status, search }],
-    // ... filter logic
-  });
-}
+// Illustrative (no such factory exists today): store values are factory params, so they land in the query key
+const status = useFilterStore((s) => s.status);
+const search = useFilterStore((s) => s.search);
+const { data } = useQuery(transactionQueries.search({ status, search }));
 // When status or search changes in the store, the query key changes,
 // and TanStack Query refetches automatically. No useEffect needed.
 ```
@@ -209,7 +187,7 @@ is open, the current value of an unsubmitted form field, a hover flag.
 ```tsx
 function CreateAccountModal() {
   const [name, setName] = useState("");
-  const createAccount = useCreateAccount();
+  const createAccount = useMutation(accountMutations.createManual);
   // ...
 }
 ```
@@ -232,17 +210,16 @@ function CreateAccountModal() {
                          └──────────────┘
 ```
 
-1. Hooks map RPC responses (and prepare mutation payloads) between wire types and
-   **`models/`** shapes; components read **model** data from TanStack Query hooks,
-   not raw protobuf messages.
-2. Components read server data from TanStack Query hooks and client data from
-  Zustand selectors.
-3. User actions either update Zustand (client state change) or call a mutation
-  hook (server state change).
-4. When Zustand state that is part of a query key changes, TanStack Query
-  refetches automatically.
-5. Mutations optimistically patch the query cache, then invalidate to
-  reconcile.
+1. Query factories map RPC responses to **`models/`** shapes in `select`;
+   components read **model** data, not raw protobuf messages.
+2. Components read server data with `useQuery` / `useInfiniteQuery` on a factory
+   and client data from Zustand selectors or the URL.
+3. User actions either update Zustand / the URL (client state change) or run a
+   mutation (server state change).
+4. When state that is part of a query key changes, TanStack Query refetches
+   automatically.
+5. Mutations refetch the affected key roots when they settle. Only a few
+   latency-sensitive edits also patch the cache optimistically.
 
 ## ConnectRPC Client Layer
 
@@ -264,47 +241,126 @@ const transport = createConnectTransport({
 export const accountClient = createClient(AccountService, transport);
 ```
 
-TanStack Query hooks under **`src/hooks/`** wrap these clients with
-`useQuery`, `useInfiniteQuery`, and `useMutation`. They map RPC request and response
-messages to **`models/`** types before surfacing data to components (Plaid exchange
-helpers live under **`src/plaid/`**). Demo / mock
-transport is handled from **`src/connectRPC/runtime.ts`** (e.g. URL `?mock=true`).
+The option factories under **`src/queries/`** call these clients (always through
+`rpc()`), and map responses to **`models/`** types in `select` before components
+see them. Plaid link-token and exchange options live under **`src/plaid/`**. Demo /
+mock transport is handled from **`src/connectRPC/runtime.ts`** (e.g. URL `?mock=true`).
 
 The **`react-plaid-link`** script is injected by the library when **`AccountsView`** runs **`plaid/useConnectedAccountFlow.ts`** (per Plaid’s React integration path). **`vite.config.ts`** sends **`Permissions-Policy`** in dev; mirror that header in production if **`encrypted-media`** warnings persist. ConnectRPC **`plaidClient`** remains in **`connectRPC/connect.ts`**.
 
-## Cache Management Patterns
+## Query Layer Conventions
 
-### Optimistic Updates
+### Adding a query
 
-Write mutations use shared cache-patch helpers (when present) to update the
-infinite-query cache immediately, then invalidate the query key so TanStack
-Query reconciles with the server response on the next fetch. Typical helpers:
+Add a factory to the owning domain module in `src/queries/`:
 
-- `prependToInfiniteList` — insert a new item at the top of page 1
-- `removeFromInfiniteList` — remove items matching a predicate from all pages
-- `updateInInfiniteList` — replace items matching a predicate in all pages
+```ts
+export const budgetQueries = {
+  all: () => ["budgets"] as const,
+  range: (start: YearMonth, end: YearMonth) =>
+    queryOptions({
+      queryKey: [...budgetQueries.all(), "range", start.year, start.month, end.year, end.month] as const,
+      queryFn: () => rpc(budgetClient.listBudgets({ /* ... */ })),
+      placeholderData: keepPreviousData,
+      select: (response) => response.budgets.filter(Boolean).map(mapBudget),
+    }),
+};
+```
 
-### Exhaustive Pagination
+- Always call RPCs through **`rpc()`**; never write `try/catch` around a client
+  call. Failures surface as `Error` (typed globally via `register.ts`).
+- Build keys from the domain's `all()` root so one prefix invalidates everything
+  in the domain. Never write query-key string literals outside `src/queries/`.
+- Do the wire → model mapping in `select`, not in components. `data` is then
+  already `Account[]` / `Category[]`, and structural sharing keeps it referentially
+  stable across renders.
+- Use it directly: `const { data: accounts = [] } = useInfiniteQuery(accountQueries.list())`.
+  The same options work with `queryClient.prefetchQuery` / `ensureQueryData` and in
+  tests.
 
-The `useExhaustivePaginatedQuery` helper (when added under **`hooks/`**) wraps
-`useInfiniteQuery` to auto-fetch all remaining pages once the first page loads,
-collapsing multi-page results into a flat `items` array. This is one acceptable
-use of `useEffect` for data loading — it drives the "fetch next page" loop.
+### Adding a mutation
 
-### Budget Cache Patching
+Add a `mutationOptions` constant. It needs no hook: callbacks receive
+`context.client`.
 
-Budget mutations (`useSetBudget`) walk every cached `listBudgets` response and
-apply the operation to any cache entry whose date range overlaps the target
-month. This avoids a full refetch while keeping all visible budget views
-consistent.
+```ts
+update: mutationOptions({
+  mutationKey: ["categories", "update"],
+  mutationFn: (body: UpdateCategoryInput) => rpc(categoryClient.updateCategory({ /* ... */ })),
+  ...invalidatesOnSettled(categoryQueries.all()),
+}),
+```
+
+- Default to **`invalidatesOnSettled(...keyRoots)`**. It refetches on success and on
+  failure. List every root the write can change (deleting an account also
+  invalidates `transactionQueries.all()` because the server cascades).
+- Optimistic updates are the exception, not the default. Use them only where the
+  round-trip lag is visible on an inline edit (today: `transactionMutations.updateCategory`).
+  Do it with `patchQueries()` in `onMutate`, call `onMutateResult?.rollback()` in
+  `onError`, and still spread `invalidatesOnSettled`. Do not hand-roll
+  snapshot/rollback code.
+- Components use `useMutation(accountMutations.update)` and call `mutate` /
+  `mutateAsync` with `onSuccess` for UI follow-ups (closing a modal).
+
+### Pagination
+
+`accounts` and `categories` are server-paginated infinite queries; the `select`
+flattens pages into one array. Screens that must have every page (e.g. resolving an
+account from a direct link) fetch further pages with `fetchNextPage` (see
+`useAccountTransactionsData`). Flattening to a single fetch-all `queryFn` would
+remove those effects and is a known possible follow-up.
+
+Transactions use offset paging with a server `total_count`. The first response for a
+filter pins `maxCreationTime` so later pages do not shift while new transactions
+arrive. That window lives in a `Map` owned by one `useTransactionsPager` instance and
+is passed into `transactionQueries.list(params, windows)`; it is intentionally not
+global, so each visit starts fresh.
+
+## Client State Beyond Zustand
+
+- **URL state.** State that should survive reload or be shareable lives in search
+  params, not in a store or `useState`: the selected month (`?month=`,
+  `useSelectedYearMonth`) and the transactions page (`?page=`,
+  `useTransactionsPager`). Navigation that changes the dataset must clear
+  `page` (month changes already do).
+- **Forms.** A modal holds its field values in one `useState` object, calls
+  `useMutation`, and delegates to the colocated pure form module
+  (`emptyXForm`, `isXFormValid`, `toXInput`). Do not create a `useXForm` hook that
+  bundles field state, server reads, and the mutation. Modals that edit an entity are
+  remounted with `key={entity.id}` so initial values come from `useState(() => ...)`
+  rather than an effect.
+- **View data.** Derive screen data in a pure `buildXData(...)` function, then call
+  it in the thin `useXData` hook with `useMemo`. Tests for the derivation call the
+  function directly.
 
 ## Anti-Patterns to Avoid
 
-Keep UI and hooks free of direct **`connectRPC/gen/`** imports (see import
-rules in **`.agents/best-practices.md`**). Avoid mirroring server data in Zustand,
-keep RPCs in TanStack Query hooks, and derive lists with `useMemo` (or inline)
-instead of `useEffect`. Full examples live in **`.agents/best-practices.md`**;
-ESLint enforces the import boundaries there.
+Keep UI and queries free of direct **`connectRPC/gen/`** imports (see import
+rules in **`.agents/best-practices.md`**; ESLint enforces them). Also avoid:
+
+- Mirroring server data in Zustand or `useState`.
+- Query-key string literals, or `try/catch` around RPCs, outside `src/queries/`.
+- New `useXxx` hooks whose only job is to call one `useQuery` / `useMutation`.
+- Optimistic cache edits for ordinary create/update/delete flows.
+- Hooks that mix local form state, server reads, and mutations.
+- `useEffect` to derive lists or copy data between states; use `useMemo` or inline
+  computation.
+
+## Testing Conventions
+
+- **Query modules** (`src/queries/*.test.tsx`): mock `../connectRPC/connect.js`, run
+  the options through a real `QueryClient` using `createTestQueryClient()` and
+  `createWrapper()` from `src/test/renderWithProviders.tsx`, and assert on the RPC
+  call arguments, mapped `data`, and invalidation (`getQueryState(key)?.isInvalidated`).
+- **Components**: render with `renderWithProviders` and mock the same RPC client
+  module with `vi.hoisted` mocks instead of mocking query modules or hooks. Assert
+  with `findBy*` / `waitFor`. Use `wireAccount` / `wireCategory` from
+  `src/test/wire.ts` to build list responses. A never-resolving promise gives a
+  loading state; `mockRejectedValue` gives an error state.
+- **Pure modules** (`*Form.ts`, `build*Data.ts`, `models/`): plain unit tests, no
+  providers.
+- When faking time, only fake `Date` (`vi.useFakeTimers({ toFake: ["Date"] })`);
+  faking timers stalls React Query.
 
 ## Decision Record
 
@@ -312,10 +368,13 @@ ESLint enforces the import boundaries there.
 | Decision                                                  | Rationale                                                                                                                                                                                                               |
 | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | TanStack Query for server state, Zustand for client state | Each library is purpose-built for its role. Combining them via query keys avoids `useEffect` synchronization and keeps a single source of truth per data category.                                                      |
-| `createClient()` over `@connectrpc/connect-query` codegen | The app was built with direct `createClient()` calls wrapped in custom TanStack Query hooks. This gives full control over query keys, pagination, and cache patching without depending on an additional codegen step.   |
-| Optimistic cache patches + invalidation                   | Immediate UI feedback on mutations; server reconciliation on the next fetch. Avoids loading spinners for common write operations.                                                                                       |
+| `createClient()` over `@connectrpc/connect-query` codegen | The app was built with direct `createClient()` calls wrapped in TanStack Query options. This gives full control over query keys, pagination, and cache invalidation without depending on an additional codegen step.     |
+| Option factories in `src/queries/` instead of per-query hooks | Keys, fetchers, and wire→model mapping are defined once and reused by components, prefetching, mutations, and tests. Removes duplicated key literals, error handling, and infinite-query boilerplate.                |
+| Invalidate-on-settle by default; optimistic updates only for inline edits | Refetching is simple and always consistent; hand-rolled cache patching was duplicated and easy to get wrong. Optimistic updates are kept where lag would be visible (transaction category edits).               |
+| Page and month in the URL                                 | Survives reload, shareable, and removes state that had to be reset by hand when filters changed.                                                                                                                       |
+| Pure form/view-data modules + thin components             | Logic is testable without rendering; components stay small and readable.                                                                                                                                                |
 | `models/` as the UI import boundary for wire data                    | Components and hooks depend on stable model APIs; only **`models/`** imports **`connectRPC/`** for protobuf-derived types (usually via **`connectRPC/types.ts`**). protobuf churn stays under **`connectRPC/gen/`** + **`connectRPC/types.ts`** + model mappers.                                                                 |
-| Exhaustive pagination via auto-fetching                   | The current data sets are small enough that loading all pages upfront is acceptable. This simplifies component logic (flat array vs. paged iteration) at the cost of additional initial requests.                       |
+| Flat arrays from paginated lists via `select`             | The current data sets are small, so components get a flat `Account[]` / `Category[]`. Screens that need every page fetch them explicitly until a fetch-all query replaces that.                                         |
 | No top-level `constants/` or catch-all `utils/`           | Constants and small pure helpers live next to the modules that use them, so imports stay local and ownership is obvious. Promote shared logic into **`models/`** when it is cross-cutting and not tied to a single screen. |
 
 

@@ -1,17 +1,15 @@
-import { MantineProvider } from "@mantine/core";
-import { render, screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CategoryKind, type Category } from "../../../models";
-import { theme } from "../../../theme.js";
+import { renderWithProviders } from "../../../test/renderWithProviders.js";
 import type { CategorySegment } from "../../Category/CategoriesView/categorySegments.js";
 import { SegmentBudgetTable } from "./SegmentBudgetTable.js";
 
-vi.mock("../../../hooks/useBudgets.js", () => ({
-  useSetBudget: vi.fn(),
+const api = vi.hoisted(() => ({ setBudget: vi.fn() }));
+vi.mock("../../../connectRPC/connect.js", () => ({
+  budgetClient: api,
 }));
-
-import { useSetBudget } from "../../../hooks/useBudgets.js";
 
 const groceries: Category = {
   id: "groceries",
@@ -36,24 +34,20 @@ const segment: CategorySegment = {
 };
 
 describe("SegmentBudgetTable", () => {
-  it("commits leaf budget edits and skips parent budget inputs", async () => {
-    const mutateAsync = vi.fn().mockResolvedValue(undefined);
-    vi.mocked(useSetBudget).mockReturnValue({
-      mutateAsync,
-      isPending: false,
-      variables: undefined,
-    } as unknown as ReturnType<typeof useSetBudget>);
+  beforeEach(() => {
+    vi.resetAllMocks();
+    api.setBudget.mockResolvedValue({});
+  });
 
+  it("commits leaf budget edits and skips parent budget inputs", async () => {
     const user = userEvent.setup();
-    render(
-      <MantineProvider theme={theme}>
-        <SegmentBudgetTable
-          segment={segment}
-          selectedMonth={{ year: 2025, month: 3 }}
-          budgetByCategoryId={new Map([["groceries", "400"]])}
-          actualByCategoryId={new Map([["groceries", -320]])}
-        />
-      </MantineProvider>,
+    renderWithProviders(
+      <SegmentBudgetTable
+        segment={segment}
+        selectedMonth={{ year: 2025, month: 3 }}
+        budgetByCategoryId={new Map([["groceries", "400"]])}
+        actualByCategoryId={new Map([["groceries", -320]])}
+      />
     );
 
     expect(screen.getByText("Food")).toBeInTheDocument();
@@ -69,34 +63,27 @@ describe("SegmentBudgetTable", () => {
     await user.type(inputs[0]!, "450");
     await user.tab();
 
-    expect(mutateAsync).toHaveBeenCalledWith({
-      categoryId: "groceries",
-      year: 2025,
-      month: 3,
-      amount: "450",
-      overwriteFutureMonths: false,
-    });
+    await waitFor(() =>
+      expect(api.setBudget).toHaveBeenCalledWith({
+        categoryId: "groceries",
+        year: 2025,
+        month: 3,
+        amount: "450",
+        overwriteFutureMonths: false,
+      }),
+    );
   });
 
   it("passes overwriteFutureMonths when the header option is on", async () => {
-    const mutateAsync = vi.fn().mockResolvedValue(undefined);
-    vi.mocked(useSetBudget).mockReturnValue({
-      mutateAsync,
-      isPending: false,
-      variables: undefined,
-    } as unknown as ReturnType<typeof useSetBudget>);
-
     const user = userEvent.setup();
-    render(
-      <MantineProvider theme={theme}>
-        <SegmentBudgetTable
-          segment={segment}
-          selectedMonth={{ year: 2025, month: 3 }}
-          budgetByCategoryId={new Map([["groceries", "400"]])}
-          actualByCategoryId={new Map([["groceries", -320]])}
-          overwriteFutureMonths
-        />
-      </MantineProvider>,
+    renderWithProviders(
+      <SegmentBudgetTable
+        segment={segment}
+        selectedMonth={{ year: 2025, month: 3 }}
+        budgetByCategoryId={new Map([["groceries", "400"]])}
+        actualByCategoryId={new Map([["groceries", -320]])}
+        overwriteFutureMonths
+      />
     );
 
     const inputs = screen.getAllByRole("textbox");
@@ -104,13 +91,15 @@ describe("SegmentBudgetTable", () => {
     await user.type(inputs[0]!, "500");
     await user.tab();
 
-    expect(mutateAsync).toHaveBeenCalledWith({
-      categoryId: "groceries",
-      year: 2025,
-      month: 3,
-      amount: "500",
-      overwriteFutureMonths: true,
-    });
+    await waitFor(() =>
+      expect(api.setBudget).toHaveBeenCalledWith({
+        categoryId: "groceries",
+        year: 2025,
+        month: 3,
+        amount: "500",
+        overwriteFutureMonths: true,
+      }),
+    );
   });
   describe("opening category transactions", () => {
     const salary: Category = {
@@ -122,21 +111,14 @@ describe("SegmentBudgetTable", () => {
     };
 
     function renderOpenable(table: CategorySegment, onOpenCategory = vi.fn()) {
-      vi.mocked(useSetBudget).mockReturnValue({
-        mutateAsync: vi.fn().mockResolvedValue(undefined),
-        isPending: false,
-        variables: undefined,
-      } as unknown as ReturnType<typeof useSetBudget>);
-      render(
-        <MantineProvider theme={theme}>
-          <SegmentBudgetTable
-            segment={table}
-            selectedMonth={{ year: 2025, month: 3 }}
-            budgetByCategoryId={new Map([["groceries", "400"]])}
-            actualByCategoryId={new Map([["groceries", -320]])}
-            onOpenCategory={onOpenCategory}
-          />
-        </MantineProvider>,
+      renderWithProviders(
+        <SegmentBudgetTable
+          segment={table}
+          selectedMonth={{ year: 2025, month: 3 }}
+          budgetByCategoryId={new Map([["groceries", "400"]])}
+          actualByCategoryId={new Map([["groceries", -320]])}
+          onOpenCategory={onOpenCategory}
+        />
       );
       return onOpenCategory;
     }
@@ -177,20 +159,13 @@ describe("SegmentBudgetTable", () => {
     });
 
     it("renders plain names without an open handler", () => {
-      vi.mocked(useSetBudget).mockReturnValue({
-        mutateAsync: vi.fn(),
-        isPending: false,
-        variables: undefined,
-      } as unknown as ReturnType<typeof useSetBudget>);
-      render(
-        <MantineProvider theme={theme}>
-          <SegmentBudgetTable
-            segment={segment}
-            selectedMonth={{ year: 2025, month: 3 }}
-            budgetByCategoryId={new Map()}
-            actualByCategoryId={new Map()}
-          />
-        </MantineProvider>,
+      renderWithProviders(
+        <SegmentBudgetTable
+          segment={segment}
+          selectedMonth={{ year: 2025, month: 3 }}
+          budgetByCategoryId={new Map()}
+          actualByCategoryId={new Map()}
+        />
       );
       expect(
         screen.queryByRole("button", { name: /transactions/ }),

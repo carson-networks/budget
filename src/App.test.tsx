@@ -4,63 +4,30 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useShellStore } from "./stores/shell/useShellStore.js";
 
-vi.mock("./hooks/useCategories.js", () => ({
-  useAllCategories: vi.fn(),
-  useCreateCategory: () => ({
-    mutate: vi.fn(),
-    reset: vi.fn(),
-    isPending: false,
-    isError: false,
-    error: null,
-  }),
-  useUpdateCategory: () => ({
-    mutate: vi.fn(),
-    reset: vi.fn(),
-    isPending: false,
-    isError: false,
-    error: null,
-  }),
+const api = vi.hoisted(() => ({
+  listCategories: vi.fn(),
+  listBudgets: vi.fn(),
+  getTransactionTotals: vi.fn(),
+}));
+vi.mock("./connectRPC/connect.js", () => ({
+  categoryClient: {
+    listCategories: api.listCategories,
+    createCategory: vi.fn(),
+    updateCategory: vi.fn(),
+  },
+  budgetClient: { listBudgets: api.listBudgets, setBudget: vi.fn() },
+  transactionClient: { getTransactionTotals: api.getTransactionTotals },
 }));
 
-vi.mock("./hooks/useBudgets.js", () => ({
-  useBudgetsForRange: vi.fn(),
-  useSetBudget: () => ({
-    mutateAsync: vi.fn(),
-    isPending: false,
-    variables: undefined,
-  }),
-}));
-
-vi.mock("./hooks/useTransactionTotals.js", () => ({
-  useTransactionTotalsForRange: vi.fn(),
-}));
-
-import { useAllCategories } from "./hooks/useCategories.js";
-import { useBudgetsForRange } from "./hooks/useBudgets.js";
-import { useTransactionTotalsForRange } from "./hooks/useTransactionTotals.js";
 import App from "./App.js";
 
 describe("App routes", () => {
   beforeEach(async () => {
     await useShellStore.persist.clearStorage();
     await useShellStore.persist.rehydrate();
-    vi.mocked(useAllCategories).mockReturnValue({
-      categories: [],
-      isLoading: false,
-      error: null,
-    } as unknown as ReturnType<typeof useAllCategories>);
-    vi.mocked(useBudgetsForRange).mockReturnValue({
-      budgets: [],
-      isLoading: false,
-      isPlaceholderData: false,
-      error: null,
-    } as unknown as ReturnType<typeof useBudgetsForRange>);
-    vi.mocked(useTransactionTotalsForRange).mockReturnValue({
-      totals: { byMonth: [] },
-      isLoading: false,
-      isPlaceholderData: false,
-      error: null,
-    } as unknown as ReturnType<typeof useTransactionTotalsForRange>);
+    api.listCategories.mockResolvedValue({ categories: [] });
+    api.listBudgets.mockResolvedValue({ budgets: [] });
+    api.getTransactionTotals.mockResolvedValue({ byMonth: [] });
   });
 
   function renderApp(initialPath: string) {
@@ -83,31 +50,31 @@ describe("App routes", () => {
     ).toBeInTheDocument();
   });
 
-  it("serves the budget month view at /budget and can switch to the matrix", () => {
+  it("serves the budget month view at /budget and can switch to the matrix", async () => {
     renderApp("/budget");
     expect(
       screen.getByRole("heading", { name: "Budget", level: 4 }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Month totals")).toBeInTheDocument();
+    expect(await screen.findByText("Month totals")).toBeInTheDocument();
     expect(
       screen.queryByRole("table", { name: "Budget matrix" }),
     ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: "Matrix" }));
     expect(
-      screen.getByRole("table", { name: "Budget matrix" }),
+      await screen.findByRole("table", { name: "Budget matrix" }),
     ).toBeInTheDocument();
     expect(screen.queryByText("Month totals")).not.toBeInTheDocument();
     expect(
       screen.getAllByRole("heading", { name: "Budget", level: 4 }),
     ).toHaveLength(1);
     fireEvent.click(screen.getByRole("radio", { name: "Month" }));
-    expect(screen.getByText("Month totals")).toBeInTheDocument();
+    expect(await screen.findByText("Month totals")).toBeInTheDocument();
   });
 
-  it("serves the categories list at /categories", () => {
+  it("serves the categories list at /categories", async () => {
     renderApp("/categories");
     expect(
-      screen.getByRole("heading", { name: "Categories", level: 4 }),
+      await screen.findByRole("heading", { name: "Categories", level: 4 }),
     ).toBeInTheDocument();
   });
 });

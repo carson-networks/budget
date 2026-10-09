@@ -1,40 +1,39 @@
-import { MantineProvider } from "@mantine/core";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { theme } from "../../../theme.js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AccountType } from "../../../connectRPC/types.js";
+import { renderWithProviders } from "../../../test/renderWithProviders.js";
 import CreateManualAccountModal from "./Modal.js";
 
-const { mutateMock } = vi.hoisted(() => ({
-  mutateMock: vi.fn(),
+const api = vi.hoisted(() => ({
+  createAccount: vi.fn(),
+  listAccounts: vi.fn(),
 }));
 
-vi.mock("../../../hooks/useAccounts.js", () => ({
-  useCreateManualAccount: () => ({
-    mutate: mutateMock,
-    reset: vi.fn(),
-    isPending: false,
-    isError: false,
-    error: null,
-  }),
+vi.mock("../../../connectRPC/connect.js", () => ({
+  accountClient: {
+    createAccount: api.createAccount,
+    listAccounts: api.listAccounts,
+  },
 }));
+
+function renderModal(onClose = vi.fn()) {
+  renderWithProviders(<CreateManualAccountModal open onClose={onClose} />);
+  return onClose;
+}
 
 describe("CreateManualAccountModal", () => {
   beforeEach(() => {
-    mutateMock.mockReset();
+    vi.resetAllMocks();
+    api.createAccount.mockResolvedValue({});
+    api.listAccounts.mockResolvedValue({ accounts: [] });
   });
 
-  it("submits manual account fields to the create mutation", async () => {
+  it("submits manual account fields to the create RPC and closes", async () => {
     const user = userEvent.setup();
-    const onClose = vi.fn();
+    const onClose = renderModal();
 
-    render(
-      <MantineProvider theme={theme}>
-        <CreateManualAccountModal open onClose={onClose} />
-      </MantineProvider>,
-    );
-
-    await user.type(screen.getByRole("textbox", { name: /name/i }), "My account");
+    await user.type(screen.getByRole("textbox", { name: /name/i }), "  My account ");
     await user.type(screen.getByRole("textbox", { name: /sub type/i }), "Checking");
 
     const balance = screen.getByRole("textbox", { name: /starting balance/i });
@@ -43,29 +42,48 @@ describe("CreateManualAccountModal", () => {
 
     await user.click(screen.getByRole("button", { name: /create account/i }));
 
-    expect(mutateMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: "My account",
-        subType: "Checking",
-        startingBalance: "100.00",
-      }),
-      expect.any(Object),
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(api.createAccount).toHaveBeenCalledExactlyOnceWith({
+      name: "My account",
+      type: AccountType.CASH,
+      subType: "Checking",
+      startingBalance: "100.00",
+    });
+  });
+
+  it("clears the fields after closing", async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    await user.type(screen.getByRole("textbox", { name: /name/i }), "Temp");
+    await user.type(screen.getByRole("textbox", { name: /sub type/i }), "Checking");
+    await user.type(screen.getByRole("textbox", { name: /starting balance/i }), "5");
+    await user.click(screen.getByRole("button", { name: /create account/i }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: /name/i })).toHaveValue(""),
     );
+    expect(screen.getByRole("textbox", { name: /sub type/i })).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: /starting balance/i })).toHaveValue("");
+  });
+
+  it("shows the server error and keeps the form open", async () => {
+    const user = userEvent.setup();
+    api.createAccount.mockRejectedValue(new Error("Name taken"));
+    const onClose = renderModal();
+
+    await user.type(screen.getByRole("textbox", { name: /name/i }), "Dup");
+    await user.type(screen.getByRole("textbox", { name: /sub type/i }), "Checking");
+    await user.type(screen.getByRole("textbox", { name: /starting balance/i }), "1");
+    await user.click(screen.getByRole("button", { name: /create account/i }));
+
+    expect(await screen.findByText("Name taken")).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it("keeps $ visible on starting balance and submits the decimal", async () => {
     const user = userEvent.setup();
-    mutateMock.mockImplementation(
-      (_body: unknown, options?: { onSuccess?: () => void }) => {
-        options?.onSuccess?.();
-      },
-    );
-
-    render(
-      <MantineProvider theme={theme}>
-        <CreateManualAccountModal open onClose={vi.fn()} />
-      </MantineProvider>,
-    );
+    renderModal();
 
     await user.type(screen.getByRole("textbox", { name: /name/i }), "My account");
     await user.type(screen.getByRole("textbox", { name: /sub type/i }), "Checking");
@@ -78,32 +96,23 @@ describe("CreateManualAccountModal", () => {
     expect(starting.parentElement).toHaveTextContent("$");
 
     await user.click(screen.getByRole("button", { name: /create account/i }));
-    expect(mutateMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        startingBalance: "25.55",
-      }),
-      expect.any(Object),
+    await waitFor(() =>
+      expect(api.createAccount).toHaveBeenCalledWith(
+        expect.objectContaining({ startingBalance: "25.55" }),
+      ),
     );
   });
 
   it("disables Create account when required fields are empty", () => {
-    render(
-      <MantineProvider theme={theme}>
-        <CreateManualAccountModal open onClose={vi.fn()} />
-      </MantineProvider>,
-    );
+    renderModal();
 
     expect(screen.getByRole("button", { name: /create account/i })).toBeDisabled();
-    expect(mutateMock).not.toHaveBeenCalled();
+    expect(api.createAccount).not.toHaveBeenCalled();
   });
 
   it("keeps Create disabled until name, sub type, and starting balance are non-empty", async () => {
     const user = userEvent.setup();
-    render(
-      <MantineProvider theme={theme}>
-        <CreateManualAccountModal open onClose={vi.fn()} />
-      </MantineProvider>,
-    );
+    renderModal();
 
     const submit = screen.getByRole("button", { name: /create account/i });
     expect(submit).toBeDisabled();
@@ -120,11 +129,7 @@ describe("CreateManualAccountModal", () => {
 
   it("disables Create when name is only whitespace", async () => {
     const user = userEvent.setup();
-    render(
-      <MantineProvider theme={theme}>
-        <CreateManualAccountModal open onClose={vi.fn()} />
-      </MantineProvider>,
-    );
+    renderModal();
 
     await user.type(screen.getByRole("textbox", { name: /name/i }), "   ");
     await user.type(screen.getByRole("textbox", { name: /sub type/i }), "Checking");
@@ -135,11 +140,7 @@ describe("CreateManualAccountModal", () => {
 
   it("disables Create when sub type is only whitespace", async () => {
     const user = userEvent.setup();
-    render(
-      <MantineProvider theme={theme}>
-        <CreateManualAccountModal open onClose={vi.fn()} />
-      </MantineProvider>,
-    );
+    renderModal();
 
     await user.type(screen.getByRole("textbox", { name: /name/i }), "Valid name");
     await user.type(screen.getByRole("textbox", { name: /sub type/i }), "  \t  ");
@@ -150,11 +151,7 @@ describe("CreateManualAccountModal", () => {
 
   it("disables Create when starting balance is only whitespace", async () => {
     const user = userEvent.setup();
-    render(
-      <MantineProvider theme={theme}>
-        <CreateManualAccountModal open onClose={vi.fn()} />
-      </MantineProvider>,
-    );
+    renderModal();
 
     await user.type(screen.getByRole("textbox", { name: /name/i }), "Valid name");
     await user.type(screen.getByRole("textbox", { name: /sub type/i }), "Checking");
@@ -165,17 +162,13 @@ describe("CreateManualAccountModal", () => {
 
   it("does not call mutate when the form is submitted with invalid fields", async () => {
     const user = userEvent.setup();
-    render(
-      <MantineProvider theme={theme}>
-        <CreateManualAccountModal open onClose={vi.fn()} />
-      </MantineProvider>,
-    );
+    renderModal();
 
     await user.type(screen.getByRole("textbox", { name: /name/i }), "Only name");
     const form = screen.getByRole("dialog").querySelector("form");
     expect(form).not.toBeNull();
     fireEvent.submit(form!);
 
-    expect(mutateMock).not.toHaveBeenCalled();
+    expect(api.createAccount).not.toHaveBeenCalled();
   });
 });

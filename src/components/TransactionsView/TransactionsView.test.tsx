@@ -1,42 +1,26 @@
-import { MantineProvider } from "@mantine/core";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AccountIntegration, AccountKind, CategoryKind } from "../../models";
-import type { Account, Category, Transaction } from "../../models";
-import { theme } from "../../theme.js";
+import type { Account, Category } from "../../models";
+import { renderWithProviders } from "../../test/renderWithProviders.js";
+import { wireAccount, wireCategory } from "../../test/wire.js";
+import TransactionsView from "./TransactionsView.js";
 
-vi.mock(import("../../hooks/useTransactions.js"), () => ({
-  useAllTransactions: vi.fn(),
-  TRANSACTIONS_PAGE_SIZE: 25 as const,
+const api = vi.hoisted(() => ({
+  listAccounts: vi.fn(),
+  listCategories: vi.fn(),
+  listTransactions: vi.fn(),
+  updateTransaction: vi.fn(),
 }));
-
-vi.mock(import("../../hooks/useAccounts.js"), () => ({
-  useAllAccounts: vi.fn(),
-}));
-
-vi.mock(import("../../hooks/useCategories.js"), () => ({
-  useAllCategories: vi.fn(),
-}));
-
-const { updateCategory } = vi.hoisted(() => ({
-  updateCategory: {
-    mutate: vi.fn(),
-    reset: vi.fn(),
-    isPending: false,
-    isError: false,
-    error: null as Error | null,
+vi.mock("../../connectRPC/connect.js", () => ({
+  accountClient: { listAccounts: api.listAccounts },
+  categoryClient: { listCategories: api.listCategories },
+  transactionClient: {
+    listTransactions: api.listTransactions,
+    updateTransaction: api.updateTransaction,
   },
 }));
-vi.mock("../../hooks/useUpdateTransactionCategory.js", () => ({
-  useUpdateTransactionCategory: () => updateCategory,
-}));
-
-import { useAllAccounts } from "../../hooks/useAccounts.js";
-import { useAllCategories } from "../../hooks/useCategories.js";
-import { useAllTransactions } from "../../hooks/useTransactions.js";
-import TransactionsView from "./TransactionsView.js";
 
 const account: Account = {
   id: "acc-1",
@@ -48,15 +32,16 @@ const account: Account = {
   integration: AccountIntegration.Manual,
 };
 
-const category: Category = {
+const dining: Category = {
   id: "cat-1",
   name: "Dining",
   isParent: false,
   isDisabled: false,
   categoryKind: CategoryKind.Expense,
 };
+const groceries: Category = { ...dining, id: "cat-2", name: "Groceries" };
 
-const transaction: Transaction = {
+const transaction = {
   id: "txn-1",
   accountId: "acc-1",
   categoryId: "cat-1",
@@ -64,164 +49,125 @@ const transaction: Transaction = {
   transactionName: "Lunch",
 };
 
-function mockTransactions(
-  partial: Partial<ReturnType<typeof useAllTransactions>>,
-) {
-  vi.mocked(useAllTransactions).mockReturnValue({
-    transactions: [],
-    totalCount: 0,
-    totalPages: 1,
-    page: 1,
-    setPage: vi.fn(),
-    pageSize: 25,
-    isLoading: false,
-    isPlaceholderData: false,
-    error: null,
-    isError: false,
-    isPending: false,
-    isFetching: false,
-    status: "success",
-    ...partial,
-  } as ReturnType<typeof useAllTransactions>);
-}
-
-function mockAccounts(partial: Partial<ReturnType<typeof useAllAccounts>>) {
-  vi.mocked(useAllAccounts).mockReturnValue({
-    accounts: [],
-    isLoading: false,
-    error: null,
-    isError: false,
-    isPending: false,
-    isFetching: false,
-    status: "success",
-    ...partial,
-  } as ReturnType<typeof useAllAccounts>);
-}
-
-function mockCategories(partial: Partial<ReturnType<typeof useAllCategories>>) {
-  vi.mocked(useAllCategories).mockReturnValue({
-    categories: [],
-    isLoading: false,
-    error: null,
-    isError: false,
-    isPending: false,
-    isFetching: false,
-    status: "success",
-    ...partial,
-  } as ReturnType<typeof useAllCategories>);
-}
-
 function renderView() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <MantineProvider theme={theme} env="test">
-      <QueryClientProvider client={queryClient}>
-        <TransactionsView />
-      </QueryClientProvider>
-    </MantineProvider>,
-  );
+  return renderWithProviders(<TransactionsView />);
 }
 
 describe("TransactionsView", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   beforeEach(() => {
-    updateCategory.mutate.mockReset();
-    updateCategory.reset.mockReset();
-    updateCategory.isPending = false;
-    updateCategory.isError = false;
-    updateCategory.error = null;
-    mockTransactions({ transactions: [], totalCount: 0 });
-    mockAccounts({ accounts: [] });
-    mockCategories({ categories: [] });
+    vi.resetAllMocks();
+    api.listAccounts.mockResolvedValue({ accounts: [wireAccount(account)] });
+    api.listCategories.mockResolvedValue({
+      categories: [wireCategory(dining), wireCategory(groceries)],
+    });
+    api.listTransactions.mockResolvedValue({
+      transactions: [transaction],
+      totalCount: 1,
+    });
+    api.updateTransaction.mockResolvedValue({});
   });
 
   it("shows a loading state while transactions load", () => {
-    mockTransactions({ isLoading: true, isPlaceholderData: false });
+    api.listTransactions.mockReturnValue(new Promise(() => {}));
     renderView();
     expect(screen.getByText("Loading…")).toBeInTheDocument();
   });
 
-  it("shows an error alert when listing fails", () => {
-    mockTransactions({ error: new Error("boom") });
+  it("shows an error alert when listing fails", async () => {
+    api.listTransactions.mockRejectedValue(new Error("boom"));
     renderView();
+    expect(await screen.findByText("boom")).toBeInTheDocument();
     expect(screen.getByText("Something went wrong")).toBeInTheDocument();
-    expect(screen.getByText("boom")).toBeInTheDocument();
   });
 
-  it("renders the all-transactions list with resolved labels", () => {
-    mockTransactions({ transactions: [transaction], totalCount: 1 });
-    mockAccounts({ accounts: [account] });
-    mockCategories({ categories: [category] });
+  it("renders the all-transactions list with resolved labels", async () => {
     renderView();
 
+    expect(await screen.findByText("Lunch")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Transactions" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Lunch")).toBeInTheDocument();
     expect(screen.getByText("Checking")).toBeInTheDocument();
     expect(
       screen.getByRole("textbox", { name: "Category for Lunch" }),
     ).toHaveValue("Dining");
   });
 
-  it("shows the empty list message when there are no transactions", () => {
+  it("shows the empty list message when there are no transactions", async () => {
+    api.listTransactions.mockResolvedValue({ transactions: [], totalCount: 0 });
     renderView();
-    expect(screen.getByText("No transactions yet.")).toBeInTheDocument();
+    expect(await screen.findByText("No transactions yet.")).toBeInTheDocument();
   });
 
   it("saves the selected category for the correct transaction", async () => {
     const user = userEvent.setup();
-    mockTransactions({ transactions: [transaction], totalCount: 1 });
-    mockCategories({
-      categories: [category, { ...category, id: "cat-2", name: "Groceries" }],
+    api.updateTransaction.mockImplementation(async () => {
+      // The refetch after the save sees the server's new state.
+      api.listTransactions.mockResolvedValue({
+        transactions: [{ ...transaction, categoryId: "cat-2" }],
+        totalCount: 1,
+      });
+      return {};
     });
     renderView();
     await user.click(
-      screen.getByRole("textbox", { name: "Category for Lunch" }),
+      await screen.findByRole("textbox", { name: "Category for Lunch" }),
     );
     await user.click(screen.getByRole("option", { name: "Groceries" }));
-    expect(updateCategory.mutate).toHaveBeenCalledExactlyOnceWith({
-      transactionId: "txn-1",
+    expect(api.updateTransaction).toHaveBeenCalledExactlyOnceWith({
+      id: "txn-1",
       categoryId: "cat-2",
     });
+    expect(
+      await screen.findByRole("textbox", { name: "Category for Lunch" }),
+    ).toHaveValue("Groceries");
   });
 
-  it.each(["pending", "placeholder"])(
-    "disables category editing during %s state",
-    (state) => {
-      updateCategory.isPending = state === "pending";
-      mockTransactions({
-        transactions: [transaction],
-        totalCount: 1,
-        isPlaceholderData: state === "placeholder",
-      });
-      mockCategories({ categories: [category] });
-      renderView();
-      expect(
-        screen.getByRole("textbox", { name: "Category for Lunch" }),
-      ).toBeDisabled();
-    },
-  );
-
-  it("shows a dismissible save error while keeping transactions available", async () => {
+  it("disables category editing while a save is pending", async () => {
     const user = userEvent.setup();
-    updateCategory.isError = true;
-    updateCategory.error = new Error("Save failed");
-    mockTransactions({ transactions: [transaction], totalCount: 1 });
-    mockCategories({ categories: [category] });
+    api.updateTransaction.mockReturnValue(new Promise(() => {}));
     renderView();
+    await user.click(
+      await screen.findByRole("textbox", { name: "Category for Lunch" }),
+    );
+    await user.click(screen.getByRole("option", { name: "Groceries" }));
+    expect(
+      await screen.findByRole("textbox", { name: "Category for Lunch" }),
+    ).toBeDisabled();
+  });
+
+  it("disables category editing while the next page loads", async () => {
+    const user = userEvent.setup();
+    api.listTransactions
+      .mockResolvedValueOnce({ transactions: [transaction], totalCount: 26 })
+      .mockReturnValue(new Promise(() => {}));
+    renderView();
+    await screen.findByText("Lunch");
+    await user.click(screen.getByRole("button", { name: "2" }));
+    expect(
+      await screen.findByRole("textbox", { name: "Category for Lunch" }),
+    ).toBeDisabled();
+  });
+
+  it("shows a dismissible save error and restores the previous category", async () => {
+    const user = userEvent.setup();
+    api.updateTransaction.mockRejectedValue(new Error("Save failed"));
+    renderView();
+    await user.click(
+      await screen.findByRole("textbox", { name: "Category for Lunch" }),
+    );
+    await user.click(screen.getByRole("option", { name: "Groceries" }));
+
+    expect(await screen.findByText("Save failed")).toBeInTheDocument();
     expect(screen.getByText("Could not update category")).toBeInTheDocument();
-    expect(screen.getByText("Save failed")).toBeInTheDocument();
     expect(screen.getByText("Lunch")).toBeInTheDocument();
-    expect(screen.getByRole("textbox")).toBeEnabled();
+    expect(
+      screen.getByRole("textbox", { name: "Category for Lunch" }),
+    ).toHaveValue("Dining");
+
     await user.click(
       screen.getByRole("button", { name: "Dismiss category update error" }),
     );
-    expect(updateCategory.reset).toHaveBeenCalledExactlyOnceWith();
+    expect(screen.queryByText("Save failed")).not.toBeInTheDocument();
   });
 });

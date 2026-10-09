@@ -1,10 +1,8 @@
-import { MantineProvider } from "@mantine/core";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { theme } from "../../../theme.js";
+import { renderWithProviders } from "../../../test/renderWithProviders.js";
 import { CategoryKind } from "../../../models";
 import { CategoryTransactions } from "./CategoryTransactions.js";
 
@@ -31,29 +29,26 @@ const groceries = {
   categoryKind: CategoryKind.Expense,
 };
 
-let queryClient: QueryClient;
+function categoryTransactions(
+  props: Partial<ComponentProps<typeof CategoryTransactions>> = {},
+) {
+  return (
+    <CategoryTransactions
+      month={{ year: 2025, month: 3 }}
+      category={groceries}
+      onPrevMonth={() => {}}
+      onNextMonth={() => {}}
+      onGoToToday={() => {}}
+      onBack={() => {}}
+      {...props}
+    />
+  );
+}
 
 function renderCategoryTransactions(
   props: Partial<ComponentProps<typeof CategoryTransactions>> = {},
 ) {
-  queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <MantineProvider theme={theme} env="test">
-      <QueryClientProvider client={queryClient}>
-        <CategoryTransactions
-          month={{ year: 2025, month: 3 }}
-          category={groceries}
-          onPrevMonth={() => {}}
-          onNextMonth={() => {}}
-          onGoToToday={() => {}}
-          onBack={() => {}}
-          {...props}
-        />
-      </QueryClientProvider>
-    </MantineProvider>,
-  );
+  return renderWithProviders(categoryTransactions(props));
 }
 
 beforeEach(() => {
@@ -150,20 +145,7 @@ describe("CategoryTransactions", () => {
     const { rerender } = renderCategoryTransactions();
     expect(await screen.findByText("Shop in month 3")).toBeInTheDocument();
 
-    rerender(
-      <MantineProvider theme={theme} env="test">
-        <QueryClientProvider client={queryClient}>
-          <CategoryTransactions
-            month={{ year: 2025, month: 4 }}
-            category={groceries}
-            onPrevMonth={() => {}}
-            onNextMonth={() => {}}
-            onGoToToday={() => {}}
-            onBack={() => {}}
-          />
-        </QueryClientProvider>
-      </MantineProvider>,
-    );
+    rerender(categoryTransactions({ month: { year: 2025, month: 4 } }));
     expect(await screen.findByText("Shop in month 4")).toBeInTheDocument();
     expect(screen.queryByText("Shop in month 3")).not.toBeInTheDocument();
     expect(screen.getByText("Apr 2025")).toBeInTheDocument();

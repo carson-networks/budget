@@ -1,14 +1,18 @@
-import { MantineProvider } from "@mantine/core";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CategoryType } from "../../../connectRPC/types.js";
 import { CategoryKind, type Category } from "../../../models";
-import { theme } from "../../../theme.js";
+import { renderWithProviders } from "../../../test/renderWithProviders.js";
 import EditCategoryModal from "./Modal.js";
 
-const { mutateMock, resetMock } = vi.hoisted(() => ({
-  mutateMock: vi.fn(),
-  resetMock: vi.fn(),
+const api = vi.hoisted(() => ({
+  updateCategory: vi.fn(),
+  listCategories: vi.fn(),
+}));
+
+vi.mock("../../../connectRPC/connect.js", () => ({
+  categoryClient: api,
 }));
 
 const foodParent: Category = {
@@ -28,30 +32,27 @@ const groceries: Category = {
   categoryKind: CategoryKind.Expense,
 };
 
-vi.mock("../../../hooks/useCategories.js", () => ({
-  useAllCategories: () => ({
-    categories: [foodParent, groceries],
-  }),
-  useUpdateCategory: () => ({
-    mutate: mutateMock,
-    reset: resetMock,
-    isPending: false,
-    isError: false,
-    error: null,
-  }),
-}));
+const wire = (category: Category) => ({
+  ...category,
+  categoryType: CategoryType.EXPENSE,
+});
 
 describe("EditCategoryModal", () => {
   beforeEach(() => {
-    mutateMock.mockReset();
-    resetMock.mockReset();
+    vi.resetAllMocks();
+    api.updateCategory.mockResolvedValue({});
+    api.listCategories.mockResolvedValue({
+      categories: [
+        wire(foodParent),
+        wire(groceries),
+        wire({ ...foodParent, id: "housing", name: "Housing" }),
+      ],
+    });
   });
 
   it("renders editable category settings when open", () => {
-    render(
-      <MantineProvider theme={theme}>
-        <EditCategoryModal category={groceries} open onClose={vi.fn()} />
-      </MantineProvider>,
+    renderWithProviders(
+      <EditCategoryModal category={groceries} open onClose={vi.fn()} />,
     );
 
     expect(
@@ -65,10 +66,8 @@ describe("EditCategoryModal", () => {
   });
 
   it("does not render when closed with a null category", () => {
-    render(
-      <MantineProvider theme={theme}>
-        <EditCategoryModal category={null} open={false} onClose={vi.fn()} />
-      </MantineProvider>,
+    renderWithProviders(
+      <EditCategoryModal category={null} open={false} onClose={vi.fn()} />,
     );
 
     expect(
@@ -76,63 +75,62 @@ describe("EditCategoryModal", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("saves edited fields through updateCategory", async () => {
+  it("saves edited fields through updateCategory and closes", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
-    mutateMock.mockImplementation(
-      (_body: unknown, options?: { onSuccess?: () => void }) => {
-        options?.onSuccess?.();
-      },
-    );
-
-    render(
-      <MantineProvider theme={theme}>
-        <EditCategoryModal category={groceries} open onClose={onClose} />
-      </MantineProvider>,
+    renderWithProviders(
+      <EditCategoryModal category={groceries} open onClose={onClose} />,
     );
 
     const nameInput = screen.getByRole("textbox", { name: /name/i });
     await user.clear(nameInput);
-    await user.type(nameInput, "Produce");
+    await user.type(nameInput, "  Produce ");
     await user.click(screen.getByRole("checkbox", { name: /disabled/i }));
     await user.click(screen.getByRole("button", { name: /save changes/i }));
 
-    expect(mutateMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: "groceries",
-        name: "Produce",
-        isDisabled: true,
-        parentCategoryId: "food",
-      }),
-      expect.any(Object),
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+    expect(api.updateCategory).toHaveBeenCalledExactlyOnceWith({
+      id: "groceries",
+      name: "Produce",
+      isDisabled: true,
+      parentCategoryId: "food",
+    });
+  });
+
+  it("shows the server error and stays open when saving fails", async () => {
+    const user = userEvent.setup();
+    api.updateCategory.mockRejectedValue(new Error("Save failed"));
+    const onClose = vi.fn();
+    renderWithProviders(
+      <EditCategoryModal category={groceries} open onClose={onClose} />,
     );
-    expect(onClose).toHaveBeenCalledOnce();
+
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    expect(await screen.findByText("Save failed")).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it("does not mutate when the form is submitted while invalid", () => {
-    render(
-      <MantineProvider theme={theme}>
-        <EditCategoryModal
-          category={{ ...groceries, name: "" }}
-          open
-          onClose={vi.fn()}
-        />
-      </MantineProvider>,
+    renderWithProviders(
+      <EditCategoryModal
+        category={{ ...groceries, name: "" }}
+        open
+        onClose={vi.fn()}
+      />,
     );
 
     const form = screen.getByRole("dialog").querySelector("form");
     expect(form).not.toBeNull();
     fireEvent.submit(form!);
 
-    expect(mutateMock).not.toHaveBeenCalled();
+    expect(api.updateCategory).not.toHaveBeenCalled();
   });
 
   it("keeps Save disabled when name is only whitespace", async () => {
     const user = userEvent.setup();
-    render(
-      <MantineProvider theme={theme}>
-        <EditCategoryModal category={groceries} open onClose={vi.fn()} />
-      </MantineProvider>,
+    renderWithProviders(
+      <EditCategoryModal category={groceries} open onClose={vi.fn()} />,
     );
 
     const nameInput = screen.getByRole("textbox", { name: /name/i });

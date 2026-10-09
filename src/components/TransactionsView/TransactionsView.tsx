@@ -1,8 +1,10 @@
 import { useMemo } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { Alert, Loader, Stack, Text } from "@mantine/core";
-import { useAllAccounts } from "../../hooks/useAccounts.js";
-import { useAllCategories } from "../../hooks/useCategories.js";
-import { useAllTransactions } from "../../hooks/useTransactions.js";
+import { useTransactionsPager } from "../../hooks/useTransactionsPager.js";
+import { accountQueries } from "../../queries/accounts.js";
+import { categoryQueries } from "../../queries/categories.js";
+import { nameById } from "../../utils/nameById.js";
 import { ViewShell } from "../shared/ViewShell.js";
 import { TransactionsList } from "./TransactionsList.js";
 import { CategoryUpdateErrorAlert } from "./CategoryUpdateErrorAlert.js";
@@ -18,27 +20,20 @@ export default function TransactionsView() {
     isLoading: transactionsLoading,
     isPlaceholderData,
     error: transactionsError,
-  } = useAllTransactions();
+  } = useTransactionsPager();
   const {
-    accounts,
+    data: accounts = [],
     isLoading: accountsLoading,
     error: accountsError,
-  } = useAllAccounts();
+  } = useInfiniteQuery(accountQueries.list());
   const {
-    categories,
+    data: categories = [],
     isLoading: categoriesLoading,
     error: categoriesError,
-  } = useAllCategories();
+  } = useInfiniteQuery(categoryQueries.list());
 
-  const accountNameById = useMemo(
-    () => new Map(accounts.map((a) => [a.id, a.name])),
-    [accounts],
-  );
-
-  const categoryNameById = useMemo(
-    () => new Map(categories.map((c) => [c.id, c.name])),
-    [categories],
-  );
+  const accountNameById = useMemo(() => nameById(accounts), [accounts]);
+  const categoryNameById = useMemo(() => nameById(categories), [categories]);
 
   const categoryEditing = useTransactionCategoryEditing(categories, {
     disabled: isPlaceholderData,

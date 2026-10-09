@@ -1,6 +1,7 @@
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Alert, Box, Loader, Stack, Text } from "@mantine/core";
-import { useAllCategories } from "../../../hooks/useCategories.js";
+import { categoryQueries } from "../../../queries/categories.js";
 import type { Category } from "../../../models";
 import { SectionCard } from "../../shared/SectionCard.js";
 import { FloatingCreateButton } from "../../shared/FloatingCreateButton.js";
@@ -16,7 +17,11 @@ import { SegmentHeader } from "./SegmentHeader.js";
 import { SubcategoriesTable } from "./SubcategoriesTable.js";
 
 export default function CategoriesView() {
-  const { categories, isLoading, error } = useAllCategories();
+  const {
+    data: categories = [],
+    isLoading,
+    error,
+  } = useInfiniteQuery(categoryQueries.list());
   const [createOpen, setCreateOpen] = useState(false);
   const [settingsCategory, setSettingsCategory] = useState<Category | null>(
     null,

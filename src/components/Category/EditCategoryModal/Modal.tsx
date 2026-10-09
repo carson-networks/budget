@@ -9,9 +9,18 @@ import {
   Title,
   Checkbox,
 } from "@mantine/core";
+import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
+import { useMemo, useState, type FormEvent } from "react";
 import type { Category } from "../../../models";
+import { categoryMutations, categoryQueries } from "../../../queries/categories.js";
+import {
+  categoryFormFrom,
+  isEditCategoryFormValid,
+  parentCategoryOptions,
+  toUpdateCategoryInput,
+  type CategoryFormValues,
+} from "../categoryForm.js";
 import { ParentCategoryField } from "../CreateCategoryModal/ParentCategoryField.js";
-import { useEditCategoryForm } from "./useEditCategoryForm.js";
 
 type EditCategoryModalProps = {
   category: Category | null;
@@ -24,24 +33,38 @@ type CategorySettingsBodyProps = {
   onClose: () => void;
 };
 
+/** Form state for one category. Remounted via `key={category.id}`. */
 function CategorySettingsBody({
   category,
   onClose,
 }: CategorySettingsBodyProps) {
-  const {
-    name,
-    setName,
-    isDisabled,
-    setIsDisabled,
-    parentCategoryId,
-    setParentCategoryId,
-    parentOptions,
-    updateCategory,
-    handleSubmit,
-    handleClose,
-    isFormValid,
-    busy,
-  } = useEditCategoryForm(category, onClose);
+  const [values, setValues] = useState(() => categoryFormFrom(category));
+  const { data: categories = [] } = useInfiniteQuery(categoryQueries.list());
+  const updateCategory = useMutation(categoryMutations.update);
+  const parentOptions = useMemo(
+    () => parentCategoryOptions(categories, category.id),
+    [categories, category.id],
+  );
+  const isFormValid = isEditCategoryFormValid(values);
+  const busy = updateCategory.isPending;
+
+  const setField = <K extends keyof CategoryFormValues>(
+    key: K,
+    value: CategoryFormValues[K],
+  ) => setValues((prev) => ({ ...prev, [key]: value }));
+
+  const handleClose = () => {
+    updateCategory.reset();
+    onClose();
+  };
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!isFormValid) return;
+    updateCategory.mutate(toUpdateCategoryInput(category.id, values), {
+      onSuccess: handleClose,
+    });
+  };
 
   return (
     <Modal
@@ -69,22 +92,22 @@ function CategorySettingsBody({
 
           <TextInput
             label="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            value={values.name}
+            onChange={(e) => setField("name", e.target.value)}
             required
             autoFocus
           />
 
           <Checkbox
             label="Disabled"
-            checked={isDisabled}
-            onChange={(e) => setIsDisabled(e.currentTarget.checked)}
+            checked={values.isDisabled}
+            onChange={(e) => setField("isDisabled", e.currentTarget.checked)}
           />
 
           <ParentCategoryField
             parentOptions={parentOptions}
-            parentCategoryId={parentCategoryId}
-            onParentChange={setParentCategoryId}
+            parentCategoryId={values.parentCategoryId}
+            onParentChange={(value) => setField("parentCategoryId", value)}
           />
         </Stack>
 

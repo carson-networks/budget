@@ -1,14 +1,14 @@
-import { MantineProvider } from "@mantine/core";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CategoryKind, type Category } from "../../../models";
-import { theme } from "../../../theme.js";
+import { renderWithProviders } from "../../../test/renderWithProviders.js";
+import { wireCategory } from "../../../test/wire.js";
 
-vi.mock("../../../hooks/useCategories.js", () => ({
-  useAllCategories: vi.fn(),
+const api = vi.hoisted(() => ({ listCategories: vi.fn() }));
+vi.mock("../../../connectRPC/connect.js", () => ({
+  categoryClient: api,
 }));
 
 vi.mock("./CategoryTransactions.js", () => ({
@@ -31,7 +31,6 @@ vi.mock("./CategoryTransactions.js", () => ({
   ),
 }));
 
-import { useAllCategories } from "../../../hooks/useCategories.js";
 import BudgetCategoryTransactionsView from "./BudgetCategoryTransactionsView.js";
 
 const groceries: Category = {
@@ -42,14 +41,10 @@ const groceries: Category = {
   categoryKind: CategoryKind.Expense,
 };
 
-function mockCategories(
-  opts: { categories?: Category[]; isLoading?: boolean; error?: Error } = {},
-) {
-  vi.mocked(useAllCategories).mockReturnValue({
-    categories: opts.categories ?? [groceries],
-    isLoading: opts.isLoading ?? false,
-    error: opts.error ?? null,
-  } as ReturnType<typeof useAllCategories>);
+function mockCategories(categories: Category[] = [groceries]) {
+  api.listCategories.mockResolvedValue({
+    categories: categories.map(wireCategory),
+  });
 }
 
 function LocationDisplay() {
@@ -58,39 +53,36 @@ function LocationDisplay() {
 }
 
 function renderView(entry: string) {
-  return render(
-    <MantineProvider theme={theme}>
-      <QueryClientProvider client={new QueryClient()}>
-        <MemoryRouter initialEntries={[entry]}>
-          <Routes>
-            <Route
-              path="budget/categories/:categoryId"
-              element={<BudgetCategoryTransactionsView />}
-            />
-          </Routes>
-          <LocationDisplay />
-        </MemoryRouter>
-      </QueryClientProvider>
-    </MantineProvider>,
+  return renderWithProviders(
+    <>
+      <Routes>
+        <Route
+          path="budget/categories/:categoryId"
+          element={<BudgetCategoryTransactionsView />}
+        />
+      </Routes>
+      <LocationDisplay />
+    </>,
+    { route: entry },
   );
 }
 
 describe("BudgetCategoryTransactionsView", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     mockCategories();
   });
 
-  it("shows the category named in the URL for the month in the URL", () => {
+  it("shows the category named in the URL for the month in the URL", async () => {
     renderView("/budget/categories/groceries?month=2025-03");
-    expect(screen.getByTestId("category-transactions")).toHaveTextContent(
+    expect(await screen.findByTestId("category-transactions")).toHaveTextContent(
       "Groceries 2025-3",
     );
   });
 
   it("changes the month in the URL when stepping months", async () => {
     renderView("/budget/categories/groceries?month=2025-03");
-    await userEvent.click(screen.getByRole("button", { name: "Next stub" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Next stub" }));
 
     expect(screen.getByTestId("location")).toHaveTextContent(
       "/budget/categories/groceries?month=2025-04",
@@ -102,26 +94,27 @@ describe("BudgetCategoryTransactionsView", () => {
 
   it("goes back to the month view on the same month", async () => {
     renderView("/budget/categories/groceries?month=2025-03");
-    await userEvent.click(screen.getByRole("button", { name: "Back stub" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Back stub" }));
 
     expect(screen.getByTestId("location")).toHaveTextContent(
       "/budget?view=month&month=2025-03",
     );
   });
 
-  it("explains when the category does not exist", () => {
+  it("explains when the category does not exist", async () => {
     renderView("/budget/categories/missing?month=2025-03");
-    expect(screen.getByText("Category not found")).toBeInTheDocument();
+    expect(await screen.findByText("Category not found")).toBeInTheDocument();
   });
 
-  it("shows loading and error states", () => {
-    mockCategories({ isLoading: true });
-    const { unmount } = renderView("/budget/categories/groceries");
-    expect(screen.getByText("Loading…")).toBeInTheDocument();
-    unmount();
-
-    mockCategories({ error: new Error("categories down") });
+  it("shows a loading state", () => {
+    api.listCategories.mockReturnValue(new Promise(() => {}));
     renderView("/budget/categories/groceries");
-    expect(screen.getByText("categories down")).toBeInTheDocument();
+    expect(screen.getByText("Loading…")).toBeInTheDocument();
+  });
+
+  it("shows an error state", async () => {
+    api.listCategories.mockRejectedValue(new Error("categories down"));
+    renderView("/budget/categories/groceries");
+    expect(await screen.findByText("categories down")).toBeInTheDocument();
   });
 });

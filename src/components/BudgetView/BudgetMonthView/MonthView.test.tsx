@@ -1,28 +1,22 @@
-import { MantineProvider } from "@mantine/core";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter, useLocation } from "react-router-dom";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, screen } from "@testing-library/react";
+import { useLocation } from "react-router-dom";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CategoryKind, type Category } from "../../../models";
-import { theme } from "../../../theme.js";
-
-vi.mock("../../../hooks/useCategories.js", () => ({
-  useAllCategories: vi.fn(),
-}));
-
-vi.mock("../../../hooks/useBudgets.js", () => ({
-  useBudgetsForRange: vi.fn(),
-  useSetBudget: vi.fn(),
-}));
-
-vi.mock("../../../hooks/useTransactionTotals.js", () => ({
-  useTransactionTotalsForRange: vi.fn(),
-}));
-
-import { useAllCategories } from "../../../hooks/useCategories.js";
-import { useBudgetsForRange, useSetBudget } from "../../../hooks/useBudgets.js";
-import { useTransactionTotalsForRange } from "../../../hooks/useTransactionTotals.js";
+import { renderWithProviders } from "../../../test/renderWithProviders.js";
+import { wireCategory } from "../../../test/wire.js";
 import BudgetMonthView from "./MonthView.js";
+
+const api = vi.hoisted(() => ({
+  listCategories: vi.fn(),
+  listBudgets: vi.fn(),
+  getTransactionTotals: vi.fn(),
+  setBudget: vi.fn(),
+}));
+vi.mock("../../../connectRPC/connect.js", () => ({
+  categoryClient: { listCategories: api.listCategories },
+  budgetClient: { listBudgets: api.listBudgets, setBudget: api.setBudget },
+  transactionClient: { getTransactionTotals: api.getTransactionTotals },
+}));
 
 const foodParent: Category = {
   id: "food",
@@ -49,52 +43,28 @@ const salary: Category = {
   categoryKind: CategoryKind.Income,
 };
 
-function mockMonthData(opts?: {
-  categories?: Category[];
-  budgets?: ReturnType<typeof useBudgetsForRange>["budgets"];
-  totals?: ReturnType<typeof useTransactionTotalsForRange>["totals"];
-  loading?: boolean;
-  error?: Error | null;
-}) {
-  vi.mocked(useAllCategories).mockReturnValue({
-    categories: opts?.categories ?? [foodParent, groceries, salary],
-    isLoading: opts?.loading ?? false,
-    error: null,
-  } as ReturnType<typeof useAllCategories>);
-
-  vi.mocked(useBudgetsForRange).mockReturnValue({
-    budgets: opts?.budgets ?? [
+function mockMonthData() {
+  api.listCategories.mockResolvedValue({
+    categories: [foodParent, groceries, salary].map(wireCategory),
+  });
+  api.listBudgets.mockResolvedValue({
+    budgets: [
       { categoryId: "groceries", year: 2025, month: 3, amount: "400" },
       { categoryId: "salary", year: 2025, month: 3, amount: "5000" },
     ],
-    isLoading: opts?.loading ?? false,
-    isPlaceholderData: false,
-    error: opts?.error ?? null,
-  } as ReturnType<typeof useBudgetsForRange>);
-
-  vi.mocked(useTransactionTotalsForRange).mockReturnValue({
-    totals: opts?.totals ?? {
-      byMonth: [
-        {
-          year: 2025,
-          month: 3,
-          byCategory: [
-            { categoryId: "groceries", total: "-320.00" },
-            { categoryId: "salary", total: "5000.00" },
-          ],
-        },
-      ],
-    },
-    isLoading: opts?.loading ?? false,
-    isPlaceholderData: false,
-    error: null,
-  } as ReturnType<typeof useTransactionTotalsForRange>);
-
-  vi.mocked(useSetBudget).mockReturnValue({
-    mutateAsync: vi.fn().mockResolvedValue(undefined),
-    isPending: false,
-    variables: undefined,
-  } as unknown as ReturnType<typeof useSetBudget>);
+  });
+  api.getTransactionTotals.mockResolvedValue({
+    byMonth: [
+      {
+        year: 2025,
+        month: 3,
+        byCategory: [
+          { categoryId: "groceries", total: "-320.00" },
+          { categoryId: "salary", total: "5000.00" },
+        ],
+      },
+    ],
+  });
 }
 
 function LocationDisplay() {
@@ -103,37 +73,29 @@ function LocationDisplay() {
 }
 
 function renderMonthView(initialEntry = "/budget") {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <MantineProvider theme={theme}>
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter initialEntries={[initialEntry]}>
-          <BudgetMonthView />
-          <LocationDisplay />
-        </MemoryRouter>
-      </QueryClientProvider>
-    </MantineProvider>,
+  return renderWithProviders(
+    <>
+      <BudgetMonthView />
+      <LocationDisplay />
+    </>,
+    { route: initialEntry },
   );
 }
 
 describe("BudgetMonthView", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-    vi.useRealTimers();
-  });
-
   beforeEach(() => {
-    vi.useFakeTimers();
+    vi.resetAllMocks();
+    // Only pin the clock; faking timers would stall React Query's async work.
+    vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date(2025, 2, 15));
     mockMonthData();
+    return () => vi.useRealTimers();
   });
 
-  it("renders the selected month, category rows, and month totals", () => {
+  it("renders the selected month, category rows, and month totals", async () => {
     renderMonthView();
 
-    expect(screen.getByText("Mar 2025")).toBeInTheDocument();
+    expect(await screen.findByText("Mar 2025")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Month options" }),
     ).toBeInTheDocument();
@@ -147,38 +109,45 @@ describe("BudgetMonthView", () => {
     expect(screen.getByRole("cell", { name: "Net" })).toBeInTheDocument();
     // Parent categories are not editable; leaf rows expose budget inputs.
     expect(screen.getAllByRole("textbox")).toHaveLength(2);
+    expect(api.listBudgets).toHaveBeenCalledWith({
+      startMonth: 3,
+      startYear: 2025,
+      endMonth: 3,
+      endYear: 2025,
+    });
   });
 
-  it("keeps the month options control when navigating to a past month", () => {
+  it("keeps the month options control when navigating to a past month", async () => {
     renderMonthView();
 
     expect(
-      screen.getByRole("button", { name: "Month options" }),
+      await screen.findByRole("button", { name: "Month options" }),
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Previous month" }));
 
-    expect(screen.getByText("Feb 2025")).toBeInTheDocument();
+    expect(await screen.findByText("Feb 2025")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Month options" }),
     ).toBeInTheDocument();
   });
 
-  it("shows loading and error states", () => {
-    mockMonthData({ loading: true });
-    const { unmount } = renderMonthView();
-    expect(screen.getByText("Loading…")).toBeInTheDocument();
-    unmount();
-
-    mockMonthData({ error: new Error("budgets down") });
+  it("shows a loading state", () => {
+    api.listCategories.mockReturnValue(new Promise(() => {}));
     renderMonthView();
-    expect(screen.getByText("budgets down")).toBeInTheDocument();
+    expect(screen.getByText("Loading…")).toBeInTheDocument();
   });
 
-  it("opens a category's transactions for the selected month", () => {
+  it("shows an error state", async () => {
+    api.listBudgets.mockRejectedValue(new Error("budgets down"));
+    renderMonthView();
+    expect(await screen.findByText("budgets down")).toBeInTheDocument();
+  });
+
+  it("opens a category's transactions for the selected month", async () => {
     renderMonthView();
     fireEvent.click(
-      screen.getByRole("button", { name: "Open Groceries transactions" }),
+      await screen.findByRole("button", { name: "Open Groceries transactions" }),
     );
 
     expect(screen.getByTestId("location")).toHaveTextContent(
@@ -186,9 +155,9 @@ describe("BudgetMonthView", () => {
     );
   });
 
-  it("opens a category for the month picked in the URL", () => {
+  it("opens a category for the month picked in the URL", async () => {
     renderMonthView("/budget?view=month&month=2025-06");
-    expect(screen.getByText("Jun 2025")).toBeInTheDocument();
+    expect(await screen.findByText("Jun 2025")).toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole("button", { name: "Open Salary transactions" }),

@@ -8,9 +8,18 @@ import {
   Loader,
   Title,
 } from "@mantine/core";
+import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
+import { useMemo, useState, type FormEvent } from "react";
+import { categoryMutations, categoryQueries } from "../../../queries/categories.js";
+import {
+  emptyCategoryForm,
+  isCreateCategoryFormValid,
+  parentCategoryOptions,
+  toCreateCategoryInput,
+  type CategoryFormValues,
+} from "../categoryForm.js";
 import { CategoryTypeSelect } from "./CategoryTypeSelect.js";
 import { ParentCategoryField } from "./ParentCategoryField.js";
-import { useCreateCategoryForm } from "./useCreateCategoryForm.js";
 
 type CreateCategoryModalProps = {
   open: boolean;
@@ -21,19 +30,33 @@ export default function CreateCategoryModal({
   open,
   onClose,
 }: CreateCategoryModalProps) {
-  const {
-    name,
-    setName,
-    categoryType,
-    setCategoryType,
-    parentCategoryId,
-    setParentCategoryId,
-    parentOptions,
-    createCategory,
-    handleSubmit,
-    handleClose,
-    isFormValid,
-  } = useCreateCategoryForm(onClose);
+  const [values, setValues] = useState(emptyCategoryForm);
+  const { data: categories = [] } = useInfiniteQuery(categoryQueries.list());
+  const createCategory = useMutation(categoryMutations.create);
+  const parentOptions = useMemo(
+    () => parentCategoryOptions(categories),
+    [categories],
+  );
+  const isFormValid = isCreateCategoryFormValid(values);
+
+  const setField = <K extends keyof CategoryFormValues>(
+    key: K,
+    value: CategoryFormValues[K],
+  ) => setValues((prev) => ({ ...prev, [key]: value }));
+
+  const handleClose = () => {
+    setValues(emptyCategoryForm());
+    createCategory.reset();
+    onClose();
+  };
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!isFormValid) return;
+    createCategory.mutate(toCreateCategoryInput(values), {
+      onSuccess: handleClose,
+    });
+  };
 
   return (
     <Modal
@@ -61,23 +84,23 @@ export default function CreateCategoryModal({
 
           <TextInput
             label="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            value={values.name}
+            onChange={(e) => setField("name", e.target.value)}
             required
             autoFocus
           />
 
           <CategoryTypeSelect
             label="Category Type"
-            value={categoryType}
-            onChange={setCategoryType}
+            value={values.categoryType}
+            onChange={(value) => setField("categoryType", value)}
             comboboxProps={{ withinPortal: true }}
           />
 
           <ParentCategoryField
             parentOptions={parentOptions}
-            parentCategoryId={parentCategoryId}
-            onParentChange={setParentCategoryId}
+            parentCategoryId={values.parentCategoryId}
+            onParentChange={(value) => setField("parentCategoryId", value)}
           />
         </Stack>
 
