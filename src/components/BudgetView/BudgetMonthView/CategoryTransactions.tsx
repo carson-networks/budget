@@ -6,13 +6,16 @@ import { useCategoryTransactionsData } from "./useCategoryTransactionsData.js";
 type CategoryTransactionsProps = {
   month: YearMonth;
   category: Category;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+  onGoToToday: () => void;
   onBack: () => void;
 };
 
 export function CategoryTransactions({
   month,
   category,
-  onBack,
+  ...navigation
 }: CategoryTransactionsProps) {
   const data = useCategoryTransactionsData(month, category.id);
   return (
@@ -25,9 +28,10 @@ export function CategoryTransactions({
       accountNameById={data.accountNameById}
       categoryNameById={data.categoryNameById}
       categoryName={category.name}
-      onBack={onBack}
+      month={month}
       isLoading={data.isLoading}
       error={data.error}
+      {...navigation}
     />
   );
 }

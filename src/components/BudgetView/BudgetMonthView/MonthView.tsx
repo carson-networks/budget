@@ -7,6 +7,7 @@ import {
 import { useSelectedYearMonth } from "./useSelectedYearMonth.js";
 import { useBudgetMonthData } from "./useBudgetMonthData.js";
 import { MonthNavigationBar } from "./MonthNavigationBar.js";
+import { MonthOptionsMenu } from "./MonthOptionsMenu.js";
 import { SegmentBudgetTable } from "./SegmentBudgetTable.js";
 import { MonthTotalsTable } from "./MonthTotalsTable.js";
 import { CategoryTransactions } from "./CategoryTransactions.js";
@@ -50,24 +51,31 @@ export default function BudgetMonthView() {
 
   return (
     <Box style={{ flex: 1, minHeight: 0, overflow: "auto", paddingRight: 2 }}>
-      <MonthNavigationBar
-        selectedMonth={selectedMonth}
-        onPrev={goPrev}
-        onNext={goNext}
-        onGoToToday={goToToday}
-        canApplyToFollowingMonths={canApplyToFollowingMonths}
-        applyToFollowingMonths={applyToFollowingMonths}
-        onApplyToFollowingMonthsChange={setApplyToFollowingMonths}
-      />
-
       {openCategory ? (
         <CategoryTransactions
           month={selectedMonth}
           category={openCategory}
+          onPrevMonth={goPrev}
+          onNextMonth={goNext}
+          onGoToToday={goToToday}
           onBack={() => setOpenCategory(undefined)}
         />
       ) : (
         <>
+          <MonthNavigationBar
+            selectedMonth={selectedMonth}
+            onPrev={goPrev}
+            onNext={goNext}
+            onGoToToday={goToToday}
+            leftSection={
+              <MonthOptionsMenu
+                canApplyToFollowingMonths={canApplyToFollowingMonths}
+                applyToFollowingMonths={applyToFollowingMonths}
+                onApplyToFollowingMonthsChange={setApplyToFollowingMonths}
+              />
+            }
+          />
+
           {segments.length === 0 ? (
             <Text size="sm" c="dimmed">
               No categories yet.

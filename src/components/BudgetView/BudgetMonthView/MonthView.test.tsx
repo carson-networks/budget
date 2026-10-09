@@ -22,14 +22,17 @@ vi.mock("./CategoryTransactions.js", () => ({
   CategoryTransactions: ({
     month,
     category,
+    onNextMonth,
     onBack,
   }: {
     month: { year: number; month: number };
     category: Category;
+    onNextMonth: () => void;
     onBack: () => void;
   }) => (
     <div data-testid="category-transactions">
       {`${category.name} ${month.year}-${month.month}`}
+      <button onClick={onNextMonth}>Next stub</button>
       <button onClick={onBack}>Back stub</button>
     </div>
   ),
@@ -192,7 +195,9 @@ describe("BudgetMonthView", () => {
       "Groceries 2025-3",
     );
     expect(screen.queryByText("Month totals")).not.toBeInTheDocument();
-    expect(screen.getByText("Mar 2025")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Month options" }),
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Back stub" }));
     expect(
@@ -201,14 +206,17 @@ describe("BudgetMonthView", () => {
     expect(screen.getByText("Month totals")).toBeInTheDocument();
   });
 
-  it("keeps the open category when changing months", () => {
+  it("shares the selected month with the category view", () => {
     renderMonthView();
     fireEvent.click(
       screen.getByRole("button", { name: "Open Salary transactions" }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Next month" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next stub" }));
     expect(screen.getByTestId("category-transactions")).toHaveTextContent(
       "Salary 2025-4",
     );
+
+    fireEvent.click(screen.getByRole("button", { name: "Back stub" }));
+    expect(screen.getByText("Apr 2025")).toBeInTheDocument();
   });
 });

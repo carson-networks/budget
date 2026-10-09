@@ -6,7 +6,7 @@ import { theme } from "../../../theme.js";
 import { MonthNavigationBar } from "./MonthNavigationBar.js";
 
 describe("MonthNavigationBar", () => {
-  it("shows the month label, options menu, and invokes prev/next/today", async () => {
+  it("shows the month label and left section, and invokes prev/next/today", async () => {
     const user = userEvent.setup();
     const onPrev = vi.fn();
     const onNext = vi.fn();
@@ -19,16 +19,14 @@ describe("MonthNavigationBar", () => {
           onPrev={onPrev}
           onNext={onNext}
           onGoToToday={onGoToToday}
-          canApplyToFollowingMonths
-          applyToFollowingMonths={false}
-          onApplyToFollowingMonthsChange={vi.fn()}
+          leftSection={<button>Left action</button>}
         />
       </MantineProvider>,
     );
 
     expect(screen.getByText("Mar 2025")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Month options" }),
+      screen.getByRole("button", { name: "Left action" }),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Previous month" }));

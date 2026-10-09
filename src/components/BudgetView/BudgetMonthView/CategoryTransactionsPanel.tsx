@@ -1,23 +1,21 @@
-import {
-  Alert,
-  Button,
-  Group,
-  Loader,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Alert, Box, Button, Loader, Stack, Text, Title } from "@mantine/core";
 import { IconArrowLeft } from "@tabler/icons-react";
+import type { YearMonth } from "../../../utils/monthRange.js";
 import {
   TransactionsList,
   type TransactionsListProps,
 } from "../../TransactionsView/TransactionsList.js";
+import { MonthNavigationBar } from "./MonthNavigationBar.js";
 
 type CategoryTransactionsPanelProps = Omit<
   TransactionsListProps,
   "emptyMessage"
 > & {
   categoryName: string;
+  month: YearMonth;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+  onGoToToday: () => void;
   onBack: () => void;
   isLoading: boolean;
   error: Error | null;
@@ -25,23 +23,36 @@ type CategoryTransactionsPanelProps = Omit<
 
 export function CategoryTransactionsPanel({
   categoryName,
+  month,
+  onPrevMonth,
+  onNextMonth,
+  onGoToToday,
   onBack,
   isLoading,
   error,
   ...listProps
 }: CategoryTransactionsPanelProps) {
   return (
-    <section aria-label={`${categoryName} transactions`}>
-      <Group justify="space-between" align="center" mb="sm">
-        <Title order={5}>{categoryName} transactions</Title>
-        <Button
-          variant="subtle"
-          leftSection={<IconArrowLeft size={16} />}
-          onClick={onBack}
-        >
-          Back to budget
-        </Button>
-      </Group>
+    <Box>
+      <Title order={3} mb="md">
+        {categoryName}
+      </Title>
+      <MonthNavigationBar
+        selectedMonth={month}
+        onPrev={onPrevMonth}
+        onNext={onNextMonth}
+        onGoToToday={onGoToToday}
+        leftSection={
+          <Button
+            variant="subtle"
+            size="sm"
+            leftSection={<IconArrowLeft size={16} />}
+            onClick={onBack}
+          >
+            Back to budget
+          </Button>
+        }
+      />
       {error ? (
         <Alert color="red" title="Could not load transactions">
           {error.message}
@@ -59,6 +70,6 @@ export function CategoryTransactionsPanel({
           emptyMessage={`No ${categoryName} transactions this month.`}
         />
       )}
-    </section>
+    </Box>
   );
 }

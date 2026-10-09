@@ -27,6 +27,10 @@ function renderPanel(
         accountNameById={new Map([["acc-1", "Checking"]])}
         categoryNameById={new Map([["groceries", "Groceries"]])}
         categoryName="Groceries"
+        month={{ year: 2025, month: 3 }}
+        onPrevMonth={() => {}}
+        onNextMonth={() => {}}
+        onGoToToday={() => {}}
         onBack={() => {}}
         isLoading={false}
         error={null}
@@ -37,11 +41,12 @@ function renderPanel(
 }
 
 describe("CategoryTransactionsPanel", () => {
-  it("titles the list with the category and shows its transactions", () => {
+  it("heads the view with the category and shows its transactions", () => {
     renderPanel();
     expect(
-      screen.getByRole("heading", { name: "Groceries transactions" }),
+      screen.getByRole("heading", { name: "Groceries" }),
     ).toBeInTheDocument();
+    expect(screen.getByText("Mar 2025")).toBeInTheDocument();
     expect(screen.getByText("Market run")).toBeInTheDocument();
     expect(screen.getByText("$42.10")).toBeInTheDocument();
   });
@@ -53,6 +58,24 @@ describe("CategoryTransactionsPanel", () => {
       screen.getByRole("button", { name: "Back to budget" }),
     );
     expect(onBack).toHaveBeenCalledOnce();
+  });
+
+  it("pages months from its own toolbar", async () => {
+    const onPrevMonth = vi.fn();
+    const onNextMonth = vi.fn();
+    const onGoToToday = vi.fn();
+    renderPanel({ onPrevMonth, onNextMonth, onGoToToday });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Previous month" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Next month" }));
+    await userEvent.click(screen.getByRole("button", { name: "Today" }));
+    expect(onPrevMonth).toHaveBeenCalledOnce();
+    expect(onNextMonth).toHaveBeenCalledOnce();
+    expect(onGoToToday).toHaveBeenCalledOnce();
+    expect(
+      screen.queryByRole("button", { name: "Month options" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a category empty message", () => {

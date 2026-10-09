@@ -27,18 +27,23 @@ const groceries = {
   categoryKind: CategoryKind.Expense,
 };
 
+let queryClient: QueryClient;
+
 function renderCategoryTransactions(
   props: Partial<ComponentProps<typeof CategoryTransactions>> = {},
 ) {
-  const client = new QueryClient({
+  queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <MantineProvider theme={theme}>
-      <QueryClientProvider client={client}>
+      <QueryClientProvider client={queryClient}>
         <CategoryTransactions
           month={{ year: 2025, month: 3 }}
           category={groceries}
+          onPrevMonth={() => {}}
+          onNextMonth={() => {}}
+          onGoToToday={() => {}}
           onBack={() => {}}
           {...props}
         />
@@ -84,7 +89,7 @@ describe("CategoryTransactions", () => {
     expect(await screen.findByText("Market run")).toBeInTheDocument();
     expect(screen.getByText("Checking")).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "Groceries transactions" }),
+      screen.getByRole("heading", { name: "Groceries" }),
     ).toBeInTheDocument();
     expect(api.listTransactions).toHaveBeenCalledWith({
       categoryId: "groceries",
@@ -119,4 +124,41 @@ describe("CategoryTransactions", () => {
       expect(screen.queryByText("Market run")).not.toBeInTheDocument();
     },
   );
+
+  it("loads the new month's transactions when the month changes", async () => {
+    api.listTransactions.mockImplementation(({ month }) =>
+      Promise.resolve({
+        transactions: [
+          {
+            id: `txn-${month.month}`,
+            accountId: "acc-1",
+            categoryId: "groceries",
+            amount: "-1",
+            transactionName: `Shop in month ${month.month}`,
+          },
+        ],
+        totalCount: 1,
+      }),
+    );
+    const { rerender } = renderCategoryTransactions();
+    expect(await screen.findByText("Shop in month 3")).toBeInTheDocument();
+
+    rerender(
+      <MantineProvider theme={theme}>
+        <QueryClientProvider client={queryClient}>
+          <CategoryTransactions
+            month={{ year: 2025, month: 4 }}
+            category={groceries}
+            onPrevMonth={() => {}}
+            onNextMonth={() => {}}
+            onGoToToday={() => {}}
+            onBack={() => {}}
+          />
+        </QueryClientProvider>
+      </MantineProvider>,
+    );
+    expect(await screen.findByText("Shop in month 4")).toBeInTheDocument();
+    expect(screen.queryByText("Shop in month 3")).not.toBeInTheDocument();
+    expect(screen.getByText("Apr 2025")).toBeInTheDocument();
+  });
 });
