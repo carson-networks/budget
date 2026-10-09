@@ -117,7 +117,8 @@ describe("useTransactionsPager", () => {
 
   it("waits until enabled before fetching", async () => {
     const { result, rerender } = renderHook(
-      ({ enabled }) => useTransactionsPager({ accountId: "acc-1" }, { enabled }),
+      ({ enabled }) =>
+        useTransactionsPager({ accountId: "acc-1" }, { enabled }),
       {
         initialProps: { enabled: false },
         wrapper: createWrapper(createTestQueryClient()),

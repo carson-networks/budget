@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Alert, Box, Loader, Paper, Stack, Text } from "@mantine/core";
+import { Box, Paper, Text } from "@mantine/core";
 import { useBudgetMatrixMonthWindow } from "./useBudgetMatrixMonthWindow.js";
 import { useBudgetMatrixData } from "./useBudgetMatrixData.js";
 import { useExtendableMonthRange } from "./useExtendableMonthRange.js";
@@ -7,6 +7,8 @@ import { MatrixValueMode } from "./budgetMatrix.js";
 import { MatrixToolbar } from "./MatrixToolbar.js";
 import { MatrixTable } from "./MatrixTable.js";
 import "./matrix.css";
+import { LoadingState } from "../../shared/LoadingState.js";
+import { ErrorAlert } from "../../shared/ErrorAlert.js";
 
 export default function BudgetMatrixView() {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -21,21 +23,8 @@ export default function BudgetMatrixView() {
     layoutReady: !data.showFullLoader && !data.error,
   });
 
-  if (data.error)
-    return (
-      <Alert color="red" title="Something went wrong">
-        {data.error.message}
-      </Alert>
-    );
-  if (data.showFullLoader)
-    return (
-      <Stack align="center" py="xl">
-        <Loader />
-        <Text size="sm" c="dimmed">
-          Loading…
-        </Text>
-      </Stack>
-    );
+  if (data.error) return <ErrorAlert error={data.error} />;
+  if (data.showFullLoader) return <LoadingState />;
 
   return (
     <Paper
