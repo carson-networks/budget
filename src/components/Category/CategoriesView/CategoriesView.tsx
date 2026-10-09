@@ -1,6 +1,7 @@
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Alert, Box, Loader, Stack, Text } from "@mantine/core";
-import { useAllCategories } from "../../../hooks/useCategories.js";
+import { Box, Text } from "@mantine/core";
+import { categoryQueries } from "../../../queries/categories.js";
 import type { Category } from "../../../models";
 import { SectionCard } from "../../shared/SectionCard.js";
 import { FloatingCreateButton } from "../../shared/FloatingCreateButton.js";
@@ -14,9 +15,15 @@ import {
 import { EmptySubcategoriesMessage } from "./EmptySubcategoriesMessage.js";
 import { SegmentHeader } from "./SegmentHeader.js";
 import { SubcategoriesTable } from "./SubcategoriesTable.js";
+import { LoadingState } from "../../shared/LoadingState.js";
+import { ErrorAlert } from "../../shared/ErrorAlert.js";
 
 export default function CategoriesView() {
-  const { categories, isLoading, error } = useAllCategories();
+  const {
+    data: categories = [],
+    isLoading,
+    error,
+  } = useInfiniteQuery(categoryQueries.list());
   const [createOpen, setCreateOpen] = useState(false);
   const [settingsCategory, setSettingsCategory] = useState<Category | null>(
     null,
@@ -28,22 +35,11 @@ export default function CategoriesView() {
   );
 
   if (isLoading) {
-    return (
-      <Stack align="center" justify="center" gap="sm" py="xl">
-        <Loader size="md" />
-        <Text size="sm" c="dimmed">
-          Loading…
-        </Text>
-      </Stack>
-    );
+    return <LoadingState />;
   }
 
   if (error) {
-    return (
-      <Alert color="red" title="Something went wrong">
-        {error.message}
-      </Alert>
-    );
+    return <ErrorAlert error={error} />;
   }
 
   return (

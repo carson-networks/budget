@@ -9,21 +9,18 @@ import {
   useMantineTheme,
 } from "@mantine/core";
 import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
+import type { ReactNode } from "react";
 import {
   formatYearMonthLabel,
   type YearMonth,
 } from "../../../utils/monthRange.js";
-import { MonthOptionsMenu } from "./MonthOptionsMenu.js";
 
 type MonthNavigationBarProps = {
   selectedMonth: YearMonth;
   onPrev: () => void;
   onNext: () => void;
   onGoToToday: () => void;
-  /** When false (past months), the follow-months option is disabled. */
-  canApplyToFollowingMonths: boolean;
-  applyToFollowingMonths: boolean;
-  onApplyToFollowingMonthsChange: (checked: boolean) => void;
+  leftSection?: ReactNode;
 };
 
 export function MonthNavigationBar({
@@ -31,9 +28,7 @@ export function MonthNavigationBar({
   onPrev,
   onNext,
   onGoToToday,
-  canApplyToFollowingMonths,
-  applyToFollowingMonths,
-  onApplyToFollowingMonthsChange,
+  leftSection,
 }: MonthNavigationBarProps) {
   const theme = useMantineTheme();
   const colorScheme = useComputedColorScheme("light");
@@ -67,11 +62,7 @@ export function MonthNavigationBar({
               minWidth: 0,
             }}
           >
-            <MonthOptionsMenu
-              canApplyToFollowingMonths={canApplyToFollowingMonths}
-              applyToFollowingMonths={applyToFollowingMonths}
-              onApplyToFollowingMonthsChange={onApplyToFollowingMonthsChange}
-            />
+            {leftSection}
           </Box>
           <Group gap="md" wrap="nowrap" justify="center">
             <ActionIcon

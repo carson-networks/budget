@@ -1,22 +1,18 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { mutationOptions, useMutation } from "@tanstack/react-query";
 import { plaidClient } from "../connectRPC/connect.js";
-import { connectErrorMessage } from "../connectRPC/errors.js";
+import { invalidatesOnSettled } from "../queries/invalidate.js";
+import { accountQueries } from "../queries/accounts.js";
+import { rpc } from "../queries/rpc.js";
 import { toExchangeTokenRequestWire } from "./exchangeTokenRequestWire.js";
 import type { ExchangeTokenInput } from "./types.js";
 
-export function useExchangePlaidToken() {
-  const queryClient = useQueryClient();
+export const exchangePlaidTokenMutation = mutationOptions({
+  mutationKey: ["plaid", "exchangeToken"],
+  mutationFn: (body: ExchangeTokenInput) =>
+    rpc(plaidClient.exchangeToken(toExchangeTokenRequestWire(body))),
+  ...invalidatesOnSettled(accountQueries.all()),
+});
 
-  return useMutation({
-    mutationFn: async (body: ExchangeTokenInput) => {
-      try {
-        await plaidClient.exchangeToken(toExchangeTokenRequestWire(body));
-      } catch (e) {
-        throw new Error(connectErrorMessage(e));
-      }
-    },
-    onSettled: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["accounts"] });
-    },
-  });
+export function useExchangePlaidToken() {
+  return useMutation(exchangePlaidTokenMutation);
 }

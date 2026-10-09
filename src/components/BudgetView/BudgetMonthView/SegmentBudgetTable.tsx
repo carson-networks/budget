@@ -1,3 +1,4 @@
+import { useMutation } from "@tanstack/react-query";
 import {
   Badge,
   Box,
@@ -8,13 +9,18 @@ import {
   useComputedColorScheme,
   useMantineTheme,
 } from "@mantine/core";
-import { formatCurrency, type CategoryKind } from "../../../models";
-import { useSetBudget } from "../../../hooks/useBudgets.js";
+import type { MouseEvent } from "react";
+import type { Category } from "../../../models";
+import { budgetMutations } from "../../../queries/budgets.js";
 import type { CategorySegment } from "../../Category/CategoriesView/categorySegments.js";
 import { displayCategoryKind } from "../../Category/CategoriesView/categoryDisplay.js";
 import type { YearMonth } from "../../../utils/monthRange.js";
-import { categoryBudgetDifference } from "../budgetRollups.js";
 import { BudgetCellInput } from "../shared/BudgetCellInput.js";
+import {
+  ActualCell,
+  CategoryNameButton,
+  DifferenceCell,
+} from "./SegmentTableCells.js";
 
 type SegmentBudgetTableProps = {
   segment: CategorySegment;
@@ -23,52 +29,10 @@ type SegmentBudgetTableProps = {
   actualByCategoryId: Map<string, number>;
   /** When true, SetBudget also overwrites following months. Default false. */
   overwriteFutureMonths?: boolean;
+  onOpenCategory?: (category: Category) => void;
 };
 
-function parseBudgetAmount(raw: string | undefined): number | undefined {
-  if (raw === undefined) return undefined;
-  const n = parseFloat(raw);
-  return Number.isNaN(n) ? undefined : n;
-}
-
-function ActualCell({ value }: { value: number | undefined }) {
-  if (value === undefined) {
-    return (
-      <Text span c="dimmed" size="sm">
-        —
-      </Text>
-    );
-  }
-  return <>{formatCurrency(value.toFixed(2))}</>;
-}
-
-function DifferenceCell({
-  categoryKind,
-  budgetRaw,
-  actual,
-}: {
-  categoryKind: CategoryKind;
-  budgetRaw: string | undefined;
-  actual: number | undefined;
-}) {
-  const diff = categoryBudgetDifference(
-    categoryKind,
-    parseBudgetAmount(budgetRaw),
-    actual,
-  );
-  if (diff === undefined) {
-    return (
-      <Text span c="dimmed" size="sm">
-        —
-      </Text>
-    );
-  }
-  return (
-    <Text span size="sm" fw={600} style={{ fontVariantNumeric: "tabular-nums" }}>
-      {formatCurrency(diff.toFixed(2))}
-    </Text>
-  );
-}
+const stopRowClick = (event: MouseEvent) => event.stopPropagation();
 
 export function SegmentBudgetTable({
   segment,
@@ -76,8 +40,9 @@ export function SegmentBudgetTable({
   budgetByCategoryId,
   actualByCategoryId,
   overwriteFutureMonths = false,
+  onOpenCategory,
 }: SegmentBudgetTableProps) {
-  const setBudget = useSetBudget();
+  const setBudget = useMutation(budgetMutations.set);
   const theme = useMantineTheme();
   const colorScheme = useComputedColorScheme("light");
   const rootStripColor =
@@ -96,6 +61,17 @@ export function SegmentBudgetTable({
       amount,
       overwriteFutureMonths,
     });
+
+  const canOpen = (category: Category) =>
+    onOpenCategory !== undefined && !category.isParent;
+
+  const openRowProps = (category: Category) =>
+    canOpen(category)
+      ? {
+          onClick: () => onOpenCategory?.(category),
+          style: { cursor: "pointer" },
+        }
+      : {};
 
   const isSavingCell = (categoryId: string) =>
     setBudget.isPending &&
@@ -136,11 +112,21 @@ export function SegmentBudgetTable({
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          <Table.Tr style={{ backgroundColor: rootStripColor }}>
+          <Table.Tr
+            {...openRowProps(root)}
+            style={{
+              ...openRowProps(root).style,
+              backgroundColor: rootStripColor,
+            }}
+          >
             <Table.Td style={{ verticalAlign: "middle" }}>
               <Group justify="space-between" wrap="nowrap" gap="xs">
                 <Text fw={700} size="sm" style={{ minWidth: 0 }}>
-                  {root.name}
+                  {canOpen(root) ? (
+                    <CategoryNameButton name={root.name} />
+                  ) : (
+                    root.name
+                  )}
                 </Text>
                 <Badge
                   variant="outline"
@@ -152,7 +138,10 @@ export function SegmentBudgetTable({
                 </Badge>
               </Group>
             </Table.Td>
-            <Table.Td style={{ textAlign: "right", verticalAlign: "middle" }}>
+            <Table.Td
+              style={{ textAlign: "right", verticalAlign: "middle" }}
+              onClick={stopRowClick}
+            >
               {rootEditable ? (
                 <BudgetCellInput
                   amountStr={rootBudget}
@@ -182,7 +171,7 @@ export function SegmentBudgetTable({
             const actualNum = actualByCategoryId.get(row.id);
 
             return (
-              <Table.Tr key={row.id}>
+              <Table.Tr key={row.id} {...openRowProps(row)}>
                 <Table.Td style={{ verticalAlign: "middle" }}>
                   <Box
                     style={{
@@ -190,11 +179,16 @@ export function SegmentBudgetTable({
                       borderLeft: "2px solid var(--mantine-color-brand-3)",
                     }}
                   >
-                    {row.name}
+                    {canOpen(row) ? (
+                      <CategoryNameButton name={row.name} />
+                    ) : (
+                      row.name
+                    )}
                   </Box>
                 </Table.Td>
                 <Table.Td
                   style={{ textAlign: "right", verticalAlign: "middle" }}
+                  onClick={stopRowClick}
                 >
                   <BudgetCellInput
                     amountStr={budgetRaw}

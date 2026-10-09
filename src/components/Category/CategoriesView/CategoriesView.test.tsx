@@ -1,31 +1,19 @@
-import { MantineProvider } from "@mantine/core";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CategoryKind, type Category } from "../../../models";
-import { theme } from "../../../theme.js";
-
-vi.mock("../../../hooks/useCategories.js", () => ({
-  useAllCategories: vi.fn(),
-  useCreateCategory: () => ({
-    mutate: vi.fn(),
-    reset: vi.fn(),
-    isPending: false,
-    isError: false,
-    error: null,
-  }),
-  useUpdateCategory: () => ({
-    mutate: vi.fn(),
-    reset: vi.fn(),
-    isPending: false,
-    isError: false,
-    error: null,
-  }),
-}));
-
-import { useAllCategories } from "../../../hooks/useCategories.js";
+import { renderWithProviders } from "../../../test/renderWithProviders.js";
+import { wireCategory } from "../../../test/wire.js";
 import CategoriesView from "./CategoriesView.js";
+
+const api = vi.hoisted(() => ({
+  listCategories: vi.fn(),
+  createCategory: vi.fn(),
+  updateCategory: vi.fn(),
+}));
+vi.mock("../../../connectRPC/connect.js", () => ({
+  categoryClient: api,
+}));
 
 const foodParent: Category = {
   id: "food",
@@ -44,49 +32,24 @@ const groceries: Category = {
   categoryKind: CategoryKind.Expense,
 };
 
-function mockCategoryQuery(
-  partial: Partial<ReturnType<typeof useAllCategories>>,
-) {
-  vi.mocked(useAllCategories).mockReturnValue({
-    categories: [],
-    isLoading: false,
-    error: null,
-    isError: false,
-    isPending: false,
-    isFetching: false,
-    status: "success",
-    ...partial,
-  } as ReturnType<typeof useAllCategories>);
+function mockCategories(categories: Category[]) {
+  api.listCategories.mockResolvedValue({
+    categories: categories.map(wireCategory),
+  });
 }
 
 function renderCategoriesView() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <MantineProvider theme={theme}>
-      <QueryClientProvider client={queryClient}>
-        <CategoriesView />
-      </QueryClientProvider>
-    </MantineProvider>,
-  );
+  return renderWithProviders(<CategoriesView />);
 }
 
 describe("CategoriesView", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   beforeEach(() => {
-    mockCategoryQuery({
-      categories: [],
-      isLoading: false,
-      error: null,
-    });
+    api.listCategories.mockReset();
+    mockCategories([]);
   });
 
   it("shows loading state while categories are loading", () => {
-    mockCategoryQuery({ isLoading: true, categories: [] });
+    api.listCategories.mockReturnValue(new Promise(() => {}));
 
     renderCategoriesView();
 
@@ -96,52 +59,49 @@ describe("CategoriesView", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows an error alert when the categories query fails", () => {
-    mockCategoryQuery({
-      isLoading: false,
-      error: new Error("network failed"),
-      categories: [],
-    });
+  it("shows an error alert when the categories query fails", async () => {
+    api.listCategories.mockRejectedValue(new Error("network failed"));
 
     renderCategoriesView();
 
-    expect(screen.getByText("network failed")).toBeInTheDocument();
+    expect(await screen.findByText("network failed")).toBeInTheDocument();
     expect(screen.getByRole("alert")).toBeInTheDocument();
   });
 
-  it("shows an empty-state hint when there are no categories", () => {
+  it("shows an empty-state hint when there are no categories", async () => {
     renderCategoriesView();
 
-    expect(screen.getByText("No categories yet.")).toBeInTheDocument();
+    expect(await screen.findByText("No categories yet.")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Categories" }),
     ).toBeInTheDocument();
   });
 
-  it("renders parent segments and subcategory rows", () => {
-    mockCategoryQuery({ categories: [foodParent, groceries] });
+  it("renders parent segments and subcategory rows", async () => {
+    mockCategories([foodParent, groceries]);
 
     renderCategoriesView();
 
-    expect(screen.getByText("Food")).toBeInTheDocument();
+    expect(await screen.findByText("Food")).toBeInTheDocument();
     expect(screen.getByText("Groceries")).toBeInTheDocument();
     expect(screen.getByText("Expense")).toBeInTheDocument();
     expect(screen.getAllByText("Enabled").length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText("No categories yet.")).not.toBeInTheDocument();
   });
 
-  it("shows no-subcategories message for empty parents", () => {
-    mockCategoryQuery({ categories: [foodParent] });
+  it("shows no-subcategories message for empty parents", async () => {
+    mockCategories([foodParent]);
 
     renderCategoriesView();
 
-    expect(screen.getByText("No subcategories")).toBeInTheDocument();
+    expect(await screen.findByText("No subcategories")).toBeInTheDocument();
   });
 
   it("opens the create category modal from the add category button", async () => {
     const user = userEvent.setup();
     renderCategoriesView();
 
+    await screen.findByText("No categories yet.");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /add category/i }));
@@ -152,11 +112,11 @@ describe("CategoriesView", () => {
 
   it("opens category settings from a parent settings button", async () => {
     const user = userEvent.setup();
-    mockCategoryQuery({ categories: [foodParent, groceries] });
+    mockCategories([foodParent, groceries]);
     renderCategoriesView();
 
     await user.click(
-      screen.getByRole("button", { name: "Settings for Food" }),
+      await screen.findByRole("button", { name: "Settings for Food" }),
     );
 
     expect(
@@ -167,11 +127,11 @@ describe("CategoriesView", () => {
 
   it("opens category settings from a subcategory settings button", async () => {
     const user = userEvent.setup();
-    mockCategoryQuery({ categories: [foodParent, groceries] });
+    mockCategories([foodParent, groceries]);
     renderCategoriesView();
 
     await user.click(
-      screen.getByRole("button", { name: "Settings for Groceries" }),
+      await screen.findByRole("button", { name: "Settings for Groceries" }),
     );
 
     expect(

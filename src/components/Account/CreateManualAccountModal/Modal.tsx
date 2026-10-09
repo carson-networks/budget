@@ -9,8 +9,16 @@ import {
   Loader,
   Title,
 } from "@mantine/core";
+import { useMutation } from "@tanstack/react-query";
+import { useState, type FormEvent } from "react";
 import { AccountKind, truncateToTwoDecimals } from "../../../models";
-import { useCreateManualAccountForm } from "./useCreateManualAccountForm.js";
+import { accountMutations } from "../../../queries/accounts.js";
+import {
+  emptyAccountForm,
+  isAccountFormValid,
+  toCreateAccountInput,
+  type AccountFormValues,
+} from "../accountForm.js";
 
 type CreateManualAccountModalProps = {
   open: boolean;
@@ -21,20 +29,28 @@ export default function CreateManualAccountModal({
   open,
   onClose,
 }: CreateManualAccountModalProps) {
-  const {
-    name,
-    setName,
-    type,
-    setType,
-    subType,
-    setSubType,
-    startingBalance,
-    setStartingBalance,
-    createAccount,
-    handleClose,
-    handleSubmit,
-    isFormValid,
-  } = useCreateManualAccountForm(open, onClose);
+  const [values, setValues] = useState(emptyAccountForm);
+  const createAccount = useMutation(accountMutations.createManual);
+  const isFormValid = isAccountFormValid(values, { requireType: true });
+
+  const setField = <K extends keyof AccountFormValues>(
+    key: K,
+    value: AccountFormValues[K],
+  ) => setValues((prev) => ({ ...prev, [key]: value }));
+
+  const handleClose = () => {
+    setValues(emptyAccountForm());
+    createAccount.reset();
+    onClose();
+  };
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!isFormValid) return;
+    createAccount.mutate(toCreateAccountInput(values), {
+      onSuccess: handleClose,
+    });
+  };
 
   return (
     <Modal
@@ -62,16 +78,16 @@ export default function CreateManualAccountModal({
 
           <TextInput
             label="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            value={values.name}
+            onChange={(e) => setField("name", e.target.value)}
             required
             autoFocus
           />
 
           <Select
             label="Type"
-            value={type}
-            onChange={setType}
+            value={values.type}
+            onChange={(value) => setField("type", value)}
             data={[
               { value: String(AccountKind.Cash), label: "Cash" },
               {
@@ -85,8 +101,8 @@ export default function CreateManualAccountModal({
 
           <TextInput
             label="Sub Type"
-            value={subType}
-            onChange={(e) => setSubType(e.target.value)}
+            value={values.subType}
+            onChange={(e) => setField("subType", e.target.value)}
             placeholder="e.g. Checking, Savings"
             required
           />
@@ -94,9 +110,9 @@ export default function CreateManualAccountModal({
           <TextInput
             label="Starting Balance"
             leftSection="$"
-            value={startingBalance}
+            value={values.startingBalance}
             onChange={(e) =>
-              setStartingBalance(truncateToTwoDecimals(e.target.value))
+              setField("startingBalance", truncateToTwoDecimals(e.target.value))
             }
             placeholder="0.00"
             description="Decimal amount (e.g. 0.00 or -500.00)"

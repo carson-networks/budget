@@ -1,30 +1,25 @@
 import { useMemo } from "react";
-import { useAllCategories } from "../../../hooks/useCategories.js";
-import { useBudgetsForRange } from "../../../hooks/useBudgets.js";
-import { useTransactionTotalsForRange } from "../../../hooks/useTransactionTotals.js";
+import { useBudgetInputs } from "../../../hooks/useBudgetInputs.js";
 import type { YearMonth } from "../../../utils/monthRange.js";
 import { buildBudgetMatrixData } from "./buildBudgetMatrixData.js";
 
 export function useBudgetMatrixData(months: YearMonth[]) {
-  const categories = useAllCategories();
-  const budgets = useBudgetsForRange(months[0], months[months.length - 1]);
-  const totals = useTransactionTotalsForRange(
-    months[0],
-    months[months.length - 1],
-  );
+  const start = months[0];
+  const end = months[months.length - 1];
+  const { categories, budgets, totals, error } = useBudgetInputs(start, end);
   const data = useMemo(
     () =>
       buildBudgetMatrixData(
-        categories.categories,
-        budgets.budgets,
-        totals.totals,
+        categories.data ?? [],
+        budgets.data ?? [],
+        totals.data,
         months,
       ),
-    [categories.categories, budgets.budgets, totals.totals, months],
+    [categories.data, budgets.data, totals.data, months],
   );
   return {
     ...data,
-    error: categories.error ?? budgets.error ?? totals.error,
+    error,
     showFullLoader:
       categories.isLoading || budgets.isLoading || totals.isLoading,
     isRefreshing: budgets.isPlaceholderData || totals.isPlaceholderData,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { NumberInput } from "@mantine/core";
 
 type BudgetCellInputProps = {
@@ -28,7 +28,15 @@ function normalizedAmountString(n: number): string {
   return String(Math.round(n));
 }
 
-export function BudgetCellInput({
+/**
+ * Remounts the editor when the stored amount changes so the draft value always
+ * restarts from the latest server amount.
+ */
+export function BudgetCellInput(props: BudgetCellInputProps) {
+  return <BudgetCellEditor key={props.amountStr ?? ""} {...props} />;
+}
+
+function BudgetCellEditor({
   amountStr,
   onCommit,
   saving = false,
@@ -39,10 +47,6 @@ export function BudgetCellInput({
   const [val, setVal] = useState<number | string | "">(() =>
     parseToNumber(amountStr),
   );
-
-  useEffect(() => {
-    setVal(parseToNumber(amountStr));
-  }, [amountStr]);
 
   const commit = () => {
     const raw =

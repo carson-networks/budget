@@ -1,27 +1,53 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
+import { PAGE_PARAM } from "../../../hooks/useTransactionsPager.js";
 import {
   addMonths,
   currentYearMonth,
-  type YearMonth,
+  parseYearMonthKey,
+  yearMonthKey,
 } from "../../../utils/monthRange.js";
 
-export function useSelectedYearMonth(
-  initial: YearMonth = currentYearMonth(),
-) {
-  const [selectedMonth, setSelectedMonth] = useState<YearMonth>(initial);
+const MONTH_PARAM = "month";
 
-  const goPrev = useCallback(
-    () => setSelectedMonth((m) => addMonths(m, -1)),
-    [],
+export function useSelectedYearMonth() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedMonth =
+    parseYearMonthKey(searchParams.get(MONTH_PARAM)) ?? currentYearMonth();
+
+  const shiftMonth = useCallback(
+    (delta: number) =>
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete(PAGE_PARAM); // a different month starts at page 1
+          const month = parseYearMonthKey(prev.get(MONTH_PARAM));
+          next.set(
+            MONTH_PARAM,
+            yearMonthKey(addMonths(month ?? currentYearMonth(), delta)),
+          );
+          return next;
+        },
+        { replace: true },
+      ),
+    [setSearchParams],
   );
-  const goNext = useCallback(
-    () => setSelectedMonth((m) => addMonths(m, 1)),
-    [],
-  );
+
+  const goPrev = useCallback(() => shiftMonth(-1), [shiftMonth]);
+  const goNext = useCallback(() => shiftMonth(1), [shiftMonth]);
   const goToToday = useCallback(
-    () => setSelectedMonth(currentYearMonth()),
-    [],
+    () =>
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete(MONTH_PARAM);
+          next.delete(PAGE_PARAM);
+          return next;
+        },
+        { replace: true },
+      ),
+    [setSearchParams],
   );
 
-  return { selectedMonth, setSelectedMonth, goPrev, goNext, goToToday };
+  return { selectedMonth, goPrev, goNext, goToToday };
 }

@@ -1,9 +1,11 @@
-import { Alert, Button, Loader, Stack, Text } from "@mantine/core";
+import { Alert, Button } from "@mantine/core";
 import { IconArrowLeft } from "@tabler/icons-react";
 import { Link, useParams } from "react-router-dom";
 import { ViewShell } from "../../shared/ViewShell.js";
 import { TransactionsList } from "../../TransactionsView/TransactionsList.js";
 import { useAccountTransactionsData } from "./useAccountTransactionsData.js";
+import { LoadingState } from "../../shared/LoadingState.js";
+import { ErrorAlert } from "../../shared/ErrorAlert.js";
 
 export default function AccountTransactionsView() {
   const { accountId = "" } = useParams<{ accountId: string }>();
@@ -32,16 +34,9 @@ function AccountTransactionsContent({ accountId }: { accountId: string }) {
         Back to accounts
       </Button>
       {data.error ? (
-        <Alert color="red" title="Something went wrong">
-          {data.error.message}
-        </Alert>
+        <ErrorAlert error={data.error} />
       ) : data.isLoading ? (
-        <Stack align="center" justify="center" gap="sm" py="xl">
-          <Loader size="md" />
-          <Text size="sm" c="dimmed">
-            Loading…
-          </Text>
-        </Stack>
+        <LoadingState />
       ) : !data.account ? (
         <Alert color="gray" title="Account not found">
           This account is no longer available.

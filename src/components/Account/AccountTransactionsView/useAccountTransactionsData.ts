@@ -1,15 +1,11 @@
-import { useEffect, useMemo } from "react";
-import { useAllAccounts } from "../../../hooks/useAccounts.js";
-import { useAllCategories } from "../../../hooks/useCategories.js";
-import {
-  useAllTransactions,
-  TRANSACTIONS_PAGE_SIZE,
-} from "../../../hooks/useTransactions.js";
+import { useEffect } from "react";
+import { useReferenceData } from "../../../hooks/useReferenceData.js";
+import { useTransactionsPager } from "../../../hooks/useTransactionsPager.js";
 
 export function useAccountTransactionsData(accountId: string) {
-  const accountsQuery = useAllAccounts();
-  const categoriesQuery = useAllCategories();
-  const account = accountsQuery.accounts.find(
+  const { accountsQuery, categoriesQuery, accountNameById, categoryNameById } =
+    useReferenceData();
+  const account = accountsQuery.data?.find(
     (account) => account.id === accountId,
   );
   const {
@@ -58,26 +54,9 @@ export function useAccountTransactionsData(accountId: string) {
     categoriesQuery.error,
   ]);
 
-  const transactionsQuery = useAllTransactions(TRANSACTIONS_PAGE_SIZE, {
-    accountId,
-    enabled: account !== undefined,
-  });
-  const accountNameById = useMemo(
-    () =>
-      new Map(
-        accountsQuery.accounts.map((account) => [account.id, account.name]),
-      ),
-    [accountsQuery.accounts],
-  );
-  const categoryNameById = useMemo(
-    () =>
-      new Map(
-        categoriesQuery.categories.map((category) => [
-          category.id,
-          category.name,
-        ]),
-      ),
-    [categoriesQuery.categories],
+  const transactionsQuery = useTransactionsPager(
+    { accountId },
+    { enabled: account !== undefined },
   );
 
   return {

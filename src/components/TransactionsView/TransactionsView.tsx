@@ -1,16 +1,13 @@
-import { useMemo } from "react";
-import { Alert, Loader, Stack, Text } from "@mantine/core";
-import { useAllAccounts } from "../../hooks/useAccounts.js";
-import { useAllCategories } from "../../hooks/useCategories.js";
-import { useAllTransactions } from "../../hooks/useTransactions.js";
-import { useUpdateTransactionCategory } from "../../hooks/useUpdateTransactionCategory.js";
+import { useReferenceData } from "../../hooks/useReferenceData.js";
+import { useTransactionsPager } from "../../hooks/useTransactionsPager.js";
 import { ViewShell } from "../shared/ViewShell.js";
 import { TransactionsList } from "./TransactionsList.js";
-import { CategorySelect } from "./CategorySelect.js";
-import { buildTransactionCategorySelectData } from "./transactionCategorySelectData.js";
+import { CategoryUpdateErrorAlert } from "./CategoryUpdateErrorAlert.js";
+import { useTransactionCategoryEditing } from "./useTransactionCategoryEditing.js";
+import { LoadingState } from "../shared/LoadingState.js";
+import { ErrorAlert } from "../shared/ErrorAlert.js";
 
 export default function TransactionsView() {
-  const updateCategory = useUpdateTransactionCategory();
   const {
     transactions,
     totalCount,
@@ -20,71 +17,37 @@ export default function TransactionsView() {
     isLoading: transactionsLoading,
     isPlaceholderData,
     error: transactionsError,
-  } = useAllTransactions();
-  const {
-    accounts,
-    isLoading: accountsLoading,
-    error: accountsError,
-  } = useAllAccounts();
+  } = useTransactionsPager();
   const {
     categories,
-    isLoading: categoriesLoading,
-    error: categoriesError,
-  } = useAllCategories();
+    accountNameById,
+    categoryNameById,
+    isLoading: referenceLoading,
+    error: referenceError,
+  } = useReferenceData();
 
-  const accountNameById = useMemo(
-    () => new Map(accounts.map((a) => [a.id, a.name])),
-    [accounts],
-  );
-
-  const categoryNameById = useMemo(
-    () => new Map(categories.map((c) => [c.id, c.name])),
-    [categories],
-  );
-
-  const categorySelectData = useMemo(
-    () => buildTransactionCategorySelectData(categories),
-    [categories],
-  );
+  const categoryEditing = useTransactionCategoryEditing(categories, {
+    disabled: isPlaceholderData,
+  });
 
   const isLoading =
-    (transactionsLoading && !isPlaceholderData) ||
-    accountsLoading ||
-    categoriesLoading;
-  const error = transactionsError ?? accountsError ?? categoriesError;
+    (transactionsLoading && !isPlaceholderData) || referenceLoading;
+  const error = transactionsError ?? referenceError;
 
   if (isLoading) {
-    return (
-      <Stack align="center" justify="center" gap="sm" py="xl">
-        <Loader size="md" />
-        <Text size="sm" c="dimmed">
-          Loading…
-        </Text>
-      </Stack>
-    );
+    return <LoadingState />;
   }
 
   if (error) {
-    return (
-      <Alert color="red" title="Something went wrong">
-        {error.message}
-      </Alert>
-    );
+    return <ErrorAlert error={error} />;
   }
 
   return (
     <ViewShell title="Transactions">
-      {updateCategory.isError && (
-        <Alert
-          color="red"
-          title="Could not update category"
-          withCloseButton
-          closeButtonLabel="Dismiss category update error"
-          onClose={() => updateCategory.reset()}
-        >
-          {updateCategory.error.message}
-        </Alert>
-      )}
+      <CategoryUpdateErrorAlert
+        error={categoryEditing.error}
+        onDismiss={categoryEditing.dismissError}
+      />
       <TransactionsList
         transactions={transactions}
         totalCount={totalCount}
@@ -93,21 +56,7 @@ export default function TransactionsView() {
         pageSize={pageSize}
         accountNameById={accountNameById}
         categoryNameById={categoryNameById}
-        renderCategory={(transaction) => (
-          <CategorySelect
-            categories={categories}
-            data={categorySelectData}
-            currentCategoryId={transaction.categoryId}
-            transactionName={transaction.transactionName}
-            pending={updateCategory.isPending || isPlaceholderData}
-            onCategoryChange={(categoryId) =>
-              updateCategory.mutate({
-                transactionId: transaction.id,
-                categoryId,
-              })
-            }
-          />
-        )}
+        renderCategory={categoryEditing.renderCategory}
       />
     </ViewShell>
   );

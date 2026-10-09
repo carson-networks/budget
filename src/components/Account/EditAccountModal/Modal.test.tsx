@@ -1,35 +1,20 @@
-import { MantineProvider } from "@mantine/core";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AccountIntegration, AccountKind } from "../../../models";
 import type { Account } from "../../../models";
-import { theme } from "../../../theme.js";
+import { renderWithProviders } from "../../../test/renderWithProviders.js";
 import EditAccountModal from "./Modal.js";
 
-const { mutateUpdateMock, resetUpdateMock, mutateDeleteMock, resetDeleteMock } =
-  vi.hoisted(() => ({
-    mutateUpdateMock: vi.fn(),
-    resetUpdateMock: vi.fn(),
-    mutateDeleteMock: vi.fn(),
-    resetDeleteMock: vi.fn(),
-  }));
+const api = vi.hoisted(() => ({
+  updateAccount: vi.fn(),
+  deleteAccount: vi.fn(),
+  listAccounts: vi.fn(),
+}));
 
-vi.mock("../../../hooks/useAccounts.js", () => ({
-  useUpdateAccount: () => ({
-    mutate: mutateUpdateMock,
-    reset: resetUpdateMock,
-    isPending: false,
-    isError: false,
-    error: null,
-  }),
-  useDeleteAccount: () => ({
-    mutate: mutateDeleteMock,
-    reset: resetDeleteMock,
-    isPending: false,
-    isError: false,
-    error: null,
-  }),
+vi.mock("../../../connectRPC/connect.js", () => ({
+  accountClient: api,
+  transactionClient: { listTransactions: vi.fn() },
 }));
 
 const account: Account = {
@@ -44,17 +29,14 @@ const account: Account = {
 
 describe("EditAccountModal", () => {
   beforeEach(() => {
-    mutateUpdateMock.mockReset();
-    resetUpdateMock.mockReset();
-    mutateDeleteMock.mockReset();
-    resetDeleteMock.mockReset();
+    vi.resetAllMocks();
+    api.updateAccount.mockResolvedValue({});
+    api.deleteAccount.mockResolvedValue({});
   });
 
   it("renders editable account settings when open", () => {
-    render(
-      <MantineProvider theme={theme}>
-        <EditAccountModal account={account} open onClose={vi.fn()} />
-      </MantineProvider>,
+    renderWithProviders(
+      <EditAccountModal account={account} open onClose={vi.fn()} />
     );
 
     expect(
@@ -83,16 +65,8 @@ describe("EditAccountModal", () => {
 
   it("keeps $ visible while editing starting balance and submits the decimal", async () => {
     const user = userEvent.setup();
-    mutateUpdateMock.mockImplementation(
-      (_body: unknown, options?: { onSuccess?: () => void }) => {
-        options?.onSuccess?.();
-      },
-    );
-
-    render(
-      <MantineProvider theme={theme}>
-        <EditAccountModal account={account} open onClose={vi.fn()} />
-      </MantineProvider>,
+    renderWithProviders(
+      <EditAccountModal account={account} open onClose={vi.fn()} />
     );
 
     const starting = screen.getByRole("textbox", { name: /starting balance/i });
@@ -106,19 +80,16 @@ describe("EditAccountModal", () => {
     expect(starting.parentElement).toHaveTextContent("$");
 
     await user.click(screen.getByRole("button", { name: /save changes/i }));
-    expect(mutateUpdateMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        startingBalance: "25.55",
-      }),
-      expect.any(Object),
+    await waitFor(() =>
+      expect(api.updateAccount).toHaveBeenCalledWith(
+        expect.objectContaining({ startingBalance: "25.55" }),
+      ),
     );
   });
 
   it("does not render account details when closed with a null account", () => {
-    render(
-      <MantineProvider theme={theme}>
-        <EditAccountModal account={null} open={false} onClose={vi.fn()} />
-      </MantineProvider>,
+    renderWithProviders(
+      <EditAccountModal account={null} open={false} onClose={vi.fn()} />
     );
 
     expect(
@@ -129,16 +100,8 @@ describe("EditAccountModal", () => {
   it("saves edited fields through updateAccount", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
-    mutateUpdateMock.mockImplementation(
-      (_body: unknown, options?: { onSuccess?: () => void }) => {
-        options?.onSuccess?.();
-      },
-    );
-
-    render(
-      <MantineProvider theme={theme}>
-        <EditAccountModal account={account} open onClose={onClose} />
-      </MantineProvider>,
+    renderWithProviders(
+      <EditAccountModal account={account} open onClose={onClose} />
     );
 
     const nameInput = screen.getByRole("textbox", { name: /name/i });
@@ -147,25 +110,20 @@ describe("EditAccountModal", () => {
 
     await user.click(screen.getByRole("button", { name: /save changes/i }));
 
-    expect(mutateUpdateMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: "acc-1",
-        name: "Rainy Day",
-        subType: "Checking",
-        startingBalance: "10.00",
-      }),
-      expect.any(Object),
-    );
-    expect(onClose).toHaveBeenCalledOnce();
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+    expect(api.updateAccount).toHaveBeenCalledExactlyOnceWith({
+      id: "acc-1",
+      name: "Rainy Day",
+      subType: "Checking",
+      startingBalance: "10.00",
+    });
   });
 
   it("opens a separate delete confirm modal while settings stays open", async () => {
     const user = userEvent.setup({ pointerEventsCheck: 0 });
 
-    render(
-      <MantineProvider theme={theme}>
-        <EditAccountModal account={account} open onClose={vi.fn()} />
-      </MantineProvider>,
+    renderWithProviders(
+      <EditAccountModal account={account} open onClose={vi.fn()} />
     );
 
     await user.click(screen.getByRole("button", { name: "Delete account" }));
@@ -185,33 +143,23 @@ describe("EditAccountModal", () => {
   it("confirms deletion from the second modal and closes settings", async () => {
     const user = userEvent.setup({ pointerEventsCheck: 0 });
     const onClose = vi.fn();
-    mutateDeleteMock.mockImplementation(
-      (_id: string, options?: { onSuccess?: () => void }) => {
-        options?.onSuccess?.();
-      },
-    );
-
-    render(
-      <MantineProvider theme={theme}>
-        <EditAccountModal account={account} open onClose={onClose} />
-      </MantineProvider>,
+    renderWithProviders(
+      <EditAccountModal account={account} open onClose={onClose} />
     );
 
     await user.click(screen.getByRole("button", { name: "Delete account" }));
     await user.click(screen.getByRole("button", { name: "Delete" }));
 
-    expect(mutateDeleteMock).toHaveBeenCalledWith("acc-1", expect.any(Object));
-    expect(onClose).toHaveBeenCalledOnce();
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+    expect(api.deleteAccount).toHaveBeenCalledExactlyOnceWith({ id: "acc-1" });
   });
 
   it("cancels delete confirm without mutating and keeps settings open", async () => {
     const user = userEvent.setup({ pointerEventsCheck: 0 });
     const onClose = vi.fn();
 
-    render(
-      <MantineProvider theme={theme}>
-        <EditAccountModal account={account} open onClose={onClose} />
-      </MantineProvider>,
+    renderWithProviders(
+      <EditAccountModal account={account} open onClose={onClose} />
     );
 
     await user.click(screen.getByRole("button", { name: "Delete account" }));
@@ -229,7 +177,42 @@ describe("EditAccountModal", () => {
     expect(
       screen.getByRole("heading", { name: "Account settings" }),
     ).toBeInTheDocument();
-    expect(mutateDeleteMock).not.toHaveBeenCalled();
+    expect(api.deleteAccount).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("trims fields and ignores a submit while required fields are blank", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <EditAccountModal account={account} open onClose={vi.fn()} />,
+    );
+
+    const nameInput = screen.getByRole("textbox", { name: /name/i });
+    await user.clear(nameInput);
+    await user.type(nameInput, "   ");
+    expect(screen.getByRole("button", { name: /save changes/i })).toBeDisabled();
+
+    await user.clear(nameInput);
+    await user.type(nameInput, " Renamed ");
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+    await waitFor(() =>
+      expect(api.updateAccount).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "Renamed" }),
+      ),
+    );
+  });
+
+  it("shows the server error and stays open when saving fails", async () => {
+    const user = userEvent.setup();
+    api.updateAccount.mockRejectedValue(new Error("Save failed"));
+    const onClose = vi.fn();
+    renderWithProviders(
+      <EditAccountModal account={account} open onClose={onClose} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    expect(await screen.findByText("Save failed")).toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
   });
 });
