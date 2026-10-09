@@ -1,6 +1,5 @@
 import {
   useCallback,
-  useEffect,
   useMemo,
   useState,
   type FormEvent,
@@ -12,7 +11,7 @@ import {
   type CreateCategoryInput,
 } from "../../../hooks/useCategories.js";
 
-export function useCreateCategoryForm(open: boolean, onClose: () => void) {
+export function useCreateCategoryForm(onClose: () => void) {
   const [name, setName] = useState("");
   const [categoryType, setCategoryType] = useState<string | null>(
     String(CategoryType.EXPENSE),
@@ -21,12 +20,6 @@ export function useCreateCategoryForm(open: boolean, onClose: () => void) {
 
   const { categories } = useAllCategories();
   const createCategory = useCreateCategory();
-
-  useEffect(() => {
-    if (!open) {
-      createCategory.reset();
-    }
-  }, [open, createCategory]);
 
   const parentOptions = useMemo(
     () =>

@@ -33,7 +33,7 @@ export default function CreateCategoryModal({
     handleSubmit,
     handleClose,
     isFormValid,
-  } = useCreateCategoryForm(open, onClose);
+  } = useCreateCategoryForm(onClose);
 
   return (
     <Modal

@@ -55,4 +55,19 @@ describe("BudgetCellInput", () => {
     expect(onCommit).toHaveBeenCalledWith("250");
     expect(input).toHaveValue("$100");
   });
+
+  it("shows the new amount when amountStr changes", () => {
+    const onCommit = vi.fn();
+    const cell = (amountStr: string) => (
+      <MantineProvider theme={theme}>
+        <BudgetCellInput amountStr={amountStr} onCommit={onCommit} />
+      </MantineProvider>
+    );
+    const { rerender } = render(cell("100"));
+    expect(screen.getByRole("textbox")).toHaveValue("$100");
+
+    rerender(cell("300"));
+
+    expect(screen.getByRole("textbox")).toHaveValue("$300");
+  });
 });

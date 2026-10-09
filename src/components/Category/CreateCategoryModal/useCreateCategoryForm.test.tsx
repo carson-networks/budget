@@ -48,7 +48,7 @@ describe("useCreateCategoryForm", () => {
 
   it("is valid once a non-empty name and type are set", () => {
     const { result } = renderHook(() =>
-      useCreateCategoryForm(true, vi.fn()),
+      useCreateCategoryForm(vi.fn()),
     );
 
     expect(result.current.isFormValid).toBe(false);
@@ -62,7 +62,7 @@ describe("useCreateCategoryForm", () => {
   it("submits a top-level parent when no nest-under parent is selected", () => {
     const onClose = vi.fn();
     const { result } = renderHook(() =>
-      useCreateCategoryForm(true, onClose),
+      useCreateCategoryForm(onClose),
     );
 
     act(() => {
@@ -89,7 +89,7 @@ describe("useCreateCategoryForm", () => {
 
   it("submits a leaf under a selected parent with isParent false", () => {
     const { result } = renderHook(() =>
-      useCreateCategoryForm(true, vi.fn()),
+      useCreateCategoryForm(vi.fn()),
     );
 
     act(() => {
@@ -115,7 +115,7 @@ describe("useCreateCategoryForm", () => {
 
   it("does not call mutate when name is empty", () => {
     const { result } = renderHook(() =>
-      useCreateCategoryForm(true, vi.fn()),
+      useCreateCategoryForm(vi.fn()),
     );
 
     act(() => {
@@ -127,7 +127,7 @@ describe("useCreateCategoryForm", () => {
 
   it("exposes top-level categories as parent options", () => {
     const { result } = renderHook(() =>
-      useCreateCategoryForm(true, vi.fn()),
+      useCreateCategoryForm(vi.fn()),
     );
 
     expect(result.current.parentOptions).toEqual([
@@ -138,7 +138,7 @@ describe("useCreateCategoryForm", () => {
   it("handleClose resets fields, mutation, and calls onClose", () => {
     const onClose = vi.fn();
     const { result } = renderHook(() =>
-      useCreateCategoryForm(true, onClose),
+      useCreateCategoryForm(onClose),
     );
 
     act(() => {
@@ -155,16 +155,5 @@ describe("useCreateCategoryForm", () => {
     expect(result.current.name).toBe("");
     expect(result.current.parentCategoryId).toBeNull();
     expect(result.current.categoryType).toBe(String(CategoryType.EXPENSE));
-  });
-
-  it("calls reset when open becomes false", () => {
-    const { rerender } = renderHook(
-      ({ open }) => useCreateCategoryForm(open, vi.fn()),
-      { initialProps: { open: true } },
-    );
-
-    rerender({ open: false });
-
-    expect(resetMock).toHaveBeenCalled();
   });
 });

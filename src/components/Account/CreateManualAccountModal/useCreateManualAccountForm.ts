@@ -1,6 +1,5 @@
 import {
   useCallback,
-  useEffect,
   useState,
   type FormEvent,
 } from "react";
@@ -11,19 +10,13 @@ import {
 } from "../../../hooks/useAccounts.js";
 import { AccountKind } from "../../../models";
 
-export function useCreateManualAccountForm(open: boolean, onClose: () => void) {
+export function useCreateManualAccountForm(onClose: () => void) {
   const [name, setName] = useState("");
   const [type, setType] = useState<string | null>(String(AccountKind.Cash));
   const [subType, setSubType] = useState("");
   const [startingBalance, setStartingBalance] = useState("");
 
   const createAccount = useCreateManualAccount();
-
-  useEffect(() => {
-    if (!open) {
-      createAccount.reset();
-    }
-  }, [open, createAccount]);
 
   const handleClose = useCallback(() => {
     setName("");
