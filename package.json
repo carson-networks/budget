@@ -11,11 +11,11 @@
     },
     "packageManager": {
       "name": "pnpm",
-      "version": ">=12.4.1 <13.0.0",
+      "version": ">=12.9.1 <13.0.0",
       "onFail": "download"
     }
   },
-  "packageManager": "pnpm@12.4.1",
+  "packageManager": "pnpm@12.9.1",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
