@@ -1,5 +1,6 @@
 minimumReleaseAge: 10080
 minimumReleaseAgeStrict: false
+strictPeerDependencies: true
 allowBuilds:
   '@bufbuild/buf': true
   esbuild: true
