@@ -1,0 +1,42 @@
+.budget-matrix th,
+.budget-matrix td {
+  text-align: right;
+  vertical-align: middle;
+}
+
+.budget-matrix tr > th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  text-align: left;
+  background: var(--mantine-color-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.budget-matrix thead th:first-child {
+  z-index: 4;
+}
+
+.budget-matrix [data-root] > *,
+.budget-matrix tfoot tr > *,
+.budget-matrix thead th {
+  background: var(--table-striped-color);
+}
+
+.budget-matrix [data-current] {
+  background: light-dark(
+    var(--mantine-color-brand-0),
+    var(--mantine-color-brand-9)
+  );
+}
+
+.budget-matrix [data-year-start] {
+  border-left: 3px solid var(--mantine-color-dimmed);
+}
+
+.budget-matrix tfoot tr > * {
+  border-top: 2px solid var(--table-border-color);
+  font-weight: 700;
+}
