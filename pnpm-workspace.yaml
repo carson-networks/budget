@@ -1,4 +1,9 @@
 minimumReleaseAge: 10080
+strictPeerDependencies: true
+blockExoticSubdeps: true
+trustPolicy: no-downgrade
 allowBuilds:
   '@bufbuild/buf': true
   esbuild: true
+trustPolicyExclude:
+  - semver@6.3.1
