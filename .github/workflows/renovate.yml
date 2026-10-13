@@ -7,7 +7,9 @@ on:
 
 permissions:
   contents: write
+  issues: write
   pull-requests: write
+  statuses: write
 
 concurrency:
   group: renovate
@@ -23,7 +25,10 @@ jobs:
         uses: renovatebot/github-action@v46.1.8
         with:
           configurationFile: renovate.json
-          token: ${{ github.token }}
+          # github.token cannot push changes to .github/workflows/*; set the
+          # RENOVATE_TOKEN secret (PAT or app token with `workflows` scope) to
+          # allow GitHub Actions updates.
+          token: ${{ secrets.RENOVATE_TOKEN || github.token }}
         env:
           LOG_LEVEL: debug
           RENOVATE_REPOSITORIES: ${{ github.repository }}
