@@ -2,8 +2,9 @@ import { MantineProvider } from "@mantine/core";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Transaction } from "../../models";
+import { stubIntersectionObserver } from "../../test/intersectionObserver.js";
 import { theme } from "../../theme.js";
 import { TransactionsList } from "./TransactionsList.js";
 
@@ -25,8 +26,9 @@ function renderList(
       <TransactionsList
         transactions={[makeTxn(1)]}
         totalCount={1}
-        page={1}
-        onPageChange={() => {}}
+        hasNextPage={false}
+        isFetchingNextPage={false}
+        onLoadMore={() => {}}
         accountNameById={new Map([["acc-1", "Checking"]])}
         categoryNameById={new Map([["cat-1", "Dining"]])}
         {...props}
@@ -36,6 +38,8 @@ function renderList(
 }
 
 describe("TransactionsList", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
   it("shows the empty message when totalCount is zero", () => {
     renderList({
       transactions: [],
@@ -46,47 +50,53 @@ describe("TransactionsList", () => {
     expect(screen.queryByRole("button", { name: "1" })).not.toBeInTheDocument();
   });
 
-  it("pages via onPageChange using server totals", async () => {
-    const user = userEvent.setup();
-    const onPageChange = vi.fn();
-    const transactions = [makeTxn(1), makeTxn(2)];
+  it("calls onLoadMore when the end of the list scrolls into view", () => {
+    const io = stubIntersectionObserver();
+    const onLoadMore = vi.fn();
+    renderList({ totalCount: 5, hasNextPage: true, onLoadMore });
+    expect(onLoadMore).not.toHaveBeenCalled();
 
-    renderList({
-      transactions,
-      totalCount: 5,
-      page: 1,
-      pageSize: 2,
-      onPageChange,
-    });
-
-    expect(screen.getByText("Txn 1")).toBeInTheDocument();
-    expect(screen.getByText("Txn 2")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "3" })).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "2" }));
-    expect(onPageChange).toHaveBeenCalledWith(2);
+    io.scrollIntoView();
+    expect(onLoadMore).toHaveBeenCalledTimes(1);
   });
 
-  it("renders edge controls plus a sliding numbered window", () => {
+  it("does not watch for the end of the list once everything is loaded", () => {
+    const io = stubIntersectionObserver();
+    renderList({ totalCount: 1, hasNextPage: false });
+    expect(io.observedCount()).toBe(0);
+  });
+
+  it("shows a spinner and stops watching while a batch loads", () => {
+    const io = stubIntersectionObserver();
+    renderList({ totalCount: 5, hasNextPage: true, isFetchingNextPage: true });
+    expect(
+      screen.getByLabelText("Loading more transactions"),
+    ).toBeInTheDocument();
+    expect(io.observedCount()).toBe(0);
+  });
+
+  it("offers a retry instead of auto-loading after a failed load", async () => {
+    const user = userEvent.setup();
+    const io = stubIntersectionObserver();
+    const onLoadMore = vi.fn();
     renderList({
-      transactions: [makeTxn(1)],
-      totalCount: 100,
-      page: 5,
-      pageSize: 10,
+      totalCount: 5,
+      hasNextPage: true,
+      loadMoreError: new Error("Network down"),
+      onLoadMore,
     });
+    expect(io.observedCount()).toBe(0);
+    expect(
+      screen.getByText("Could not load more transactions."),
+    ).toBeInTheDocument();
 
-    // withEdges → first/prev/next/last icon controls (empty accessible name)
-    const iconControls = screen
-      .getAllByRole("button")
-      .filter((button) => button.textContent === "");
-    expect(iconControls).toHaveLength(4);
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    expect(onLoadMore).toHaveBeenCalledTimes(1);
+  });
 
-    expect(screen.getByRole("button", { name: "5" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-    expect(screen.getByRole("button", { name: "1" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "9" })).toBeInTheDocument();
+  it("has no pagination controls", () => {
+    renderList({ transactions: [makeTxn(1)], totalCount: 100 });
+    expect(screen.queryByRole("button", { name: "1" })).not.toBeInTheDocument();
   });
 
   it("forwards row opens to onRowOpen", async () => {

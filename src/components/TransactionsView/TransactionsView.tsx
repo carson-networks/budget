@@ -1,5 +1,5 @@
 import { useReferenceData } from "../../hooks/useReferenceData.js";
-import { useTransactionsPager } from "../../hooks/useTransactionsPager.js";
+import { useTransactions } from "../../hooks/useTransactions.js";
 import { ViewShell } from "../shared/ViewShell.js";
 import { TransactionsList } from "./TransactionsList.js";
 import { CategoryUpdateErrorAlert } from "./CategoryUpdateErrorAlert.js";
@@ -11,13 +11,13 @@ export default function TransactionsView() {
   const {
     transactions,
     totalCount,
-    page,
-    setPage,
-    pageSize,
+    hasNextPage,
+    isFetchingNextPage,
+    loadMore,
+    loadMoreError,
     isLoading: transactionsLoading,
-    isPlaceholderData,
     error: transactionsError,
-  } = useTransactionsPager();
+  } = useTransactions();
   const {
     categories,
     accountNameById,
@@ -26,12 +26,9 @@ export default function TransactionsView() {
     error: referenceError,
   } = useReferenceData();
 
-  const categoryEditing = useTransactionCategoryEditing(categories, {
-    disabled: isPlaceholderData,
-  });
+  const categoryEditing = useTransactionCategoryEditing(categories);
 
-  const isLoading =
-    (transactionsLoading && !isPlaceholderData) || referenceLoading;
+  const isLoading = transactionsLoading || referenceLoading;
   const error = transactionsError ?? referenceError;
 
   if (isLoading) {
@@ -51,9 +48,10 @@ export default function TransactionsView() {
       <TransactionsList
         transactions={transactions}
         totalCount={totalCount}
-        page={page}
-        onPageChange={setPage}
-        pageSize={pageSize}
+        hasNextPage={hasNextPage}
+        isFetchingNextPage={isFetchingNextPage}
+        loadMoreError={loadMoreError}
+        onLoadMore={loadMore}
         accountNameById={accountNameById}
         categoryNameById={categoryNameById}
         renderCategory={categoryEditing.renderCategory}

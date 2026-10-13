@@ -3,7 +3,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { stubIntersectionObserver } from "../../../test/intersectionObserver.js";
 import { theme } from "../../../theme.js";
 import AccountTransactionsView from "./AccountTransactionsView.js";
 import App from "../../../App.js";
@@ -63,6 +64,8 @@ function renderView(path = "/accounts/acc-1", fullApp = false) {
     </MantineProvider>,
   );
 }
+
+afterEach(() => vi.unstubAllGlobals());
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -170,27 +173,29 @@ describe("AccountTransactionsView", () => {
     expect(screen.queryByText("Account not found")).not.toBeInTheDocument();
   });
 
-  it("uses the account total and offset for numbered pagination", async () => {
+  it("appends the account's next batch as the list scrolls", async () => {
+    const io = stubIntersectionObserver();
     api.listTransactions
-      .mockResolvedValueOnce({ transactions: [transaction], totalCount: 26 })
+      .mockResolvedValueOnce({ transactions: [transaction], totalCount: 2 })
       .mockResolvedValue({
         transactions: [
-          { ...transaction, id: "txn-26", transactionName: "Last purchase" },
+          { ...transaction, id: "txn-2", transactionName: "Last purchase" },
         ],
-        totalCount: 26,
+        totalCount: 2,
       });
     renderView();
     await screen.findByText("Lunch");
-    await userEvent.click(screen.getByRole("button", { name: "2" }));
+    io.scrollIntoView();
     expect(await screen.findByText("Last purchase")).toBeInTheDocument();
-    expect(screen.queryByText("Lunch")).not.toBeInTheDocument();
+    expect(screen.getByText("Lunch")).toBeInTheDocument();
     expect(api.listTransactions).toHaveBeenLastCalledWith({
       accountId: "acc-1",
-      cursor: { position: 25, limit: 25, maxCreationTime: undefined },
+      cursor: { position: 1, limit: 25, maxCreationTime: undefined },
     });
   });
 
-  it("resets to page one when navigating to another account", async () => {
+  it("starts from the top when navigating to another account", async () => {
+    const io = stubIntersectionObserver();
     api.listAccounts.mockResolvedValue({
       accounts: [account, { ...account, id: "acc-2", name: "Savings" }],
     });
@@ -208,17 +213,13 @@ describe("AccountTransactionsView", () => {
     );
     renderView();
     await screen.findByText("Lunch");
-    await userEvent.click(screen.getByRole("button", { name: "2" }));
+    io.scrollIntoView();
     await userEvent.click(screen.getByRole("link", { name: "Open savings" }));
     expect(await screen.findByText("Deposit")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Savings transactions" }),
     ).toBeInTheDocument();
     expect(screen.queryByText("Lunch")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "1" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
     expect(api.listTransactions).toHaveBeenLastCalledWith({
       accountId: "acc-2",
       cursor: { position: 0, limit: 25, maxCreationTime: undefined },

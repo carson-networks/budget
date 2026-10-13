@@ -79,7 +79,7 @@ src/
     *.test.tsx                  # mock connectRPC/connect.js and run the options through a QueryClient
 
   hooks/                        # Hooks that glue queries to React/router state (not plain wrappers)
-    useTransactionsPager.ts     # page lives in the URL (?page=) + transactionQueries.list
+    useTransactions.ts          # transactionQueries.list as one infinite query + loadMore / loadMoreError
 
   plaid/                        # Plaid Link: types, wire encoding, react-plaid-link flow
     usePlaidLinkToken.ts        # plaidLinkTokenQueryOptions + prefetchPlaidLinkToken
@@ -130,7 +130,7 @@ it, and components read it through the factories in `src/queries/`.
 | Categories            | `useInfiniteQuery(categoryQueries.list())` → `Category[]` | `["categories", "list"]`                               |
 | Budgets for a range   | `useQuery(budgetQueries.range(start, end))` → `Budget[]`  | `["budgets", "range", y, m, y, m]`                     |
 | Transaction totals    | `useQuery(transactionQueries.totals(start, end))`         | `["transactions", "totals", y, m, y, m]`               |
-| Transactions page     | `useTransactionsPager(filter, { enabled })`               | `["transactions", "list", { page, pageSize, ...filter }]` |
+| Transactions          | `useTransactions(filter, { enabled })` (infinite scroll)  | `["transactions", "list", filter]`                     |
 
 `all()` on each factory object is the key root used for invalidation. Totals
 share the `["transactions"]` root with lists, so invalidating
@@ -310,19 +310,19 @@ account from a direct link) fetch further pages with `fetchNextPage` (see
 `useAccountTransactionsData`). Flattening to a single fetch-all `queryFn` would
 remove those effects and is a known possible follow-up.
 
-Transactions use offset paging with a server `total_count`. The first response for a
-filter pins `maxCreationTime` so later pages do not shift while new transactions
-arrive. That window lives in a `Map` owned by one `useTransactionsPager` instance and
-is passed into `transactionQueries.list(params, windows)`; it is intentionally not
-global, so each visit starts fresh.
+Transactions are one infinite query per filter (`transactionQueries.list(filter)`),
+loaded `TRANSACTIONS_PAGE_SIZE` rows at a time with offset/`limit`; `select`
+flattens the batches and exposes the server `total_count`. The first response pins
+`maxCreationTime`, and later batches reuse it so rows created while scrolling do not
+shift them (a refetch re-pins it). `TransactionsList` loads the next batch when a
+sentinel at the end of the list nears the viewport (`IntersectionObserver`); a failed
+load shows a retry and leaves the loaded rows in place (`loadMoreError`).
 
 ## Client State Beyond Zustand
 
 - **URL state.** State that should survive reload or be shareable lives in search
   params, not in a store or `useState`: the selected month (`?month=`,
-  `useSelectedYearMonth`) and the transactions page (`?page=`,
-  `useTransactionsPager`). Navigation that changes the dataset must clear
-  `page` (month changes already do).
+  `useSelectedYearMonth`).
 - **Forms.** A modal holds its field values in one `useState` object, calls
   `useMutation`, and delegates to the colocated pure form module
   (`emptyXForm`, `isXFormValid`, `toXInput`). Do not create a `useXForm` hook that
@@ -371,7 +371,7 @@ rules in **`.agents/best-practices.md`**; ESLint enforces them). Also avoid:
 | `createClient()` over `@connectrpc/connect-query` codegen | The app was built with direct `createClient()` calls wrapped in TanStack Query options. This gives full control over query keys, pagination, and cache invalidation without depending on an additional codegen step.     |
 | Option factories in `src/queries/` instead of per-query hooks | Keys, fetchers, and wire→model mapping are defined once and reused by components, prefetching, mutations, and tests. Removes duplicated key literals, error handling, and infinite-query boilerplate.                |
 | Invalidate-on-settle by default; optimistic updates only for inline edits | Refetching is simple and always consistent; hand-rolled cache patching was duplicated and easy to get wrong. Optimistic updates are kept where lag would be visible (transaction category edits).               |
-| Page and month in the URL                                 | Survives reload, shareable, and removes state that had to be reset by hand when filters changed.                                                                                                                       |
+| Month in the URL                                          | Survives reload, shareable, and removes state that had to be reset by hand when the month changed.                                                                                                                       |
 | Pure form/view-data modules + thin components             | Logic is testable without rendering; components stay small and readable.                                                                                                                                                |
 | `models/` as the UI import boundary for wire data                    | Components and hooks depend on stable model APIs; only **`models/`** imports **`connectRPC/`** for protobuf-derived types (usually via **`connectRPC/types.ts`**). protobuf churn stays under **`connectRPC/gen/`** + **`connectRPC/types.ts`** + model mappers.                                                                 |
 | Flat arrays from paginated lists via `select`             | The current data sets are small, so components get a flat `Account[]` / `Category[]`. Screens that need every page fetch them explicitly until a fetch-all query replaces that.                                         |

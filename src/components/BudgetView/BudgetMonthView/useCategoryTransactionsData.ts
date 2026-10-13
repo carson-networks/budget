@@ -1,27 +1,25 @@
 import { useReferenceData } from "../../../hooks/useReferenceData.js";
-import { useTransactionsPager } from "../../../hooks/useTransactionsPager.js";
+import { useTransactions } from "../../../hooks/useTransactions.js";
 import type { YearMonth } from "../../../utils/monthRange.js";
 
 export function useCategoryTransactionsData(
   month: YearMonth,
   categoryId: string,
 ) {
-  const transactionsQuery = useTransactionsPager({ month, categoryId });
+  const transactionsQuery = useTransactions({ month, categoryId });
   const reference = useReferenceData();
 
   return {
     transactions: transactionsQuery.transactions,
     totalCount: transactionsQuery.totalCount,
-    page: transactionsQuery.page,
-    setPage: transactionsQuery.setPage,
-    pageSize: transactionsQuery.pageSize,
+    hasNextPage: transactionsQuery.hasNextPage,
+    isFetchingNextPage: transactionsQuery.isFetchingNextPage,
+    loadMore: transactionsQuery.loadMore,
+    loadMoreError: transactionsQuery.loadMoreError,
     accountNameById: reference.accountNameById,
     categories: reference.categories,
     categoryNameById: reference.categoryNameById,
-    isPlaceholderData: transactionsQuery.isPlaceholderData,
-    isLoading:
-      (transactionsQuery.isLoading && !transactionsQuery.isPlaceholderData) ||
-      reference.isLoading,
+    isLoading: transactionsQuery.isLoading || reference.isLoading,
     error: transactionsQuery.error ?? reference.error,
   };
 }
