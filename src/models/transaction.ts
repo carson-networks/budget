@@ -16,7 +16,6 @@ export type Transaction = {
   merchantName?: string;
   transactionDate?: Date;
   createdAt?: Date;
-  /** Flagged for the user to look over. */
   needsReview: boolean;
 };
 

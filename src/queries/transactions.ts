@@ -21,7 +21,6 @@ export type TransactionsFilter = {
   accountId?: string;
   categoryId?: string;
   month?: YearMonth;
-  /** Only transactions flagged for review (`true`) or not (`false`). */
   needsReview?: boolean;
 };
 
