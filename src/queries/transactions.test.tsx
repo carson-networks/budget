@@ -175,6 +175,21 @@ describe("transactionQueries.list", () => {
     });
   });
 
+  it("sends the needs-review filter only when it is set", async () => {
+    const { result } = render({ needsReview: true });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.listTransactions).toHaveBeenCalledWith({
+      needsReview: true,
+      cursor: { position: 0, limit: 25 },
+    });
+  });
+
+  it("keeps needs-review lists in their own cache entry", async () => {
+    expect(transactionQueries.list({ needsReview: true }).queryKey).not.toEqual(
+      transactionQueries.list({}).queryKey,
+    );
+  });
+
   it("never shows another filter's rows while loading", async () => {
     api.listTransactions
       .mockResolvedValueOnce({ transactions: [wireTxn("txn", "Mine")], totalCount: 1 })

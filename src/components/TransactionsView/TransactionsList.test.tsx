@@ -15,6 +15,7 @@ function makeTxn(index: number): Transaction {
     categoryId: "cat-1",
     amount: String(index),
     transactionName: `Txn ${index}`,
+    needsReview: false,
   };
 }
 

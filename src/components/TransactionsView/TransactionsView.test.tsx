@@ -50,8 +50,8 @@ const transaction = {
   transactionName: "Lunch",
 };
 
-function renderView() {
-  return renderWithProviders(<TransactionsView />);
+function renderView(route = "/") {
+  return renderWithProviders(<TransactionsView />, { route });
 }
 
 describe("TransactionsView", () => {
@@ -100,6 +100,99 @@ describe("TransactionsView", () => {
     api.listTransactions.mockResolvedValue({ transactions: [], totalCount: 0 });
     renderView();
     expect(await screen.findByText("No transactions yet.")).toBeInTheDocument();
+  });
+
+  describe("needs review filter", () => {
+    const flagged = {
+      ...transaction,
+      id: "txn-2",
+      transactionName: "Mystery charge",
+      needsReview: true,
+    };
+
+    function listByReviewFlag() {
+      api.listTransactions.mockImplementation(
+        async ({ needsReview }: { needsReview?: boolean }) =>
+          needsReview
+            ? { transactions: [flagged], totalCount: 1 }
+            : { transactions: [transaction, flagged], totalCount: 2 },
+      );
+    }
+
+    it("lists everything until the button is pressed", async () => {
+      listByReviewFlag();
+      renderView();
+
+      expect(await screen.findByText("Lunch")).toBeInTheDocument();
+      expect(screen.getByText("Mystery charge")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Needs review" }),
+      ).toHaveAttribute("aria-pressed", "false");
+      expect(api.listTransactions).toHaveBeenCalledExactlyOnceWith({
+        cursor: { position: 0, limit: 25 },
+      });
+    });
+
+    it("shows only transactions needing review, and everything again when toggled off", async () => {
+      const user = userEvent.setup();
+      listByReviewFlag();
+      renderView();
+      await screen.findByText("Lunch");
+
+      await user.click(screen.getByRole("button", { name: "Needs review" }));
+      expect(await screen.findByText("Mystery charge")).toBeInTheDocument();
+      await waitFor(() =>
+        expect(screen.queryByText("Lunch")).not.toBeInTheDocument(),
+      );
+      expect(api.listTransactions).toHaveBeenLastCalledWith({
+        needsReview: true,
+        cursor: { position: 0, limit: 25 },
+      });
+      expect(
+        screen.getByRole("button", { name: "Needs review" }),
+      ).toHaveAttribute("aria-pressed", "true");
+
+      await user.click(screen.getByRole("button", { name: "Needs review" }));
+      expect(await screen.findByText("Lunch")).toBeInTheDocument();
+    });
+
+    it("starts filtered when the URL asks for it", async () => {
+      listByReviewFlag();
+      renderView("/transactions?needsReview=true");
+
+      expect(await screen.findByText("Mystery charge")).toBeInTheDocument();
+      expect(screen.queryByText("Lunch")).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Needs review" }),
+      ).toHaveAttribute("aria-pressed", "true");
+    });
+
+    it("says so when nothing needs review", async () => {
+      api.listTransactions.mockResolvedValue({
+        transactions: [],
+        totalCount: 0,
+      });
+      renderView("/transactions?needsReview=true");
+
+      expect(
+        await screen.findByText("No transactions need review."),
+      ).toBeInTheDocument();
+    });
+
+    it("keeps the button available while the filtered list loads", async () => {
+      const user = userEvent.setup();
+      listByReviewFlag();
+      renderView();
+      await screen.findByText("Lunch");
+
+      api.listTransactions.mockReturnValue(new Promise(() => {}));
+      await user.click(screen.getByRole("button", { name: "Needs review" }));
+
+      expect(await screen.findByText("Loading…")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Needs review" }),
+      ).toBeEnabled();
+    });
   });
 
   it("saves the selected category for the correct transaction", async () => {

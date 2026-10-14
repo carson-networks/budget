@@ -21,6 +21,8 @@ export type TransactionsFilter = {
   accountId?: string;
   categoryId?: string;
   month?: YearMonth;
+  /** Only transactions flagged for review (`true`) or not (`false`). */
+  needsReview?: boolean;
 };
 
 type TransactionsCursor = {
@@ -33,6 +35,7 @@ export function definedFilter({
   accountId,
   categoryId,
   month,
+  needsReview,
 }: TransactionsFilter): TransactionsFilter {
   return {
     ...(accountId === undefined ? {} : { accountId }),
@@ -40,6 +43,7 @@ export function definedFilter({
     ...(month === undefined
       ? {}
       : { month: { year: month.year, month: month.month } }),
+    ...(needsReview === undefined ? {} : { needsReview }),
   };
 }
 

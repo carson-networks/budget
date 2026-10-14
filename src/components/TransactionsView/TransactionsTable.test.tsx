@@ -14,6 +14,7 @@ const sample: Transaction = {
   amount: "12.50",
   transactionName: "Coffee",
   merchantName: "Starbucks",
+  needsReview: false,
 };
 
 function renderTable(
@@ -73,6 +74,7 @@ describe("TransactionsTable", () => {
           accountId: "acc-missing",
           amount: "1.00",
           transactionName: "Unknown",
+          needsReview: false,
         },
       ],
       accountNameById: new Map(),
