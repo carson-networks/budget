@@ -15,10 +15,16 @@
   ],
   "packageRules": [
     {
-      "description": "Match pnpm's minimumReleaseAge (security:minimumReleaseAgeNpm defaults to 3 days)",
+      "description": "Match pnpm's minimumReleaseAge (3 days)",
       "matchDatasources": ["npm"],
       "matchUpdateTypes": ["major", "minor", "patch"],
-      "minimumReleaseAge": "7 days"
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "Keep caret ranges in package.json (the committed lockfile pins exact versions); overrides :pinDevDependencies from config:best-practices",
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["dependencies", "devDependencies"],
+      "rangeStrategy": "bump"
     },
     {
       "description": "Group JavaScript/TypeScript (npm) dependency updates",
