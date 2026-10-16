@@ -180,4 +180,57 @@ export const transactionMutations = {
     // Totals live under the same root as the lists, so one prefix covers both.
     ...invalidatesOnSettled(transactionQueries.all()),
   }),
+
+  /**
+   * Clears the review flag. The row is dropped from needs-review lists (and
+   * their total) right away and just unflagged everywhere else.
+   */
+  markReviewed: mutationOptions({
+    mutationKey: ["transactions", "markReviewed"],
+    mutationFn: (transactionId: string) =>
+      rpc(
+        transactionClient.updateTransaction({
+          id: transactionId,
+          needsReview: false,
+        }),
+      ),
+    onMutate: (transactionId, context) =>
+      patchQueries<InfiniteData<ListTransactionsResponse>>(
+        context.client,
+        { queryKey: transactionQueries.lists() },
+        (data, queryKey) => {
+          const filter = queryKey[2] as TransactionsFilter | undefined;
+          const holdsRow = data.pages.some((page) =>
+            page.transactions.some(({ id }) => id === transactionId),
+          );
+          if (filter?.needsReview === true && holdsRow) {
+            return {
+              ...data,
+              pages: data.pages.map((page) => ({
+                ...page,
+                transactions: page.transactions.filter(
+                  ({ id }) => id !== transactionId,
+                ),
+                totalCount: page.totalCount - 1,
+              })),
+            };
+          }
+          return {
+            ...data,
+            pages: data.pages.map((page) => ({
+              ...page,
+              transactions: page.transactions.map((transaction) =>
+                transaction.id === transactionId
+                  ? { ...transaction, needsReview: false }
+                  : transaction,
+              ),
+            })),
+          };
+        },
+      ),
+    onError: (_error, _variables, onMutateResult) => {
+      onMutateResult?.rollback();
+    },
+    ...invalidatesOnSettled(transactionQueries.all()),
+  }),
 };

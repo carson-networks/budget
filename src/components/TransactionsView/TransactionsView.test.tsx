@@ -179,6 +179,126 @@ describe("TransactionsView", () => {
       ).toBeInTheDocument();
     });
 
+    it("puts the button in a header on the table", async () => {
+      listByReviewFlag();
+      renderView();
+      const button = await screen.findByRole("button", {
+        name: "Needs review",
+      });
+      const table = screen.getByRole("table");
+
+      const panel = button.parentElement?.parentElement;
+      expect(panel).toContainElement(table);
+      expect(
+        button.compareDocumentPosition(table) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+
+    it("offers review checkboxes only in needs-review mode", async () => {
+      const user = userEvent.setup();
+      listByReviewFlag();
+      renderView();
+      await screen.findByText("Lunch");
+      expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+
+      await user.click(screen.getByRole("button", { name: "Needs review" }));
+      expect(
+        await screen.findByRole("checkbox", {
+          name: "Mark Mystery charge as reviewed",
+        }),
+      ).not.toBeChecked();
+    });
+
+    it("marks a transaction reviewed and removes it from the list", async () => {
+      const user = userEvent.setup();
+      api.listTransactions.mockResolvedValue({
+        transactions: [
+          flagged,
+          { ...flagged, id: "txn-3", transactionName: "Second charge" },
+        ],
+        totalCount: 2,
+      });
+      api.updateTransaction.mockImplementation(async () => {
+        api.listTransactions.mockResolvedValue({
+          transactions: [
+            { ...flagged, id: "txn-3", transactionName: "Second charge" },
+          ],
+          totalCount: 1,
+        });
+        return {};
+      });
+      renderView("/transactions?needsReview=true");
+
+      await user.click(
+        await screen.findByRole("checkbox", {
+          name: "Mark Mystery charge as reviewed",
+        }),
+      );
+
+      expect(api.updateTransaction).toHaveBeenCalledExactlyOnceWith({
+        id: "txn-2",
+        needsReview: false,
+      });
+      await waitFor(() =>
+        expect(screen.queryByText("Mystery charge")).not.toBeInTheDocument(),
+      );
+      expect(screen.getByText("Second charge")).toBeInTheDocument();
+    });
+
+    it("says nothing needs review once the last one is reviewed", async () => {
+      const user = userEvent.setup();
+      api.listTransactions.mockResolvedValue({
+        transactions: [flagged],
+        totalCount: 1,
+      });
+      api.updateTransaction.mockImplementation(async () => {
+        api.listTransactions.mockResolvedValue({
+          transactions: [],
+          totalCount: 0,
+        });
+        return {};
+      });
+      renderView("/transactions?needsReview=true");
+
+      await user.click(
+        await screen.findByRole("checkbox", {
+          name: "Mark Mystery charge as reviewed",
+        }),
+      );
+
+      expect(
+        await screen.findByText("No transactions need review."),
+      ).toBeInTheDocument();
+    });
+
+    it("keeps the row and shows a dismissible error when marking reviewed fails", async () => {
+      const user = userEvent.setup();
+      api.listTransactions.mockResolvedValue({
+        transactions: [flagged],
+        totalCount: 1,
+      });
+      api.updateTransaction.mockRejectedValue(new Error("Save failed"));
+      renderView("/transactions?needsReview=true");
+
+      await user.click(
+        await screen.findByRole("checkbox", {
+          name: "Mark Mystery charge as reviewed",
+        }),
+      );
+
+      expect(await screen.findByText("Save failed")).toBeInTheDocument();
+      expect(
+        screen.getByText("Could not mark as reviewed"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Mystery charge")).toBeInTheDocument();
+
+      await user.click(
+        screen.getByRole("button", { name: "Dismiss review error" }),
+      );
+      expect(screen.queryByText("Save failed")).not.toBeInTheDocument();
+    });
+
     it("keeps the button available while the filtered list loads", async () => {
       const user = userEvent.setup();
       listByReviewFlag();

@@ -180,4 +180,27 @@ describe("TransactionsTable", () => {
       expect(cell).toHaveAttribute("data-with-column-border", "true");
     }
   });
+
+  it("shows the placeholder in the leading cell unless renderLeading is given", () => {
+    const { container } = renderTable();
+    expect(container.querySelector("[aria-hidden]")).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+
+  it("renders renderLeading in the leading cell without opening the row", async () => {
+    const onRowOpen = vi.fn();
+    const onLeadingClick = vi.fn();
+    renderTable({
+      onRowOpen,
+      renderLeading: (transaction) => (
+        <button onClick={onLeadingClick}>
+          Lead {transaction.transactionName}
+        </button>
+      ),
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Lead Coffee" }));
+    expect(onLeadingClick).toHaveBeenCalledOnce();
+    expect(onRowOpen).not.toHaveBeenCalled();
+  });
 });
