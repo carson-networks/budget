@@ -184,7 +184,7 @@ describe("TransactionsTable", () => {
   it("shows the placeholder in the leading cell unless renderLeading is given", () => {
     const { container } = renderTable();
     expect(container.querySelector("[aria-hidden]")).toBeInTheDocument();
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
   it("renders renderLeading in the leading cell without opening the row", async () => {

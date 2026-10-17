@@ -21,7 +21,6 @@ import {
   createWrapper,
 } from "../test/renderWithProviders.js";
 import {
-  REVIEWED_ROW_LINGER_MS,
   TRANSACTIONS_PAGE_SIZE,
   transactionMutations,
   transactionQueries,
@@ -189,42 +188,6 @@ describe("transactionQueries.list", () => {
     expect(transactionQueries.list({ needsReview: true }).queryKey).not.toEqual(
       transactionQueries.list({}).queryKey,
     );
-  });
-
-  it("doesn't count rows reviewed in place toward the next needs-review offset", async () => {
-    const client = createTestQueryClient();
-    const key = ["transactions", "list", { needsReview: true }];
-    client.setQueryData(key, {
-      pages: [
-        {
-          transactions: [
-            { ...wireTxn("txn-1"), needsReview: false },
-            { ...wireTxn("txn-2"), needsReview: true },
-          ],
-          totalCount: 60,
-        },
-      ],
-      pageParams: [{ position: 0, limit: TRANSACTIONS_PAGE_SIZE }],
-    });
-    api.listTransactions.mockResolvedValue({
-      transactions: [wireTxn("txn-3")],
-      totalCount: 60,
-    });
-    const { result } = renderHook(
-      () => ({
-        ...useInfiniteQuery({
-          ...transactionQueries.list({ needsReview: true }),
-          staleTime: Infinity,
-        }),
-      }),
-      { wrapper: createWrapper(client) },
-    );
-
-    await act(() => result.current.fetchNextPage());
-    expect(api.listTransactions).toHaveBeenLastCalledWith({
-      needsReview: true,
-      cursor: { position: 1, limit: 25, maxCreationTime: undefined },
-    });
   });
 
   it("never shows another filter's rows while loading", async () => {
@@ -449,17 +412,14 @@ describe("transactionMutations.markReviewed", () => {
     return { client, existing, page, result };
   }
 
-  const flags = (
-    client: ReturnType<typeof createTestQueryClient>,
-    key: readonly unknown[],
-  ) =>
-    client
-      .getQueryData<InfiniteData<ListTransactionsResponse>>(key)
-      ?.pages[0].transactions.map(({ id, needsReview }) => [id, needsReview]);
-
-  it("clears the flag over RPC and unflags the row in every cached list without removing it", async () => {
-    api.updateTransaction.mockReturnValue(new Promise<void>(() => {}));
-    const { client, result } = setup();
+  it("clears the flag over RPC, removes the row from the needs-review list and unflags it elsewhere", async () => {
+    let complete!: () => void;
+    api.updateTransaction.mockReturnValue(
+      new Promise<void>((resolve) => {
+        complete = resolve;
+      }),
+    );
+    const { client, page, result } = setup();
     act(() => result.current.mutate("txn-1"));
     await waitFor(() =>
       expect(api.updateTransaction).toHaveBeenCalledExactlyOnceWith({
@@ -468,34 +428,30 @@ describe("transactionMutations.markReviewed", () => {
       }),
     );
 
-    for (const key of [listKey(), reviewKey]) {
-      expect(flags(client, key)).toEqual([
-        ["txn-1", false],
-        ["txn-2", true],
-      ]);
-    }
-    expect(
-      client.getQueryData<InfiniteData<ListTransactionsResponse>>(reviewKey)
-        ?.pages[0].totalCount,
-    ).toBe(2);
-  });
-
-  it("refetches other lists and totals at once, and needs-review lists after the row has lingered", async () => {
-    api.updateTransaction.mockResolvedValue({});
-    const { client, result } = setup();
-    await act(() => result.current.mutateAsync("txn-1"));
-
-    expect(client.getQueryState(listKey())?.isInvalidated).toBe(true);
-    expect(client.getQueryState(totalsKey)?.isInvalidated).toBe(true);
-    expect(client.getQueryState(reviewKey)?.isInvalidated).toBe(false);
-
-    await waitFor(
-      () => expect(client.getQueryState(reviewKey)?.isInvalidated).toBe(true),
-      { timeout: REVIEWED_ROW_LINGER_MS + 2000 },
+    expect(client.getQueryData(reviewKey)).toEqual(
+      infinite({
+        ...page,
+        transactions: [page.transactions[1]],
+        totalCount: 1,
+      } as ListTransactionsResponse),
     );
+    expect(
+      client
+        .getQueryData<InfiniteData<ListTransactionsResponse>>(listKey())
+        ?.pages[0].transactions.map(({ id, needsReview }) => [id, needsReview]),
+    ).toEqual([
+      ["txn-1", false],
+      ["txn-2", true],
+    ]);
+
+    await act(async () => complete());
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    for (const key of [listKey(), reviewKey, totalsKey]) {
+      expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+    }
   });
 
-  it("rolls back, refetches everything at once and exposes the error when the save fails", async () => {
+  it("rolls back and exposes the error when the save fails", async () => {
     api.updateTransaction.mockRejectedValue(new Error("Save failed"));
     const { client, existing, result } = setup();
     act(() => result.current.mutate("txn-1"));
@@ -503,6 +459,5 @@ describe("transactionMutations.markReviewed", () => {
     expect(result.current.error?.message).toBe("Save failed");
     expect(client.getQueryData(listKey())).toEqual(existing);
     expect(client.getQueryData(reviewKey)).toEqual(existing);
-    expect(client.getQueryState(reviewKey)?.isInvalidated).toBe(true);
   });
 });

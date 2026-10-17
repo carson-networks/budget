@@ -12,7 +12,6 @@ type TransactionsTableProps = {
   categoryNameById: ReadonlyMap<string, string>;
   onRowOpen?: (transaction: Transaction) => void;
   renderCategory?: (transaction: Transaction) => ReactNode;
-  /** Replaces the leading placeholder cell content (e.g. a review checkbox). */
   renderLeading?: (transaction: Transaction) => ReactNode;
 };
 

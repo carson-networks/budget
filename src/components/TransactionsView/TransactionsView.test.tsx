@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AccountIntegration, AccountKind, CategoryKind } from "../../models";
 import type { Account, Category } from "../../models";
 import { stubIntersectionObserver } from "../../test/intersectionObserver.js";
-import { REVIEWED_ROW_LINGER_MS } from "../../queries/transactions.js";
 import { renderWithProviders } from "../../test/renderWithProviders.js";
 import { wireAccount, wireCategory } from "../../test/wire.js";
 import TransactionsView from "./TransactionsView.js";
@@ -196,22 +195,24 @@ describe("TransactionsView", () => {
       ).toBeTruthy();
     });
 
-    it("offers review checkboxes only in needs-review mode", async () => {
+    it("offers review check buttons only in needs-review mode", async () => {
       const user = userEvent.setup();
       listByReviewFlag();
       renderView();
       await screen.findByText("Lunch");
-      expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+      expect(
+        screen.queryAllByRole("button", { name: /as reviewed$/ }),
+      ).toHaveLength(0);
 
       await user.click(screen.getByRole("button", { name: "Needs review" }));
       expect(
-        await screen.findByRole("checkbox", {
+        await screen.findByRole("button", {
           name: "Mark Mystery charge as reviewed",
         }),
-      ).not.toBeChecked();
+      ).toBeInTheDocument();
     });
 
-    it("marks a transaction reviewed, shows a check, then drops it from the list", async () => {
+    it("marks a transaction reviewed and removes it from the list", async () => {
       const user = userEvent.setup();
       api.listTransactions.mockResolvedValue({
         transactions: [
@@ -232,7 +233,7 @@ describe("TransactionsView", () => {
       renderView("/transactions?needsReview=true");
 
       await user.click(
-        await screen.findByRole("checkbox", {
+        await screen.findByRole("button", {
           name: "Mark Mystery charge as reviewed",
         }),
       );
@@ -241,19 +242,8 @@ describe("TransactionsView", () => {
         id: "txn-2",
         needsReview: false,
       });
-      expect(
-        screen.getByRole("img", { name: "Mystery charge reviewed" }),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByRole("checkbox", {
-          name: "Mark Mystery charge as reviewed",
-        }),
-      ).not.toBeInTheDocument();
-      expect(screen.getByText("Mystery charge")).toBeInTheDocument();
-      await waitFor(
-        () =>
-          expect(screen.queryByText("Mystery charge")).not.toBeInTheDocument(),
-        { timeout: REVIEWED_ROW_LINGER_MS + 2000 },
+      await waitFor(() =>
+        expect(screen.queryByText("Mystery charge")).not.toBeInTheDocument(),
       );
       expect(screen.getByText("Second charge")).toBeInTheDocument();
     });
@@ -274,17 +264,13 @@ describe("TransactionsView", () => {
       renderView("/transactions?needsReview=true");
 
       await user.click(
-        await screen.findByRole("checkbox", {
+        await screen.findByRole("button", {
           name: "Mark Mystery charge as reviewed",
         }),
       );
 
       expect(
-        await screen.findByText(
-          "No transactions need review.",
-          {},
-          { timeout: REVIEWED_ROW_LINGER_MS + 2000 },
-        ),
+        await screen.findByText("No transactions need review."),
       ).toBeInTheDocument();
     });
 
@@ -298,7 +284,7 @@ describe("TransactionsView", () => {
       renderView("/transactions?needsReview=true");
 
       await user.click(
-        await screen.findByRole("checkbox", {
+        await screen.findByRole("button", {
           name: "Mark Mystery charge as reviewed",
         }),
       );
