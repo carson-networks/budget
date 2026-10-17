@@ -15,6 +15,7 @@ function makeTxn(index: number): Transaction {
     categoryId: "cat-1",
     amount: String(index),
     transactionName: `Txn ${index}`,
+    needsReview: false,
   };
 }
 
@@ -117,5 +118,31 @@ describe("TransactionsList", () => {
       screen.getByRole("button", { name: "Edit txn-1" }),
     ).toBeInTheDocument();
     expect(screen.queryByText("Dining")).not.toBeInTheDocument();
+  });
+
+  it("forwards the leading cell renderer for each transaction", () => {
+    renderList({
+      renderLeading: (transaction) => <button>Lead {transaction.id}</button>,
+    });
+    expect(
+      screen.getByRole("button", { name: "Lead txn-1" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the header above the table", () => {
+    renderList({ header: <button>Filter</button> });
+    const header = screen.getByRole("button", { name: "Filter" });
+    expect(header.compareDocumentPosition(screen.getByRole("table"))).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it("keeps the header when the list is empty", () => {
+    renderList({
+      transactions: [],
+      totalCount: 0,
+      header: <button>Filter</button>,
+    });
+    expect(screen.getByRole("button", { name: "Filter" })).toBeInTheDocument();
   });
 });

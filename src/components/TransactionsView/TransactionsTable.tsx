@@ -12,6 +12,7 @@ type TransactionsTableProps = {
   categoryNameById: ReadonlyMap<string, string>;
   onRowOpen?: (transaction: Transaction) => void;
   renderCategory?: (transaction: Transaction) => ReactNode;
+  renderLeading?: (transaction: Transaction) => ReactNode;
 };
 
 const COLUMN_WIDTHS = {
@@ -33,6 +34,7 @@ export function TransactionsTable({
   categoryNameById,
   onRowOpen,
   renderCategory,
+  renderLeading,
 }: TransactionsTableProps) {
   const sections = useMemo(
     () => groupTransactionsByDate(transactions),
@@ -78,6 +80,7 @@ export function TransactionsTable({
                 categoryNameById={categoryNameById}
                 onRowOpen={onRowOpen}
                 renderCategory={renderCategory}
+                renderLeading={renderLeading}
               />
             ))}
           </Table.Tbody>
@@ -120,6 +123,7 @@ function TransactionRow({
   categoryNameById,
   onRowOpen,
   renderCategory,
+  renderLeading,
 }: TransactionRowProps) {
   const accountName =
     accountNameById.get(transaction.accountId) ?? transaction.accountId;
@@ -135,7 +139,10 @@ function TransactionRow({
       style={onRowOpen ? { cursor: "pointer" } : undefined}
       onClick={onRowOpen ? () => onRowOpen(transaction) : undefined}
     >
-      <Table.Td style={{ verticalAlign: "middle", textAlign: "center" }}>
+      <Table.Td
+        style={{ verticalAlign: "middle", textAlign: "center" }}
+        onClick={renderLeading ? (event) => event.stopPropagation() : undefined}
+      >
         <Box
           style={{
             display: "flex",
@@ -144,16 +151,20 @@ function TransactionRow({
             minHeight: TABLE_LEADING_CELL_HEIGHT_PX,
           }}
         >
-          <Box
-            style={{
-              width: 24,
-              height: 24,
-              backgroundColor: "var(--mantine-color-brand-1)",
-              borderRadius: 5,
-              flexShrink: 0,
-            }}
-            aria-hidden
-          />
+          {renderLeading ? (
+            renderLeading(transaction)
+          ) : (
+            <Box
+              style={{
+                width: 24,
+                height: 24,
+                backgroundColor: "var(--mantine-color-brand-1)",
+                borderRadius: 5,
+                flexShrink: 0,
+              }}
+              aria-hidden
+            />
+          )}
         </Box>
       </Table.Td>
       <Table.Td style={{ verticalAlign: "middle" }}>{merchantName}</Table.Td>

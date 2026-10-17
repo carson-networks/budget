@@ -16,6 +16,7 @@ export type Transaction = {
   merchantName?: string;
   transactionDate?: Date;
   createdAt?: Date;
+  needsReview: boolean;
 };
 
 export type TransactionTotalsCategory = {
@@ -58,6 +59,7 @@ export function mapTransaction(wire: WireTransaction): Transaction {
     merchantName: wire.merchantName,
     transactionDate: optionalDateFromTimestamp(wire.transactionDate),
     createdAt: optionalDateFromTimestamp(wire.createdAt),
+    needsReview: wire.needsReview,
   };
 }
 

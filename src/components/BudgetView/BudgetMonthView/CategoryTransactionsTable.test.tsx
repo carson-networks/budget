@@ -19,6 +19,7 @@ function renderTable(
             categoryId: "groceries",
             amount: "-42.10",
             transactionName: "Market run",
+            needsReview: false,
           },
         ]}
         totalCount={1}

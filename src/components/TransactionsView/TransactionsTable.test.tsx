@@ -14,6 +14,7 @@ const sample: Transaction = {
   amount: "12.50",
   transactionName: "Coffee",
   merchantName: "Starbucks",
+  needsReview: false,
 };
 
 function renderTable(
@@ -73,6 +74,7 @@ describe("TransactionsTable", () => {
           accountId: "acc-missing",
           amount: "1.00",
           transactionName: "Unknown",
+          needsReview: false,
         },
       ],
       accountNameById: new Map(),
@@ -177,5 +179,28 @@ describe("TransactionsTable", () => {
     for (const cell of cells) {
       expect(cell).toHaveAttribute("data-with-column-border", "true");
     }
+  });
+
+  it("shows the placeholder in the leading cell unless renderLeading is given", () => {
+    const { container } = renderTable();
+    expect(container.querySelector("[aria-hidden]")).toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("renders renderLeading in the leading cell without opening the row", async () => {
+    const onRowOpen = vi.fn();
+    const onLeadingClick = vi.fn();
+    renderTable({
+      onRowOpen,
+      renderLeading: (transaction) => (
+        <button onClick={onLeadingClick}>
+          Lead {transaction.transactionName}
+        </button>
+      ),
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Lead Coffee" }));
+    expect(onLeadingClick).toHaveBeenCalledOnce();
+    expect(onRowOpen).not.toHaveBeenCalled();
   });
 });

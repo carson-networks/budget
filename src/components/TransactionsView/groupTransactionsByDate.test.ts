@@ -9,6 +9,7 @@ function txn(id: string, isoDate?: string): Transaction {
     amount: "1.00",
     transactionName: id,
     transactionDate: isoDate ? new Date(isoDate) : undefined,
+    needsReview: false,
   };
 }
 

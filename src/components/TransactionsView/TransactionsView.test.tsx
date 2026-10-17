@@ -50,8 +50,15 @@ const transaction = {
   transactionName: "Lunch",
 };
 
-function renderView() {
-  return renderWithProviders(<TransactionsView />);
+const flagged = {
+  ...transaction,
+  id: "txn-2",
+  transactionName: "Mystery charge",
+  needsReview: true,
+};
+
+function renderView(route = "/") {
+  return renderWithProviders(<TransactionsView />, { route });
 }
 
 describe("TransactionsView", () => {
@@ -94,12 +101,126 @@ describe("TransactionsView", () => {
     expect(
       screen.getByRole("textbox", { name: "Category for Lunch" }),
     ).toHaveValue("Dining");
+    expect(
+      screen.getByRole("button", { name: "Needs review" }),
+    ).toHaveAttribute("aria-pressed", "false");
   });
 
   it("shows the empty list message when there are no transactions", async () => {
     api.listTransactions.mockResolvedValue({ transactions: [], totalCount: 0 });
     renderView();
     expect(await screen.findByText("No transactions yet.")).toBeInTheDocument();
+  });
+
+  it("filters to transactions needing review when the toggle is pressed", async () => {
+    const user = userEvent.setup();
+    api.listTransactions.mockImplementation(
+      async ({ needsReview }: { needsReview?: boolean }) =>
+        needsReview
+          ? { transactions: [flagged], totalCount: 1 }
+          : { transactions: [transaction, flagged], totalCount: 2 },
+    );
+    renderView();
+    await screen.findByText("Lunch");
+    expect(screen.queryByRole("button", { name: /as reviewed$/ })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Needs review" }));
+    expect(
+      await screen.findByRole("button", {
+        name: "Mark Mystery charge as reviewed",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Lunch")).not.toBeInTheDocument();
+    expect(api.listTransactions).toHaveBeenLastCalledWith({
+      needsReview: true,
+      cursor: { position: 0, limit: 25 },
+    });
+
+    await user.click(screen.getByRole("button", { name: "Needs review" }));
+    expect(await screen.findByText("Lunch")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /as reviewed$/ })).toBeNull();
+  });
+
+  it("says when no transactions need review", async () => {
+    api.listTransactions.mockResolvedValue({ transactions: [], totalCount: 0 });
+    renderView("/transactions?needsReview=true");
+    expect(
+      await screen.findByText("No transactions need review."),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the toggle available while the filtered list loads", async () => {
+    const user = userEvent.setup();
+    renderView();
+    await screen.findByText("Lunch");
+
+    api.listTransactions.mockReturnValue(new Promise(() => {}));
+    await user.click(screen.getByRole("button", { name: "Needs review" }));
+
+    expect(await screen.findByText("Loading…")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Needs review" })).toBeEnabled();
+  });
+
+  it("marks the correct transaction reviewed and removes it from the list", async () => {
+    const user = userEvent.setup();
+    const second = {
+      ...flagged,
+      id: "txn-3",
+      transactionName: "Second charge",
+    };
+    api.listTransactions.mockResolvedValue({
+      transactions: [flagged, second],
+      totalCount: 2,
+    });
+    api.updateTransaction.mockImplementation(async () => {
+      // The refetch after the save sees the server's new state.
+      api.listTransactions.mockResolvedValue({
+        transactions: [second],
+        totalCount: 1,
+      });
+      return {};
+    });
+    renderView("/transactions?needsReview=true");
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Mark Mystery charge as reviewed",
+      }),
+    );
+
+    expect(api.updateTransaction).toHaveBeenCalledExactlyOnceWith({
+      id: "txn-2",
+      needsReview: false,
+    });
+    await waitFor(() =>
+      expect(screen.queryByText("Mystery charge")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText("Second charge")).toBeInTheDocument();
+  });
+
+  it("shows a dismissible review error and keeps the row", async () => {
+    const user = userEvent.setup();
+    api.listTransactions.mockResolvedValue({
+      transactions: [flagged],
+      totalCount: 1,
+    });
+    api.updateTransaction.mockRejectedValue(new Error("Save failed"));
+    renderView("/transactions?needsReview=true");
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Mark Mystery charge as reviewed",
+      }),
+    );
+
+    expect(await screen.findByText("Save failed")).toBeInTheDocument();
+    expect(screen.getByText("Could not mark as reviewed")).toBeInTheDocument();
+    expect(screen.getByText("Mystery charge")).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Dismiss review error" }),
+    );
+    expect(screen.queryByText("Save failed")).not.toBeInTheDocument();
   });
 
   it("saves the selected category for the correct transaction", async () => {

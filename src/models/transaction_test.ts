@@ -24,6 +24,7 @@ describe("mapTransaction", () => {
       merchantName: "Starbucks",
       transactionDate: timestampFromDate(txDate),
       createdAt: undefined,
+      needsReview: true,
     };
 
     expect(mapTransaction(wire)).toEqual({
@@ -35,6 +36,7 @@ describe("mapTransaction", () => {
       merchantName: "Starbucks",
       transactionDate: txDate,
       createdAt: undefined,
+      needsReview: true,
     });
   });
 
@@ -48,9 +50,11 @@ describe("mapTransaction", () => {
       transactionName: "ACH Transfer",
       transactionDate: undefined,
       createdAt: undefined,
+      needsReview: false,
     };
 
     expect(mapTransaction(wire).merchantName).toBeUndefined();
+    expect(mapTransaction(wire).needsReview).toBe(false);
   });
 });
 
