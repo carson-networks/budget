@@ -78,7 +78,7 @@ export default function TransactionsView() {
           categoryNameById={categoryNameById}
           renderCategory={categoryEditing.renderCategory}
           renderLeading={
-            needsReviewOnly ? reviewing.renderReviewCheckbox : undefined
+            needsReviewOnly ? reviewing.renderReviewControl : undefined
           }
           emptyMessage={
             needsReviewOnly ? "No transactions need review." : undefined

@@ -4,6 +4,7 @@ import {
   mutationOptions,
   queryOptions,
   type InfiniteData,
+  type QueryKey,
 } from "@tanstack/react-query";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { transactionClient } from "../connectRPC/connect.js";
@@ -16,6 +17,9 @@ import { rpc } from "./rpc.js";
 
 /** Rows fetched per request while scrolling through a transaction list. */
 export const TRANSACTIONS_PAGE_SIZE = 25;
+
+/** How long a just-reviewed row stays (as a check) in needs-review lists. */
+export const REVIEWED_ROW_LINGER_MS = 800;
 
 export type TransactionsFilter = {
   accountId?: string;
@@ -46,6 +50,11 @@ export function definedFilter({
   };
 }
 
+function isNeedsReviewList(queryKey: QueryKey) {
+  const filter = queryKey[2] as TransactionsFilter | undefined;
+  return queryKey[1] === "list" && filter?.needsReview === true;
+}
+
 export const transactionQueries = {
   all: () => ["transactions"] as const,
   lists: () => [...transactionQueries.all(), "list"] as const,
@@ -62,17 +71,32 @@ export const transactionQueries = {
     return infiniteQueryOptions({
       queryKey: [...transactionQueries.lists(), scope] as const,
       queryFn: ({ pageParam }) =>
-        rpc(transactionClient.listTransactions({ ...scope, cursor: pageParam })),
+        rpc(
+          transactionClient.listTransactions({ ...scope, cursor: pageParam }),
+        ),
       initialPageParam: {
         position: 0,
         limit: TRANSACTIONS_PAGE_SIZE,
       } as TransactionsCursor,
-      getNextPageParam: (lastPage, allPages): TransactionsCursor | undefined => {
+      getNextPageParam: (
+        lastPage,
+        allPages,
+      ): TransactionsCursor | undefined => {
+        // Rows reviewed in place are still shown but no longer match the
+        // server's needs-review set, so they don't count toward its offset.
         const loaded = allPages.reduce(
-          (count, page) => count + page.transactions.length,
+          (count, page) =>
+            count +
+            (scope.needsReview === true
+              ? page.transactions.filter(({ needsReview }) => needsReview)
+              : page.transactions
+            ).length,
           0,
         );
-        if (lastPage.transactions.length === 0 || loaded >= lastPage.totalCount) {
+        if (
+          lastPage.transactions.length === 0 ||
+          loaded >= lastPage.totalCount
+        ) {
           return undefined;
         }
         return {
@@ -182,8 +206,9 @@ export const transactionMutations = {
   }),
 
   /**
-   * Clears the review flag. The row is dropped from needs-review lists (and
-   * their total) right away and just unflagged everywhere else.
+   * Clears the review flag. The row is unflagged in every cached list right
+   * away; needs-review lists keep it for `REVIEWED_ROW_LINGER_MS` so it can
+   * show as reviewed, then refetch it away. Everything else refetches at once.
    */
   markReviewed: mutationOptions({
     mutationKey: ["transactions", "markReviewed"],
@@ -198,39 +223,44 @@ export const transactionMutations = {
       patchQueries<InfiniteData<ListTransactionsResponse>>(
         context.client,
         { queryKey: transactionQueries.lists() },
-        (data, queryKey) => {
-          const filter = queryKey[2] as TransactionsFilter | undefined;
-          const holdsRow = data.pages.some((page) =>
-            page.transactions.some(({ id }) => id === transactionId),
-          );
-          if (filter?.needsReview === true && holdsRow) {
-            return {
-              ...data,
-              pages: data.pages.map((page) => ({
-                ...page,
-                transactions: page.transactions.filter(
-                  ({ id }) => id !== transactionId,
-                ),
-                totalCount: page.totalCount - 1,
-              })),
-            };
-          }
-          return {
-            ...data,
-            pages: data.pages.map((page) => ({
-              ...page,
-              transactions: page.transactions.map((transaction) =>
-                transaction.id === transactionId
-                  ? { ...transaction, needsReview: false }
-                  : transaction,
-              ),
-            })),
-          };
-        },
+        (data) => ({
+          ...data,
+          pages: data.pages.map((page) => ({
+            ...page,
+            transactions: page.transactions.map((transaction) =>
+              transaction.id === transactionId
+                ? { ...transaction, needsReview: false }
+                : transaction,
+            ),
+          })),
+        }),
       ),
     onError: (_error, _variables, onMutateResult) => {
       onMutateResult?.rollback();
     },
-    ...invalidatesOnSettled(transactionQueries.all()),
+    onSettled: async (
+      _data,
+      error,
+      _transactionId,
+      _onMutateResult,
+      context,
+    ) => {
+      const lingers = (queryKey: QueryKey) =>
+        error === null && isNeedsReviewList(queryKey);
+      await context.client.invalidateQueries({
+        queryKey: transactionQueries.all(),
+        predicate: (query) => !lingers(query.queryKey),
+      });
+      if (error === null) {
+        setTimeout(
+          () =>
+            void context.client.invalidateQueries({
+              queryKey: transactionQueries.lists(),
+              predicate: (query) => isNeedsReviewList(query.queryKey),
+            }),
+          REVIEWED_ROW_LINGER_MS,
+        );
+      }
+    },
   }),
 };
