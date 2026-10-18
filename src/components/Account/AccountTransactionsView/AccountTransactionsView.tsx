@@ -2,7 +2,9 @@ import { Alert, Button } from "@mantine/core";
 import { IconArrowLeft } from "@tabler/icons-react";
 import { Link, useParams } from "react-router-dom";
 import { ViewShell } from "../../shared/ViewShell.js";
+import { CategoryUpdateErrorAlert } from "../../TransactionsView/CategoryUpdateErrorAlert.js";
 import { TransactionsList } from "../../TransactionsView/TransactionsList.js";
+import { useTransactionCategoryEditing } from "../../TransactionsView/useTransactionCategoryEditing.js";
 import { useAccountTransactionsData } from "./useAccountTransactionsData.js";
 import { LoadingState } from "../../shared/LoadingState.js";
 import { ErrorAlert } from "../../shared/ErrorAlert.js";
@@ -14,6 +16,7 @@ export default function AccountTransactionsView() {
 
 function AccountTransactionsContent({ accountId }: { accountId: string }) {
   const data = useAccountTransactionsData(accountId);
+  const categoryEditing = useTransactionCategoryEditing(data.categories);
 
   return (
     <ViewShell
@@ -33,6 +36,10 @@ function AccountTransactionsContent({ accountId }: { accountId: string }) {
       >
         Back to accounts
       </Button>
+      <CategoryUpdateErrorAlert
+        error={categoryEditing.error}
+        onDismiss={categoryEditing.dismissError}
+      />
       {data.error ? (
         <ErrorAlert error={data.error} />
       ) : data.isLoading ? (
@@ -51,6 +58,7 @@ function AccountTransactionsContent({ accountId }: { accountId: string }) {
           onLoadMore={data.loadMore}
           accountNameById={data.accountNameById}
           categoryNameById={data.categoryNameById}
+          renderCategory={categoryEditing.renderCategory}
           emptyMessage="No transactions for this account yet."
         />
       )}

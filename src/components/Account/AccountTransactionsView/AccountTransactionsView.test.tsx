@@ -6,6 +6,9 @@ import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { stubIntersectionObserver } from "../../../test/intersectionObserver.js";
 import { theme } from "../../../theme.js";
+import { CategoryKind } from "../../../models";
+import type { Category } from "../../../models";
+import { wireCategory } from "../../../test/wire.js";
 import AccountTransactionsView from "./AccountTransactionsView.js";
 import App from "../../../App.js";
 
@@ -13,11 +16,15 @@ const api = vi.hoisted(() => ({
   listAccounts: vi.fn(),
   listCategories: vi.fn(),
   listTransactions: vi.fn(),
+  updateTransaction: vi.fn(),
 }));
 vi.mock("../../../connectRPC/connect.js", () => ({
   accountClient: { listAccounts: api.listAccounts },
   categoryClient: { listCategories: api.listCategories },
-  transactionClient: { listTransactions: api.listTransactions },
+  transactionClient: {
+    listTransactions: api.listTransactions,
+    updateTransaction: api.updateTransaction,
+  },
 }));
 
 const account = {
@@ -28,6 +35,14 @@ const account = {
   balance: "100",
   startingBalance: "0",
 };
+const dining: Category = {
+  id: "cat-1",
+  name: "Dining",
+  isParent: false,
+  isDisabled: false,
+  categoryKind: CategoryKind.Expense,
+};
+const groceries: Category = { ...dining, id: "cat-2", name: "Groceries" };
 const transaction = {
   id: "txn-1",
   accountId: "acc-1",
@@ -42,7 +57,7 @@ function renderView(path = "/accounts/acc-1", fullApp = false) {
     defaultOptions: { queries: { retry: false } },
   });
   return render(
-    <MantineProvider theme={theme}>
+    <MantineProvider theme={theme} env="test">
       <QueryClientProvider client={client}>
         <MemoryRouter initialEntries={[path]}>
           {fullApp ? (
@@ -71,12 +86,13 @@ beforeEach(() => {
   vi.clearAllMocks();
   api.listAccounts.mockResolvedValue({ accounts: [account] });
   api.listCategories.mockResolvedValue({
-    categories: [{ id: "cat-1", name: "Dining", categoryType: 1 }],
+    categories: [wireCategory(dining), wireCategory(groceries)],
   });
   api.listTransactions.mockResolvedValue({
     transactions: [transaction],
     totalCount: 1,
   });
+  api.updateTransaction.mockResolvedValue({});
 });
 
 describe("AccountTransactionsView", () => {
@@ -224,5 +240,51 @@ describe("AccountTransactionsView", () => {
       accountId: "acc-2",
       cursor: { position: 0, limit: 25, maxCreationTime: undefined },
     });
+  });
+
+  it("saves a new category for the account's transaction", async () => {
+    const user = userEvent.setup();
+    api.updateTransaction.mockImplementation(async () => {
+      // The refetch after the save sees the server's new state.
+      api.listTransactions.mockResolvedValue({
+        transactions: [{ ...transaction, categoryId: "cat-2" }],
+        totalCount: 1,
+      });
+      return {};
+    });
+    renderView();
+    await user.click(
+      await screen.findByRole("textbox", { name: "Category for Lunch" }),
+    );
+    await user.click(screen.getByRole("option", { name: "Groceries" }));
+    expect(api.updateTransaction).toHaveBeenCalledExactlyOnceWith({
+      id: "txn-1",
+      categoryId: "cat-2",
+    });
+    expect(
+      await screen.findByRole("textbox", { name: "Category for Lunch" }),
+    ).toHaveValue("Groceries");
+    expect(screen.getByText("Lunch")).toBeInTheDocument();
+  });
+
+  it("shows a dismissible save error and restores the previous category", async () => {
+    const user = userEvent.setup();
+    api.updateTransaction.mockRejectedValue(new Error("Save failed"));
+    renderView();
+    await user.click(
+      await screen.findByRole("textbox", { name: "Category for Lunch" }),
+    );
+    await user.click(screen.getByRole("option", { name: "Groceries" }));
+
+    expect(await screen.findByText("Save failed")).toBeInTheDocument();
+    expect(screen.getByText("Could not update category")).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "Category for Lunch" }),
+    ).toHaveValue("Dining");
+
+    await user.click(
+      screen.getByRole("button", { name: "Dismiss category update error" }),
+    );
+    expect(screen.queryByText("Save failed")).not.toBeInTheDocument();
   });
 });

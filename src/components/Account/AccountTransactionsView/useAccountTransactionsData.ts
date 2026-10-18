@@ -3,8 +3,13 @@ import { useReferenceData } from "../../../hooks/useReferenceData.js";
 import { useTransactions } from "../../../hooks/useTransactions.js";
 
 export function useAccountTransactionsData(accountId: string) {
-  const { accountsQuery, categoriesQuery, accountNameById, categoryNameById } =
-    useReferenceData();
+  const {
+    accountsQuery,
+    categoriesQuery,
+    categories,
+    accountNameById,
+    categoryNameById,
+  } = useReferenceData();
   const account = accountsQuery.data?.find(
     (account) => account.id === accountId,
   );
@@ -62,13 +67,13 @@ export function useAccountTransactionsData(accountId: string) {
   return {
     ...transactionsQuery,
     account,
+    categories,
     accountNameById,
     categoryNameById,
     isLoading:
       accountsQuery.isLoading ||
       (!account && !!hasMoreAccounts && !accountsQuery.error) ||
-      (!!account &&
-        (categoriesQuery.isLoading || transactionsQuery.isLoading)),
+      (!!account && (categoriesQuery.isLoading || transactionsQuery.isLoading)),
     error:
       accountsQuery.error ?? categoriesQuery.error ?? transactionsQuery.error,
   };
