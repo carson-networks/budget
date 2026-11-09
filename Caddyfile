@@ -1,0 +1,45 @@
+{
+	admin off
+	auto_https off
+	persist_config off
+}
+
+:8080 {
+	root * /srv
+	encode zstd gzip
+
+	header {
+		-Server
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "accelerometer=(), autoplay=(), bluetooth=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), hid=(), idle-detection=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), serial=(), usb=(), xr-spatial-tracking=()"
+		Cross-Origin-Opener-Policy "same-origin-allow-popups"
+		Cross-Origin-Resource-Policy "same-origin"
+		X-Robots-Tag "noindex, nofollow"
+		# Plaid Link sets inline style attributes, hence style-src-attr; see plaid.com/docs/link/web.
+		Content-Security-Policy "default-src 'self'; script-src 'self' https://cdn.plaid.com/link/v2/stable/link-initialize.js; style-src 'self' 'nonce-{http.request.uuid}'; style-src-attr 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://production.plaid.com https://sandbox.plaid.com {$CSP_CONNECT_SRC}; frame-src https://cdn.plaid.com/; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+	}
+
+	handle /healthz {
+		respond "ok" 200
+	}
+
+	# Missing hashed assets must 404, never fall back to index.html.
+	handle /assets/* {
+		@exists file
+		header @exists Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	handle {
+		header Cache-Control "no-cache"
+		@spa {
+			not file
+			not path_regexp \.[^/]+$
+		}
+		rewrite @spa /index.html
+		# Fills the per-request CSP nonce that Vite's html.cspNonce leaves in index.html.
+		templates
+		file_server
+	}
+}

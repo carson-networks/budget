@@ -1,0 +1,17 @@
+.git
+.github
+.idea
+.agents
+.vscode
+node_modules
+dist
+dist-ssr
+coverage
+*.log
+*.local
+.env*
+.DS_Store
+Dockerfile
+.dockerignore
+README.md
+spec
