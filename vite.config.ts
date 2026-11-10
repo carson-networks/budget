@@ -9,10 +9,10 @@ export default defineConfig(({ command }) => ({
       ? { cspNonce: "{{placeholder `http.request.uuid`}}" }
       : undefined,
   server: {
-    // Mirrors the Caddyfile so dev is same-origin too.
     proxy: {
-      "^/[a-z]+\\.v1\\.[A-Za-z]+Service/": {
+      "/api": {
         target: process.env.API_UPSTREAM ?? "http://127.0.0.1:9447",
+        rewrite: (path) => path.replace(/^\/api/, ""),
       },
     },
     watch: {

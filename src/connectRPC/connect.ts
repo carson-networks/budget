@@ -7,8 +7,8 @@ import { PlaidService } from "./gen/plaid/v1/plaid_pb.js";
 import { TransactionService } from "./gen/transaction/v1/transaction_pb.js";
 
 const transport = createConnectTransport({
-  // Same origin: Caddy (and the Vite dev server) proxy RPC paths to budget-server.
-  baseUrl: "/",
+  // The API is served same-origin under /api; the deployment's proxy (or Vite in dev) routes it.
+  baseUrl: "/api",
   useBinaryFormat: false,
 });
 

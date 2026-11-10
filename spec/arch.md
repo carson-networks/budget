@@ -234,7 +234,7 @@ import { createConnectTransport } from "@connectrpc/connect-web";
 import { AccountService } from "./gen/account/v1/account_pb.js";
 
 const transport = createConnectTransport({
-  baseUrl: "/",
+  baseUrl: "/api",
   useBinaryFormat: false,
 });
 

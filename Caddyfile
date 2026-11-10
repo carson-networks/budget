@@ -20,25 +20,13 @@
 		Content-Security-Policy "default-src 'self'; script-src 'self' https://cdn.plaid.com/link/v2/stable/link-initialize.js; style-src 'self' 'nonce-{http.request.uuid}'; style-src-attr 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://production.plaid.com https://sandbox.plaid.com; frame-src https://cdn.plaid.com/; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 	}
 
-	# Before the host check so the container healthcheck works on 127.0.0.1.
 	handle /healthz {
 		respond "ok" 200
 	}
 
-	# Blocks DNS rebinding: only serve hostnames the deployment names.
-	@foreign_host not host {$SITE_HOSTS}
-	handle @foreign_host {
-		respond "Forbidden" 403
-	}
-
-	@api {
-		method POST
-		path /account.v1.AccountService/* /budget.v1.BudgetService/* /category.v1.CategoryService/* /plaid.v1.PlaidService/* /transaction.v1.TransactionService/*
-	}
-	handle @api {
-		reverse_proxy {$API_UPSTREAM} {
-			header_down -Access-Control-*
-		}
+	# The deployment routes /api to the API; reaching this image means it isn't, so never serve index.html.
+	handle /api/* {
+		respond 404
 	}
 
 	# Missing hashed assets must 404, never fall back to index.html.
