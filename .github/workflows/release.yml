@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+  workflow_dispatch:
 
 jobs:
   release:
@@ -20,7 +21,6 @@ jobs:
         id: releaser
         uses: carson-networks/releaser@v1.0.7
         with:
-          # A PAT is needed so the pushed tag triggers the Docker workflow.
           github_token: ${{ secrets.RELEASE_PAT }}
           default_bump: patch
 
