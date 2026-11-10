@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePlaidLink } from "react-plaid-link";
 import type { PlaidLinkOnSuccessMetadata } from "react-plaid-link";
+import { cspNonce } from "../cspNonce.js";
 import { useExchangePlaidToken } from "./useExchangePlaidToken.js";
 import { exchangeTokenInputFromPlaidSuccess } from "./plaidWire.js";
 import {
@@ -41,6 +42,7 @@ export function useConnectedAccountFlow(onExchangeSuccess: () => void) {
 
   const { open: openPlaidLink, ready } = usePlaidLink({
     token: linkToken,
+    cspNonce,
     onSuccess: onPlaidSuccess,
     onExit: () => {
       setLinkToken(null);

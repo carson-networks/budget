@@ -7,6 +7,7 @@ import BudgetCategoryTransactionsView from "./components/BudgetView/BudgetMonthV
 import BudgetView from "./components/BudgetView/BudgetView";
 import CategoriesView from "./components/Category/CategoriesView/CategoriesView";
 import TransactionsView from "./components/TransactionsView/TransactionsView";
+import { getStyleNonce } from "./cspNonce";
 import { HomePage } from "./pages/HomePage";
 import {
   preferenceToRootColorSchemeProps,
@@ -21,7 +22,11 @@ function App() {
   return (
     <>
       <ColorSchemeScript {...colorProps} />
-      <MantineProvider theme={theme} {...colorProps}>
+      <MantineProvider
+        theme={theme}
+        getStyleNonce={getStyleNonce}
+        {...colorProps}
+      >
         <Routes>
           <Route path="/" element={<AppShell />}>
             <Route index element={<HomePage />} />
