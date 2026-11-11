@@ -15,11 +15,11 @@ jobs:
       pull-requests: read # list merged PRs for the changelog
 
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
       - name: Create release
         id: releaser
-        uses: carson-networks/releaser@v1.0.7
+        uses: carson-networks/releaser@dd5bc27308bfec2836679a78d0b7f46d5fa34bfc # v1.0.7
         with:
           github_token: ${{ secrets.RELEASE_PAT }}
           default_bump: minor
