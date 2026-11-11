@@ -67,4 +67,10 @@ describe("buildBudgetMonthData", () => {
     expect(data.actualByCategoryId.size).toBe(0);
     expect(data.budgetByCategoryId.size).toBe(0);
   });
+
+  it("lists income segments before expense segments", () => {
+    const data = buildBudgetMonthData([food, groceries, salary], [], undefined, march);
+
+    expect(data.segments.map((s) => s.root.id)).toEqual(["salary", "food"]);
+  });
 });

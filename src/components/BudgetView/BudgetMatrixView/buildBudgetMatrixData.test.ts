@@ -71,10 +71,10 @@ describe("buildBudgetMatrixData", () => {
       months,
     );
     expect(segments.map((segment) => segment.root.id)).toEqual([
-      "food",
       "salary",
+      "food",
     ]);
-    expect(segments[0].children.map((child) => child.id)).toEqual([
+    expect(segments[1].children.map((child) => child.id)).toEqual([
       "groceries",
     ]);
     const december = monthData.get("2025-12")!;
