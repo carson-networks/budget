@@ -49,20 +49,20 @@ function BudgetCellEditor({
   );
 
   const commit = () => {
-    const raw =
-      val === "" || val === undefined
-        ? NaN
-        : typeof val === "string"
-          ? parseFloat(val)
-          : val;
+    const isEmpty = val === "" || val === undefined;
+    if (isEmpty && amountStr === undefined) return;
+    const raw = isEmpty
+      ? NaN
+      : typeof val === "string"
+        ? parseFloat(val)
+        : val;
     const num = Number.isNaN(Number(raw)) ? 0 : Number(raw);
     const next = normalizedAmountString(num);
     const prevNum = amountStr !== undefined ? parseFloat(amountStr) : NaN;
     const prevNorm = Number.isNaN(prevNum)
-      ? "0"
+      ? undefined
       : normalizedAmountString(prevNum);
     if (next === prevNorm) return;
-    if (next === "0" && amountStr === undefined) return;
     void Promise.resolve(onCommit(next)).catch(() => {
       setVal(parseToNumber(amountStr));
     });
