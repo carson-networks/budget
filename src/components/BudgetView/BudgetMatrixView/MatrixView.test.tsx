@@ -160,7 +160,7 @@ describe("BudgetMatrixView", () => {
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     expect(rowCells("Groceries").map((cell) => cell.textContent)).toEqual([
       "—",
-      "-$320",
+      "$320",
       "—",
     ]);
     expect(rowCells("Total")[1]).toHaveTextContent("$4,780");

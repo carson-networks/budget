@@ -10,7 +10,11 @@ import {
 describe("matrix values", () => {
   it.each([
     [MatrixValueMode.Budgeted, CategoryKind.Expense, "400", -320, 400],
-    [MatrixValueMode.Actual, CategoryKind.Expense, "400", -320, -320],
+    [MatrixValueMode.Actual, CategoryKind.Expense, "400", -320, 320],
+    [MatrixValueMode.Actual, CategoryKind.Expense, "400", 25, -25],
+    [MatrixValueMode.Actual, CategoryKind.Expense, "400", 0, 0],
+    [MatrixValueMode.Actual, CategoryKind.Unspecified, "400", -320, 320],
+    [MatrixValueMode.Actual, CategoryKind.Income, "5000", 5100, 5100],
     [MatrixValueMode.Net, CategoryKind.Expense, "400", -320, 80],
     [MatrixValueMode.Net, CategoryKind.Income, "5000", 5100, 100],
     [MatrixValueMode.Net, CategoryKind.Unspecified, "400", -450, -50],

@@ -1,4 +1,4 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CategoryKind, type Category } from "../../../models";
@@ -105,7 +105,14 @@ describe("BudgetMonthView", () => {
     expect(screen.getAllByText("Difference").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Month totals")).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "Income" })).toBeInTheDocument();
-    expect(screen.getByRole("cell", { name: "Expenses" })).toBeInTheDocument();
+    const expensesRow = screen
+      .getByRole("cell", { name: "Expenses" })
+      .closest("tr")!;
+    expect(
+      within(expensesRow)
+        .getAllByRole("cell")
+        .map((cell) => cell.textContent),
+    ).toEqual(["Expenses", "$400.00", "$320.00", "$80.00"]);
     expect(screen.getByRole("cell", { name: "Net" })).toBeInTheDocument();
     // Parent categories are not editable; leaf rows expose budget inputs.
     expect(screen.getAllByRole("textbox")).toHaveLength(2);

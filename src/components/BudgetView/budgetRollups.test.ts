@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CategoryKind, type Category } from "../../models";
 import {
   categoryBudgetDifference,
+  displayedActual,
   rollUpBudgetByType,
 } from "./budgetRollups.js";
 
@@ -71,6 +72,20 @@ describe("rollUpBudgetByType", () => {
     expect(summary.income.budget).toBe(1000);
     expect(summary.expense.budget).toBe(0);
     expect(summary.net.actual).toBe(0);
+  });
+});
+
+describe("displayedActual", () => {
+  it("shows expense spending as positive and refunds as negative", () => {
+    expect(displayedActual(CategoryKind.Expense, -320)).toBe(320);
+    expect(displayedActual(CategoryKind.Unspecified, -45.5)).toBe(45.5);
+    expect(displayedActual(CategoryKind.Expense, 25)).toBe(-25);
+    expect(Object.is(displayedActual(CategoryKind.Expense, 0), 0)).toBe(true);
+  });
+
+  it("leaves income unchanged", () => {
+    expect(displayedActual(CategoryKind.Income, 5100)).toBe(5100);
+    expect(displayedActual(CategoryKind.Income, -50)).toBe(-50);
   });
 });
 

@@ -55,6 +55,8 @@ describe("SegmentBudgetTable", () => {
     expect(screen.getByText("Difference")).toBeInTheDocument();
     // Expense difference: 400 + (-320) = 80
     expect(screen.getByText("$80.00")).toBeInTheDocument();
+    expect(screen.getByText("$320.00")).toBeInTheDocument();
+    expect(screen.queryByText("-$320.00")).not.toBeInTheDocument();
 
     const inputs = screen.getAllByRole("textbox");
     expect(inputs).toHaveLength(1);
@@ -125,7 +127,7 @@ describe("SegmentBudgetTable", () => {
 
     it("opens a leaf category from its row or name button", async () => {
       const onOpenCategory = renderOpenable(segment);
-      await userEvent.click(screen.getByText("-$320.00"));
+      await userEvent.click(screen.getByText("$320.00"));
       expect(onOpenCategory).toHaveBeenLastCalledWith(groceries);
 
       screen
