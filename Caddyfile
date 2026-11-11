@@ -17,11 +17,16 @@
 		Cross-Origin-Resource-Policy "same-origin"
 		X-Robots-Tag "noindex, nofollow"
 		# Plaid Link sets inline style attributes, hence style-src-attr; see plaid.com/docs/link/web.
-		Content-Security-Policy "default-src 'self'; script-src 'self' https://cdn.plaid.com/link/v2/stable/link-initialize.js; style-src 'self' 'nonce-{http.request.uuid}'; style-src-attr 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://production.plaid.com https://sandbox.plaid.com {$CSP_CONNECT_SRC}; frame-src https://cdn.plaid.com/; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		Content-Security-Policy "default-src 'self'; script-src 'self' https://cdn.plaid.com/link/v2/stable/link-initialize.js; style-src 'self' 'nonce-{http.request.uuid}'; style-src-attr 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://production.plaid.com https://sandbox.plaid.com; frame-src https://cdn.plaid.com/; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 	}
 
 	handle /healthz {
 		respond "ok" 200
+	}
+
+	# The deployment routes /api to the API; reaching this image means it isn't, so never serve index.html.
+	handle /api/* {
+		respond 404
 	}
 
 	# Missing hashed assets must 404, never fall back to index.html.

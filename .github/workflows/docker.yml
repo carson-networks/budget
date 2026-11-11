@@ -57,8 +57,6 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           sbom: true
-          build-args: |
-            VITE_API_URL=${{ vars.VITE_API_URL }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

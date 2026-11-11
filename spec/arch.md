@@ -234,7 +234,7 @@ import { createConnectTransport } from "@connectrpc/connect-web";
 import { AccountService } from "./gen/account/v1/account_pb.js";
 
 const transport = createConnectTransport({
-  baseUrl: import.meta.env.VITE_API_URL ?? "http://127.0.0.1:9447",
+  baseUrl: "/api",
   useBinaryFormat: false,
 });
 

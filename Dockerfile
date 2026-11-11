@@ -11,10 +11,7 @@ RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
 
 COPY . .
 
-ARG VITE_API_URL
-ENV VITE_API_URL=${VITE_API_URL}
-RUN node -e 'const v = process.env.VITE_API_URL; if (v && new URL(v).origin !== v) { console.error(`VITE_API_URL must be a bare origin like https://api.example.com, got: ${v}`); process.exit(1); }' \
-    && pnpm run build
+RUN pnpm run build
 
 FROM caddy:2-alpine
 COPY Caddyfile /etc/caddy/Caddyfile
@@ -26,10 +23,6 @@ RUN caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile \
     && addgroup -S app && adduser -S -G app -H -s /sbin/nologin app
 USER app
 EXPOSE 8080
-
-# Derived from the same build arg as the bundle so the CSP always allows the API it calls.
-ARG VITE_API_URL
-ENV CSP_CONNECT_SRC=${VITE_API_URL}
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1

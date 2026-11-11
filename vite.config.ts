@@ -9,6 +9,12 @@ export default defineConfig(({ command }) => ({
       ? { cspNonce: "{{placeholder `http.request.uuid`}}" }
       : undefined,
   server: {
+    proxy: {
+      "/api": {
+        target: process.env.API_UPSTREAM ?? "http://127.0.0.1:9447",
+        rewrite: (path) => path.replace(/^\/api/, ""),
+      },
+    },
     watch: {
       usePolling: true,
     },

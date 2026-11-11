@@ -6,10 +6,9 @@ import { CategoryService } from "./gen/category/v1/category_pb.js";
 import { PlaidService } from "./gen/plaid/v1/plaid_pb.js";
 import { TransactionService } from "./gen/transaction/v1/transaction_pb.js";
 
-const baseUrl = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:9447";
-
 const transport = createConnectTransport({
-  baseUrl,
+  // The API is served same-origin under /api; the deployment's proxy (or Vite in dev) routes it.
+  baseUrl: "/api",
   useBinaryFormat: false,
 });
 
