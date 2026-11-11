@@ -246,7 +246,7 @@ The option factories under **`src/queries/`** call these clients (always through
 see them. Plaid link-token and exchange options live under **`src/plaid/`**. Demo /
 mock transport is handled from **`src/connectRPC/runtime.ts`** (e.g. URL `?mock=true`).
 
-The **`react-plaid-link`** script is injected by the library when **`AccountsView`** runs **`plaid/useConnectedAccountFlow.ts`** (per Plaid’s React integration path). **`vite.config.ts`** sends **`Permissions-Policy`** in dev; mirror that header in production if **`encrypted-media`** warnings persist. ConnectRPC **`plaidClient`** remains in **`connectRPC/connect.ts`**.
+The **`react-plaid-link`** script is injected by the library when **`AccountsView`** runs **`plaid/useConnectedAccountFlow.ts`** (per Plaid’s React integration path). **`usePlaidLink`** gets **`cspNonce`** so Link nonces its styles; its `link-stylesheet-test-*` CSP error is an intentional probe and expected. Link's `encrypted-media`/`bluetooth` permission violations come from its cross-origin iframe and can't be fixed by our **`Permissions-Policy`**. ConnectRPC **`plaidClient`** remains in **`connectRPC/connect.ts`**.
 
 ## Query Layer Conventions
 
