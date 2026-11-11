@@ -51,11 +51,7 @@ function BudgetCellEditor({
   const commit = () => {
     const isEmpty = val === "" || val === undefined;
     if (isEmpty && amountStr === undefined) return;
-    const raw = isEmpty
-      ? NaN
-      : typeof val === "string"
-        ? parseFloat(val)
-        : val;
+    const raw = isEmpty ? NaN : typeof val === "string" ? parseFloat(val) : val;
     const num = Number.isNaN(Number(raw)) ? 0 : Number(raw);
     const next = normalizedAmountString(num);
     const prevNum = amountStr !== undefined ? parseFloat(amountStr) : NaN;
