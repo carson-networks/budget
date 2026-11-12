@@ -42,6 +42,28 @@ describe("BudgetCellInput", () => {
     expect(onCommit).not.toHaveBeenCalled();
   });
 
+  it("commits $0 when the month has no budget yet", async () => {
+    const user = userEvent.setup();
+    const { onCommit } = renderCell({ amountStr: undefined });
+    const input = screen.getByRole("textbox");
+
+    await user.type(input, "0");
+    await user.tab();
+
+    expect(onCommit).toHaveBeenCalledWith("0");
+  });
+
+  it("does not commit when an empty cell is left empty", async () => {
+    const user = userEvent.setup();
+    const { onCommit } = renderCell({ amountStr: undefined });
+    const input = screen.getByRole("textbox");
+
+    await user.click(input);
+    await user.tab();
+
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+
   it("reverts the field when onCommit rejects", async () => {
     const user = userEvent.setup();
     const onCommit = vi.fn().mockRejectedValue(new Error("nope"));
