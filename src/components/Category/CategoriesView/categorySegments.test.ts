@@ -87,4 +87,46 @@ describe("sortCategorySegmentsForDisplay", () => {
     expect(sorted.map((s) => s.root.name)).toEqual(["Aaa", "Zzz"]);
     expect(sorted[0].children.map((c) => c.name)).toEqual(["Apple", "Banana"]);
   });
+
+  it("orders income parents before expense parents within enabled and disabled groups", () => {
+    const segments = buildCategorySegments([
+      makeCategory({ id: "food", name: "Food", isParent: true }),
+      makeCategory({
+        id: "salary",
+        name: "Salary",
+        isParent: true,
+        categoryKind: CategoryKind.Income,
+      }),
+      makeCategory({
+        id: "bonus",
+        name: "Bonus",
+        isParent: true,
+        categoryKind: CategoryKind.Income,
+      }),
+      makeCategory({ id: "auto", name: "Auto", isParent: true }),
+      makeCategory({
+        id: "old-income",
+        name: "Old Income",
+        isParent: true,
+        isDisabled: true,
+        categoryKind: CategoryKind.Income,
+      }),
+      makeCategory({
+        id: "old-expense",
+        name: "Archive",
+        isParent: true,
+        isDisabled: true,
+      }),
+    ]);
+
+    const sorted = sortCategorySegmentsForDisplay(segments);
+    expect(sorted.map((s) => s.root.name)).toEqual([
+      "Bonus",
+      "Salary",
+      "Auto",
+      "Food",
+      "Old Income",
+      "Archive",
+    ]);
+  });
 });
