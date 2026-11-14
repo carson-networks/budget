@@ -1,0 +1,32 @@
+name: iOS
+
+on:
+  push:
+    # Branches only: path filters are skipped for tag pushes, so tags would always run it.
+    branches:
+      - "**"
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Lint, build and test
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      # Tool versions come from ios/mise.toml.
+      - uses: jdx/mise-action@v5.2.8
+        with:
+          working_directory: ios
+
+      - run: xcodebuild -version
+
+      - run: make -C ios lint
+
+      - run: make -C ios test
