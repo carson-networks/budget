@@ -6,6 +6,10 @@ on:
       - "**"
     tags:
       - "v*"
+    # Path filters are not evaluated for tag pushes, so releases still build.
+    paths-ignore:
+      - "ios/**"
+      - "docs/**"
 
 env:
   IMAGE: ghcr.io/${{ github.repository }}
