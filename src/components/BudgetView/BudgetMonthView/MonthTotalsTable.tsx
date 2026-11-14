@@ -1,7 +1,7 @@
 import { Table, Text } from "@mantine/core";
-import { formatCurrency } from "../../../models";
+import { CategoryKind, formatCurrency } from "../../../models";
 import { SectionCard } from "../../shared/SectionCard.js";
-import type { BudgetRollupSummary } from "../budgetRollups.js";
+import { displayedActual, type BudgetRollupSummary } from "../budgetRollups.js";
 
 type MonthTotalsTableProps = {
   monthSummary: BudgetRollupSummary;
@@ -56,7 +56,12 @@ export function MonthTotalsTable({ monthSummary }: MonthTotalsTableProps) {
               {formatAmount(monthSummary.expense.budget)}
             </Table.Td>
             <Table.Td style={{ textAlign: "right" }}>
-              {formatAmount(monthSummary.expense.actual)}
+              {formatAmount(
+                displayedActual(
+                  CategoryKind.Expense,
+                  monthSummary.expense.actual,
+                ),
+              )}
             </Table.Td>
             <Table.Td style={{ textAlign: "right", fontWeight: 600 }}>
               {formatAmount(monthSummary.expense.difference)}

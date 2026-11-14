@@ -1,6 +1,6 @@
 import { Text, UnstyledButton } from "@mantine/core";
 import { formatCurrency, type CategoryKind } from "../../../models";
-import { categoryBudgetDifference } from "../budgetRollups.js";
+import { categoryBudgetDifference, displayedActual } from "../budgetRollups.js";
 
 function parseBudgetAmount(raw: string | undefined): number | undefined {
   if (raw === undefined) return undefined;
@@ -8,7 +8,13 @@ function parseBudgetAmount(raw: string | undefined): number | undefined {
   return Number.isNaN(n) ? undefined : n;
 }
 
-export function ActualCell({ value }: { value: number | undefined }) {
+export function ActualCell({
+  categoryKind,
+  value,
+}: {
+  categoryKind: CategoryKind;
+  value: number | undefined;
+}) {
   if (value === undefined) {
     return (
       <Text span c="dimmed" size="sm">
@@ -16,7 +22,7 @@ export function ActualCell({ value }: { value: number | undefined }) {
       </Text>
     );
   }
-  return <>{formatCurrency(value.toFixed(2))}</>;
+  return <>{formatCurrency(displayedActual(categoryKind, value).toFixed(2))}</>;
 }
 
 export function DifferenceCell({

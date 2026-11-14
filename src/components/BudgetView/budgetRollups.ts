@@ -44,6 +44,18 @@ export function categoryBudgetDifference(
   return b + a;
 }
 
+/**
+ * Expense actuals arrive as negative outflows; show spending as positive so a
+ * negative value only appears when refunds outweigh spending. `0 - actual`
+ * avoids rendering "-$0.00" for a zero total.
+ */
+export function displayedActual(
+  categoryKind: CategoryKind,
+  actual: number,
+): number {
+  return categoryKind === CategoryKind.Income ? actual : 0 - actual;
+}
+
 export function rollUpBudgetByType(
   visibleCategories: Category[],
   getBudget: (categoryId: string) => number | undefined,

@@ -156,7 +156,7 @@ export function SegmentBudgetTable({
               )}
             </Table.Td>
             <Table.Td style={{ textAlign: "right", verticalAlign: "middle" }}>
-              <ActualCell value={rootActual} />
+              <ActualCell categoryKind={root.categoryKind} value={rootActual} />
             </Table.Td>
             <Table.Td style={{ textAlign: "right", verticalAlign: "middle" }}>
               <DifferenceCell
@@ -199,7 +199,10 @@ export function SegmentBudgetTable({
                 <Table.Td
                   style={{ textAlign: "right", verticalAlign: "middle" }}
                 >
-                  <ActualCell value={actualNum} />
+                  <ActualCell
+                    categoryKind={row.categoryKind}
+                    value={actualNum}
+                  />
                 </Table.Td>
                 <Table.Td
                   style={{ textAlign: "right", verticalAlign: "middle" }}

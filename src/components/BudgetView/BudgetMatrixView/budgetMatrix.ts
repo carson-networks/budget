@@ -1,6 +1,7 @@
 import type { CategoryKind } from "../../../models";
 import {
   categoryBudgetDifference,
+  displayedActual,
   type BudgetRollupSummary,
 } from "../budgetRollups.js";
 
@@ -26,7 +27,9 @@ export function matrixCellNumber(
   const parsed = budgetRaw === undefined ? NaN : Number(budgetRaw);
   const budget = Number.isFinite(parsed) ? parsed : undefined;
   if (mode === MatrixValueMode.Budgeted) return budget;
-  if (mode === MatrixValueMode.Actual) return actual;
+  if (mode === MatrixValueMode.Actual) {
+    return actual === undefined ? undefined : displayedActual(kind, actual);
+  }
   return categoryBudgetDifference(kind, budget, actual);
 }
 
