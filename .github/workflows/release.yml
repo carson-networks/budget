@@ -4,9 +4,8 @@ on:
   push:
     branches:
       - master
-    # iOS and docs-only merges would otherwise cut a web release.
+    # Docs-only merges would otherwise cut a release; iOS changes still need one.
     paths-ignore:
-      - "ios/**"
       - "docs/**"
   workflow_dispatch:
 
