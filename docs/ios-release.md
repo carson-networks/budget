@@ -2,7 +2,7 @@
 
 The **iOS Release** workflow (`.github/workflows/ios-release.yml`) builds the `OpenPersonalFinance` app and its `OpenPersonalFinanceDelivery` extension, signs them for the App Store, saves the IPA and debug symbols as workflow artifacts for 30 days, and uploads the IPA to App Store Connect for TestFlight.
 
-It runs when an `ios-vMAJOR.MINOR.PATCH` tag is pushed, or when dispatched by hand. Web releases use plain `v*` tags, so the two never trigger each other's workflows.
+The iOS app shares the web app's `vMAJOR.MINOR.PATCH` release tags. The workflow runs on every such tag, but a cheap first job compares the tag with the previous `v*` tag and skips the build unless something under `ios/` changed. It can also be dispatched by hand, which always builds.
 
 It runs on GitHub's `xcode-27` runner with Xcode 27.2 selected, because the project uses Xcode 27's project format. That runner is a preview; switch to the GA label once GitHub publishes one.
 
@@ -33,18 +33,20 @@ Before building, the workflow checks that every secret is set, that each profile
 
 ## Release a version
 
+Merge a PR that changes `ios/` into `master`. The **Release** workflow tags the merge (`v0.9.0`, say) with `RELEASE_PAT`, and that tag starts this workflow, which builds because `ios/` changed. Merges that only touch `docs/` are not released; merges that change only the web app are tagged but skip the iOS build.
+
+To release by hand, run **Actions → Release → Run workflow** on `master`, or push a tag yourself:
+
 ```bash
-git tag ios-v0.1.0
-git push origin ios-v0.1.0
+git tag v0.9.0
+git push origin v0.9.0
 ```
 
-The app needs an AppIcon in its asset catalog, or App Store Connect rejects the upload.
-
-The tag sets the app version (`0.1.0`); prerelease suffixes are rejected. The build number is `GITHUB_RUN_NUMBER.GITHUB_RUN_ATTEMPT`, so rerunning a failed run gives a new build number.
+The tag sets the app version (`0.9.0`), so the app's version jumps whenever web-only releases happened in between; that is expected. Prerelease suffixes are rejected. The build number is `GITHUB_RUN_NUMBER.GITHUB_RUN_ATTEMPT`, so rerunning a failed run gives a new build number.
 
 After the upload, check **App Store Connect → OpenPersonalFinance → TestFlight** for processing errors and make the build available to the internal testers. Uploading does not submit the app for review. If Apple rejects a processed build, fix it and push a new tag; if only the upload failed, rerun the workflow.
 
-TestFlight builds expire after 90 days. Push a new tag before then.
+TestFlight builds expire after 90 days. Before then, merge an iOS change or dispatch this workflow by hand.
 
 ## Test a branch on devices
 

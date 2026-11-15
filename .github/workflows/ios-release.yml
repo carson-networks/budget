@@ -2,8 +2,9 @@ name: iOS Release
 
 on:
   push:
+    # Shares the web app's release tags; the changes job skips tags with no iOS changes.
     tags:
-      - "ios-v*.*.*"
+      - "v*.*.*"
   workflow_dispatch:
     inputs:
       build_version:
@@ -24,8 +25,36 @@ env:
   REQUIRE_EXTENSION_FINANCEKIT: "false"
 
 jobs:
+  changes:
+    name: Check for iOS changes
+    runs-on: ubuntu-latest
+    outputs:
+      ios: ${{ steps.diff.outputs.ios }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Compare with the previous release tag
+        id: diff
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" != push ]]; then
+            echo "ios=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          previous="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' "$GITHUB_REF_NAME^" 2>/dev/null || true)"
+          if [[ -z "$previous" ]] || ! git diff --quiet "$previous" "$GITHUB_REF_NAME" -- ios; then
+            echo "iOS changed since ${previous:-the first commit}; releasing."
+            echo "ios=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No changes under ios/ since $previous; skipping the iOS release."
+            echo "ios=false" >> "$GITHUB_OUTPUT"
+          fi
+
   release:
     name: Build and upload to App Store Connect
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
     # Preview image; macos-26's Xcode 26 can't open the Xcode 27 project.
     runs-on: xcode-27
     timeout-minutes: 60
@@ -55,11 +84,11 @@ jobs:
         run: |
           version_pattern='(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
           if [[ "$GITHUB_EVENT_NAME" == push ]]; then
-            if [[ ! "$GITHUB_REF_NAME" =~ ^ios-v${version_pattern}$ ]]; then
-              echo '::error::Expected a release tag like ios-v1.2.3 (no prerelease suffix).'
+            if [[ ! "$GITHUB_REF_NAME" =~ ^v${version_pattern}$ ]]; then
+              echo '::error::Expected a release tag like v1.2.3 (no prerelease suffix).'
               exit 1
             fi
-            build_name="${GITHUB_REF_NAME#ios-v}"
+            build_name="${GITHUB_REF_NAME#v}"
           else
             build_name="$BUILD_VERSION_INPUT"
             if [[ -z "$build_name" ]]; then
