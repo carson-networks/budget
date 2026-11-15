@@ -2,6 +2,11 @@ name: CI
 
 on:
   push:
+    # Web release tags only; path filters are skipped for tags, so ios-v* would otherwise run this.
+    branches:
+      - "**"
+    tags:
+      - "v*"
     paths-ignore:
       - "ios/**"
       - "docs/**"
