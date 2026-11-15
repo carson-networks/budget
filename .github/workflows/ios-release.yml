@@ -20,11 +20,14 @@ env:
   APP_BUNDLE_ID: net.carsonnetworks.OpenPersonalFinance
   EXTENSION_BUNDLE_ID: net.carsonnetworks.OpenPersonalFinance.Delivery
   APP_GROUP: group.net.carsonnetworks.OpenPersonalFinance
+  # Set to true once Apple grants FinanceKit to the extension (plan task P0-H4).
+  REQUIRE_EXTENSION_FINANCEKIT: "false"
 
 jobs:
   release:
     name: Build and upload to App Store Connect
-    runs-on: macos-26
+    # Preview image; macos-26's Xcode 26 can't open the Xcode 27 project.
+    runs-on: xcode-27
     timeout-minutes: 60
     defaults:
       run:
@@ -32,6 +35,11 @@ jobs:
     steps:
       - name: Checkout selected ref
         uses: actions/checkout@v7.0.1
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode_27.2.app
+          xcodebuild -version
 
       - name: Resolve app version and validate credentials
         id: version
@@ -76,20 +84,14 @@ jobs:
           echo "name=$build_name" >> "$GITHUB_OUTPUT"
           echo "number=${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
 
-      - name: Install Codemagic signing tools
-        run: |
-          python3 -m venv "$RUNNER_TEMP/ios-tools"
-          "$RUNNER_TEMP/ios-tools/bin/pip" install codemagic-cli-tools==0.70.0
-          echo "$RUNNER_TEMP/ios-tools/bin" >> "$GITHUB_PATH"
-          gem install xcodeproj --version 1.28.1 --no-document --user-install
-
       - name: Import distribution certificate
         uses: apple-actions/import-codesign-certs@v7.1.0
         with:
           p12-file-base64: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_BASE64 }}
           p12-password: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
 
-      - name: Configure provisioning profiles
+      - name: Install and check provisioning profiles
+        id: profiles
         env:
           IOS_APP_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_APP_PROVISIONING_PROFILE_BASE64 }}
           IOS_EXTENSION_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_EXTENSION_PROVISIONING_PROFILE_BASE64 }}
@@ -97,35 +99,44 @@ jobs:
           umask 077
           signing_dir="$RUNNER_TEMP/ios-signing"
           mkdir -p "$signing_dir"
+          printf '%s' "$IOS_APP_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$signing_dir/app.mobileprovision"
+          printf '%s' "$IOS_EXTENSION_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$signing_dir/extension.mobileprovision"
+
+          plist_value() { /usr/libexec/PlistBuddy -c "Print :$2" "$signing_dir/$1.plist" 2>/dev/null; }
 
           check_profile() {
-            local name="$1" bundle_id="$2" plist="$signing_dir/$1.plist" failed=0
-            local app_id
-            app_id="$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' "$plist")"
+            local name="$1" bundle_id="$2" require_financekit="$3" failed=0 app_id
+            app_id="$(plist_value "$name" 'Entitlements:application-identifier')"
             if [[ "${app_id#*.}" != "$bundle_id" ]]; then
               echo "::error::The $name profile is for ${app_id#*.}, expected $bundle_id."
               failed=1
             fi
-            if ! /usr/libexec/PlistBuddy -c 'Print :Entitlements:com.apple.developer.financekit' "$plist" > /dev/null 2>&1; then
-              echo "::error::The $name profile lacks the FinanceKit entitlement."
-              failed=1
-            fi
-            if ! /usr/libexec/PlistBuddy -c 'Print :Entitlements:com.apple.security.application-groups' "$plist" 2>/dev/null \
-              | sed 's/^ *//' | grep -qxF "$APP_GROUP"; then
+            if ! plist_value "$name" 'Entitlements:com.apple.security.application-groups' | sed 's/^ *//' | grep -qxF "$APP_GROUP"; then
               echo "::error::The $name profile lacks the App Group $APP_GROUP."
               failed=1
+            fi
+            if ! plist_value "$name" 'Entitlements:com.apple.developer.financekit' > /dev/null; then
+              if [[ "$require_financekit" == true ]]; then
+                echo "::error::The $name profile lacks the FinanceKit entitlement."
+                failed=1
+              else
+                echo "::warning::The $name profile lacks the FinanceKit entitlement (expected until Apple grants it)."
+              fi
             fi
             return "$failed"
           }
 
-          printf '%s' "$IOS_APP_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$signing_dir/app.mobileprovision"
-          printf '%s' "$IOS_EXTENSION_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$signing_dir/extension.mobileprovision"
           failed=0
           for name in app extension; do
             security cms -D -i "$signing_dir/$name.mobileprovision" > "$signing_dir/$name.plist"
           done
-          check_profile app "$APP_BUNDLE_ID" || failed=1
-          check_profile extension "$EXTENSION_BUNDLE_ID" || failed=1
+          check_profile app "$APP_BUNDLE_ID" true || failed=1
+          check_profile extension "$EXTENSION_BUNDLE_ID" "$REQUIRE_EXTENSION_FINANCEKIT" || failed=1
+          app_team="$(plist_value app 'TeamIdentifier:0')"
+          if [[ "$app_team" != "$(plist_value extension 'TeamIdentifier:0')" ]]; then
+            echo '::error::The two profiles belong to different teams.'
+            failed=1
+          fi
           if [[ "$failed" == 1 ]]; then
             exit 1
           fi
@@ -135,18 +146,38 @@ jobs:
             cp "$signing_dir/app.mobileprovision" "$directory/openpersonalfinance-app-ci.mobileprovision"
             cp "$signing_dir/extension.mobileprovision" "$directory/openpersonalfinance-extension-ci.mobileprovision"
           done
-          xcode-project use-profiles \
-            --project "$PROJECT" \
-            --profile "$signing_dir/app.mobileprovision" \
-            --profile "$signing_dir/extension.mobileprovision" \
-            --archive-method app-store \
-            --export-options-plist "$signing_dir/ExportOptions.plist" \
-            --custom-export-options '{"signingStyle":"manual","manageAppVersionAndBuildNumber":false,"uploadSymbols":true}'
 
+          app_profile="$(plist_value app Name)"
+          extension_profile="$(plist_value extension Name)"
+          {
+            echo "team=$app_team"
+            echo "app=$app_profile"
+            echo "extension=$extension_profile"
+          } >> "$GITHUB_OUTPUT"
+
+          plist="$signing_dir/ExportOptions.plist"
+          plutil -create xml1 "$plist"
+          plutil -insert method -string app-store-connect "$plist"
+          plutil -insert destination -string export "$plist"
+          plutil -insert teamID -string "$app_team" "$plist"
+          plutil -insert signingStyle -string manual "$plist"
+          plutil -insert signingCertificate -string "Apple Distribution" "$plist"
+          plutil -insert manageAppVersionAndBuildNumber -bool false "$plist"
+          plutil -insert uploadSymbols -bool true "$plist"
+          plutil -insert provisioningProfiles -dictionary "$plist"
+          /usr/libexec/PlistBuddy \
+            -c "Add :provisioningProfiles:$APP_BUNDLE_ID string $app_profile" \
+            -c "Add :provisioningProfiles:$EXTENSION_BUNDLE_ID string $extension_profile" \
+            "$plist"
+
+      # PROFILE_$(TARGET_NAME) gives each target its own profile from one command line.
       - name: Archive
         env:
           BUILD_NAME: ${{ steps.version.outputs.name }}
           BUILD_NUMBER: ${{ steps.version.outputs.number }}
+          TEAM_ID: ${{ steps.profiles.outputs.team }}
+          APP_PROFILE: ${{ steps.profiles.outputs.app }}
+          EXTENSION_PROFILE: ${{ steps.profiles.outputs.extension }}
         run: |
           xcodebuild archive \
             -project "$PROJECT" \
@@ -155,7 +186,13 @@ jobs:
             -destination 'generic/platform=iOS' \
             -archivePath "$RUNNER_TEMP/build/OpenPersonalFinance.xcarchive" \
             MARKETING_VERSION="$BUILD_NAME" \
-            CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROFILE_OpenPersonalFinance="$APP_PROFILE" \
+            PROFILE_OpenPersonalFinanceDelivery="$EXTENSION_PROFILE" \
+            'PROVISIONING_PROFILE_SPECIFIER=$(PROFILE_$(TARGET_NAME))'
 
       - name: Show signed entitlements
         run: |
@@ -221,4 +258,3 @@ jobs:
             rm -f "$directory/openpersonalfinance-app-ci.mobileprovision" "$directory/openpersonalfinance-extension-ci.mobileprovision"
           done
           rm -rf "$RUNNER_TEMP/ios-signing"
-          rm -rf "$RUNNER_TEMP/ios-tools"

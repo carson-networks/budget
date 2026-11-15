@@ -4,11 +4,13 @@ The **iOS Release** workflow (`.github/workflows/ios-release.yml`) builds the `O
 
 It runs when an `ios-vMAJOR.MINOR.PATCH` tag is pushed, or when dispatched by hand. Web releases use plain `v*` tags, so the two never trigger each other's workflows.
 
-Signing uses the [Codemagic CLI tools](https://github.com/codemagic-ci-cd/cli-tools) to point the Xcode project at the CI profiles, [import-codesign-certs](https://github.com/Apple-Actions/import-codesign-certs) for a temporary keychain, and [upload-testflight-build](https://github.com/Apple-Actions/upload-testflight-build) for the upload. These run inside GitHub Actions; no Codemagic account is needed. The project is archived with `xcodebuild archive` and exported with `xcodebuild -exportArchive`.
+It runs on GitHub's `xcode-27` runner with Xcode 27.2 selected, because the project uses Xcode 27's project format. That runner is a preview; switch to the GA label once GitHub publishes one.
+
+[import-codesign-certs](https://github.com/Apple-Actions/import-codesign-certs) creates a temporary keychain and [upload-testflight-build](https://github.com/Apple-Actions/upload-testflight-build) does the upload. The project is archived with `xcodebuild archive` using manual signing passed on the command line, each target getting its own profile, and exported with `xcodebuild -exportArchive` using an `ExportOptions.plist` built from the profiles. Nothing in the project's signing settings changes; local builds keep automatic signing.
 
 ## One-time setup
 
-The App IDs `net.carsonnetworks.OpenPersonalFinance` and `net.carsonnetworks.OpenPersonalFinance.Delivery` must exist in the Apple Developer team, both with **FinanceKit** and the App Group `group.net.carsonnetworks.OpenPersonalFinance`, and the app record must exist in App Store Connect (plan task P0-H1).
+The App IDs `net.carsonnetworks.OpenPersonalFinance` and `net.carsonnetworks.OpenPersonalFinance.Delivery` must exist in the Apple Developer team, both with the App Group `group.net.carsonnetworks.OpenPersonalFinance`, and the app record must exist in App Store Connect (plan task P0-H1). The app's App ID needs **FinanceKit**; the extension's gets it once Apple grants it (plan task P0-H4).
 
 1. In **Certificates, Identifiers & Profiles**, create an **Apple Distribution** certificate if there isn't one, install it, and export it from Keychain Access as a `.p12` with a nonempty password.
 2. Create two **App Store Connect** distribution profiles with that certificate: one for the app ID, one for the extension ID. Download both `.mobileprovision` files. If FinanceKit or the App Group was enabled on an App ID after a profile was made, regenerate the profile.
@@ -27,7 +29,7 @@ The App IDs `net.carsonnetworks.OpenPersonalFinance` and `net.carsonnetworks.Ope
 
 Never commit these files or their encoded contents. Renew the certificate and profile secrets before they expire.
 
-Before building, the workflow checks that every secret is set and that each profile is for the right bundle ID and carries the FinanceKit entitlement and the App Group. It prints the signed entitlements of the archived app and extension in the **Show signed entitlements** step. Signing files and the temporary keychain are removed at the end of the job, even on failure.
+Before building, the workflow checks that every secret is set, that each profile is for the right bundle ID and team and carries the App Group, and that the app's profile carries FinanceKit. A missing FinanceKit entitlement on the extension's profile is only a warning until `REQUIRE_EXTENSION_FINANCEKIT` is set to `true` in the workflow, which should happen when Apple grants it and the extension's profile is regenerated. It prints the signed entitlements of the archived app and extension in the **Show signed entitlements** step. Signing files and the temporary keychain are removed at the end of the job, even on failure.
 
 ## Release a version
 
@@ -35,6 +37,8 @@ Before building, the workflow checks that every secret is set and that each prof
 git tag ios-v0.1.0
 git push origin ios-v0.1.0
 ```
+
+The app needs an AppIcon in its asset catalog, or App Store Connect rejects the upload.
 
 The tag sets the app version (`0.1.0`); prerelease suffixes are rejected. The build number is `GITHUB_RUN_NUMBER.GITHUB_RUN_ATTEMPT`, so rerunning a failed run gives a new build number.
 
