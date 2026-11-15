@@ -70,7 +70,7 @@ If a later task does need a shape or proto change, keep it additive, say so at t
 
 ## Releases and deploys
 
-Every phase ends with the human merging its PRs, tagging releases (`vX.Y.Z` in budget-server and for the web image, `ios-vX.Y.Z` for the app), bumping pinned versions in budget-stack and production, and installing the TestFlight build. This is implied and not listed as a task. Deploy the server before installing an app build that depends on it.
+Every phase ends with the human merging its PRs, tagging releases (`vX.Y.Z` in budget-server; in this repo the `Release` workflow's `vX.Y.Z` tag covers both the web image and, when `ios/` changed, the app), bumping pinned versions in budget-stack and production, and installing the TestFlight build. This is implied and not listed as a task. Deploy the server before installing an app build that depends on it.
 
 ## Patterns to follow
 
