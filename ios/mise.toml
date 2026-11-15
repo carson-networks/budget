@@ -1,0 +1,3 @@
+# swift-format ships with Xcode 27.2, so only the workflow linter is pinned here.
+[tools]
+actionlint = "1.7.12"

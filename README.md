@@ -71,3 +71,14 @@ export default defineConfig([
   },
 ]);
 ```
+
+## iOS app
+
+`ios/` holds OpenPersonalFinance, the iPhone app that syncs Apple Card, Apple Cash and Apple Savings from FinanceKit to budget-server. It needs Xcode 27.2.
+
+```bash
+make -C ios help   # format, lint, build, test
+make -C ios test   # build the app and run the OpenPersonalFinanceKit tests on a Simulator
+```
+
+The plan is in [docs/plan/README.md](docs/plan/README.md); releases are described in [docs/ios-release.md](docs/ios-release.md).
