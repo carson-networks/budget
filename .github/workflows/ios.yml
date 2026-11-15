@@ -15,7 +15,8 @@ permissions:
 jobs:
   test:
     name: Lint, build and test
-    runs-on: macos-26
+    # Preview image; macos-26's Xcode 26 can't open the Xcode 27 project.
+    runs-on: xcode-27
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7.0.1
@@ -24,6 +25,8 @@ jobs:
       - uses: jdx/mise-action@v5.2.8
         with:
           working_directory: ios
+
+      - run: sudo xcode-select -s /Applications/Xcode_27.2.app
 
       - run: xcodebuild -version
 
