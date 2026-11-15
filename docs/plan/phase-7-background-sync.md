@@ -4,7 +4,7 @@
 
 Read the working rules before starting any task here.
 
-**Depends on:** P5-A1 and P1-A4. No server work, so it can run alongside phase 6; the exit check needs phase 6 deployed. See [Parallel work](README.md#parallel-work).
+**Depends on:** P5-A1, P1-A4, and P0-H4 (FinanceKit granted for the extension). No server work, so it can run alongside phase 6; the exit check needs phase 6 deployed. See [Parallel work](README.md#parallel-work).
 
 **Outcome:** new transactions reach budget-server on the chosen interval with the app closed and the phone in a pocket. The app tells you when that has stopped working.
 
@@ -36,6 +36,7 @@ No server changes. Every trigger runs the same `SyncEngine.run`; this phase only
 
 ### P7-A1 Sync from the delivery extension
 
+- Add the FinanceKit entitlement to the extension target (its own commit) now that P0-H4 is granted.
 - `didReceiveData(for:)` runs `SyncEngine.run(trigger: .backgroundDelivery)` in place of the phase 1 logging-only body, with the settings, tokens, outbox and lock it shares with the app through the App Group and Keychain access group.
 - `willTerminate()` cancels the run cooperatively. The engine checks for cancellation between batches and between accounts, so it always stops on a committed boundary.
 - A run budget: stop starting new batches after a fixed time (start at 20 seconds, tune from the phase 2 wake log) and leave the rest for the next trigger.

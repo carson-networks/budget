@@ -49,7 +49,7 @@ Task IDs are `P<phase>-<system><n>`; human tasks use `H`. Within one system (A, 
 - **Mapping is pure.** FinanceKit value → wire message conversions are plain functions with unit tests, in one module.
 - **One `SyncEngine` actor** runs every sync, whatever triggered it. The app and extension coordinate through a file lock in the App Group.
 - Swift 6 language mode with strict concurrency. Swift Testing for unit tests. No third-party dependencies beyond `connect-swift` and `swift-protobuf` without asking.
-- The Xcode project (`ios/OpenPersonalFinance.xcodeproj`) is committed and uses folder-synchronized groups, so adding a source file does not touch the project file. No project generator. Change targets, capabilities and build settings only when a task says to, and keep such changes in their own commit. Generated Connect/protobuf Swift is committed, as the web's generated code is.
+- Xcode 27.2 locally and in CI. The Xcode project (`ios/OpenPersonalFinance.xcodeproj`, Xcode 27 format) is committed and uses folder-synchronized groups, so adding a source file does not touch the project file. No project generator. Change targets, capabilities and build settings only when a task says to, and keep such changes in their own commit. Generated Connect/protobuf Swift is committed, as the web's generated code is.
 - The endpoint must be `https`, except `localhost` in debug builds.
 
 ## Running and testing locally

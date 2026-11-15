@@ -68,6 +68,7 @@ Acceptance: unit tests for redaction (stable placeholders, no original string su
 ### P1-A4 Background delivery wake log
 
 - The extension's `didReceiveData(for:)` appends a line to a wake log in the App Group: time, data types, whether a FinanceKit read succeeded, and how many changes it saw since the saved token (without saving the token). `willTerminate()` logs too.
+- The read needs the extension's own FinanceKit entitlement (P0-H4). Until it is granted, log the wake and record the read as skipped.
 - A frequency picker (hourly / daily / weekly / off) on the Settings tab calling `enableBackgroundDelivery(for:frequency:)` for all three data types, or `disableAllBackgroundDelivery()`.
 - A `BGAppRefreshTask` registration that only appends to the same log, to compare how often each fires.
 - The diagnostics screen shows the wake log.

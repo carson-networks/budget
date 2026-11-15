@@ -21,13 +21,14 @@ Change `[ ]` to `[x]` when a task's PR is merged, or for human tasks when the st
 | [ ] | P0-A3 | TestFlight release workflow | budget | Agent |
 | [ ] | P0-X1 | Local-build mode in budget-stack | budget-stack | Agent |
 | [ ] | P0-H3 | Signing secrets and first TestFlight build | — | Human |
+| [ ] | P0-H4 | FinanceKit for the extension (with Apple) | — | Human |
 | [ ] | — | Exit check passed | — | Human |
 
 ## Layout
 
 ```
 ios/
-  OpenPersonalFinance.xcodeproj   # committed; folder-synchronized groups
+  OpenPersonalFinance.xcodeproj   # committed; Xcode 27 format (project.xcproj), folder-synchronized groups
   Makefile                        # format, lint, test, proto-generate
   OpenPersonalFinance/            # app target: SwiftUI views, app entry, entitlements
   OpenPersonalFinanceDelivery/    # FinanceKit background delivery extension target
@@ -44,7 +45,7 @@ docs/
 
 ### P0-H1 Human: Apple identifiers and capabilities
 
-1. Register two App IDs: `net.carsonnetworks.OpenPersonalFinance` for the app and `net.carsonnetworks.OpenPersonalFinance.Delivery` for the extension. Enable **FinanceKit** on both (the managed capability from the approved entitlement) and **App Groups** with one shared group, `group.net.carsonnetworks.OpenPersonalFinance`.
+1. Register two App IDs: `net.carsonnetworks.OpenPersonalFinance` for the app and `net.carsonnetworks.OpenPersonalFinance.Delivery` for the extension. Enable **App Groups** on both with one shared group, `group.net.carsonnetworks.OpenPersonalFinance`, and **FinanceKit** (a managed capability, under Additional Capabilities) on the app. FinanceKit is granted per bundle ID, so the extension's is requested separately (P0-H4).
 2. Create the App Store Connect app record and add the phones' Apple IDs as internal testers.
 3. Tell the agent the team ID. It is not secret.
 
@@ -52,10 +53,12 @@ docs/
 
 Xcode's templates set up the extension correctly, so this is done by hand once, about five minutes. No project generator is used.
 
-1. In Xcode: File → New → Project → iOS App. Name `OpenPersonalFinance`, bundle ID `net.carsonnetworks.OpenPersonalFinance`, SwiftUI, Swift Testing, saved in `ios/`.
+Created 2026-11-14; the agent then fixed the name, bundle ID, platforms and entitlements on `claude/ios-project`.
+
+1. In Xcode 27: File → New → Project → **iOS** → App (not Multiplatform). Name `OpenPersonalFinance`, bundle ID `net.carsonnetworks.OpenPersonalFinance`, SwiftUI, Swift Testing, saved in `ios/`.
 2. File → New → Target → **Background Delivery Extension**, named `OpenPersonalFinanceDelivery`, bundle ID `net.carsonnetworks.OpenPersonalFinance.Delivery`.
-3. On both targets, Signing & Capabilities: add **FinanceKit** and **App Groups** with `group.net.carsonnetworks.OpenPersonalFinance`.
-4. Set both targets' deployment target to iOS 26.
+3. Signing & Capabilities: **App Groups** with `group.net.carsonnetworks.OpenPersonalFinance` on both targets; **FinanceKit** on the app only until P0-H4.
+4. Set both targets to iPhone only, iOS 27.
 5. Commit the result on a branch and hand it to the agent. Do not add `xcuserdata`.
 
 ### P0-A1 Project skeleton
@@ -63,10 +66,10 @@ Xcode's templates set up the extension correctly, so this is done by hand once, 
 Starts from the branch P0-H2 produced.
 
 - Add the local package `ios/OpenPersonalFinanceKit` and link it from both targets. Swift 6 language mode and strict concurrency on the package and both targets.
-- Confirm, and fix if needed: both targets use folder-synchronized groups, target iOS 26, and carry the FinanceKit and App Group entitlements. Add `NSFinancialDataUsageDescription` to the app's Info.plist. A shared scheme is committed so CI can build it.
-- App: one SwiftUI screen showing the app name, version and build. Extension: an empty `BackgroundDeliveryExtensionProviding` implementation that does nothing.
+- Confirm, and fix if needed: both targets use folder-synchronized groups, are iPhone only on iOS 27, carry the App Group entitlement, and the app carries FinanceKit. Add `NSFinancialDataUsageDescription` to the app's Info.plist. A shared scheme is committed so CI can build it.
+- App: one SwiftUI screen showing the app name, version and build. Extension: the template's empty `BackgroundDeliveryExtension` implementation, doing nothing.
 - `OpenPersonalFinanceKit`: one placeholder type with one Swift Testing test, so the test pipeline has something to run.
-- `ios/Makefile`: `format` and `lint` (swift-format, config committed), `test` (`xcodebuild test` on an iOS 26 Simulator), `help`. Tool versions pinned in `ios/mise.toml`.
+- `ios/Makefile`: `format` and `lint` (swift-format, config committed), `test` (`xcodebuild test` on an iOS 27 Simulator), `help`. Tool versions pinned in `ios/mise.toml`.
 - `.gitignore`: `DerivedData`, `xcuserdata`. The `.xcodeproj` itself is committed.
 - Root `README.md`: a short "iOS app" section pointing at `ios/` and this plan.
 
@@ -74,7 +77,7 @@ Acceptance: from a clean checkout, `make -C ios test` passes on this Mac; `make 
 
 ### P0-A2 CI for `ios/`
 
-- New workflow `.github/workflows/ios.yml`: on pushes that change `ios/**` or the workflow itself, on `macos-26`: lint, build and test on a Simulator, with no code signing.
+- New workflow `.github/workflows/ios.yml`: on pushes that change `ios/**` or the workflow itself, on the `xcode-27` runner with Xcode 27.2 selected: lint, build and test on a Simulator, with no code signing.
 - Add `paths-ignore` for `ios/**` and `docs/**` to the existing web `CI` and `Docker` workflows so an iOS-only change does not rebuild the web image. Tag pushes must still build the image.
 - Add the Swift package and the new workflow's actions to `renovate.json` coverage if they are not picked up automatically.
 
@@ -86,12 +89,13 @@ Copy the shape of `weather-client/.github/workflows/ios-release.yml`, replacing 
 
 - `.github/workflows/ios-release.yml`: triggered by tags `ios-v*.*.*` and by `workflow_dispatch` with an optional version input. Same version validation, same secret presence check, same certificate import, same upload action, same clean-up step.
 - Two provisioning profiles, one per target (app and extension). Secrets: `IOS_DISTRIBUTION_CERTIFICATE_BASE64`, `IOS_DISTRIBUTION_CERTIFICATE_PASSWORD`, `IOS_APP_PROVISIONING_PROFILE_BASE64`, `IOS_EXTENSION_PROVISIONING_PROFILE_BASE64`, `APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID`, `APP_STORE_CONNECT_PRIVATE_KEY`.
-- Fail early if either profile lacks the FinanceKit entitlement or the App Group. Phase 10 adds a production-push check for the app profile.
+- Runs on `xcode-27` with Xcode 27.2. Codemagic's `xcode-project use-profiles` reads the project with the `xcodeproj` gem, which looks for `project.pbxproj`; the Xcode 27 format has `project.xcproj` instead, so signing settings are passed to `xcodebuild` and written to the export options directly.
+- Fail early if either profile is for the wrong bundle ID or lacks the App Group, or the app's profile lacks FinanceKit. The extension's FinanceKit is a warning until P0-H4 is granted, then required. Phase 10 adds a production-push check for the app profile.
 - Marketing version from the tag; build number from the run number and attempt, as weather-client does.
 - The existing `Docker` workflow builds on tags matching `v*`; confirm `ios-v*` does not match it.
 - `docs/ios-release.md`, adapted from weather-client's: the secrets and how to produce each, how to tag, where the build appears.
 
-Acceptance: `actionlint` passes; the differences from weather-client's workflow are listed in the PR and are limited to Flutter removal, the second profile, the tag prefix and the entitlement check.
+Acceptance: `actionlint` passes; the differences from weather-client's workflow are listed in the PR and are limited to Flutter removal, the second profile, the tag prefix, the entitlement check, the runner, and signing without Codemagic.
 
 ### P0-X1 Local-build mode in budget-stack
 
@@ -110,9 +114,18 @@ Acceptance: `docker compose config` validates with and without the override; `ma
 2. Merge the PRs, confirm the `iOS` workflow is green, push tag `ios-v0.1.0`.
 3. Install the build from TestFlight on each phone.
 
+The app needs an AppIcon in its asset catalog before the first upload.
+
+### P0-H4 Human: FinanceKit for the extension
+
+1. Request the FinanceKit entitlement for `net.carsonnetworks.OpenPersonalFinance.Delivery` (Account Holder) and answer Apple's follow-up questions.
+2. When granted: enable it on the App ID, regenerate the extension's profile and update `IOS_EXTENSION_PROVISIONING_PROFILE_BASE64`, then tell the agent so it adds the entitlement to the extension target and makes the release check strict.
+
+This does not block the phase 0 exit check. It blocks P1-A4's FinanceKit read, phase 2's background-delivery test and phase 7.
+
 ## Exit check
 
 - A push touching `ios/` runs the iOS workflow and nothing else; a web-only push does not run it.
 - Tag `ios-v0.1.0` produces a TestFlight build that installs and shows version 0.1.0.
-- The installed build's entitlements include FinanceKit and the App Group (Settings shows the app under Privacy → Wallet once it asks, in phase 1; for now check the archive's entitlements in the workflow log).
+- The installed build's entitlements include the App Group on both targets and FinanceKit on the app (Settings shows the app under Privacy → Wallet once it asks, in phase 1; for now check the archive's entitlements in the workflow log).
 - `make start-local` in budget-stack works and the web app behaves as before.
