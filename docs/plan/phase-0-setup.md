@@ -87,15 +87,15 @@ Acceptance: the workflow file passes `actionlint`; a dry read confirms a web-onl
 
 Copy the shape of `weather-client/.github/workflows/ios-release.yml`, replacing the Flutter steps with `xcodebuild archive` and `-exportArchive`.
 
-- `.github/workflows/ios-release.yml`: triggered by tags `ios-v*.*.*` and by `workflow_dispatch` with an optional version input. Same version validation, same secret presence check, same certificate import, same upload action, same clean-up step.
+- `.github/workflows/ios-release.yml`: triggered by the shared `v*.*.*` release tags and by `workflow_dispatch` with an optional version input. A first job on `ubuntu-latest` compares the tag with the previous `v*` tag and skips the build unless `ios/` changed. The `Release` workflow keeps tagging iOS-only merges (it ignores only `docs/**`). Same version validation, same secret presence check, same certificate import, same upload action, same clean-up step.
 - Two provisioning profiles, one per target (app and extension). Secrets: `IOS_DISTRIBUTION_CERTIFICATE_BASE64`, `IOS_DISTRIBUTION_CERTIFICATE_PASSWORD`, `IOS_APP_PROVISIONING_PROFILE_BASE64`, `IOS_EXTENSION_PROVISIONING_PROFILE_BASE64`, `APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID`, `APP_STORE_CONNECT_PRIVATE_KEY`.
 - Runs on `xcode-27` with Xcode 27.2. Codemagic's `xcode-project use-profiles` reads the project with the `xcodeproj` gem, which looks for `project.pbxproj`; the Xcode 27 format has `project.xcproj` instead, so signing settings are passed to `xcodebuild` and written to the export options directly.
 - Fail early if either profile is for the wrong bundle ID or lacks the App Group, or the app's profile lacks FinanceKit. The extension's FinanceKit is a warning until P0-H4 is granted, then required. Phase 10 adds a production-push check for the app profile.
 - Marketing version from the tag; build number from the run number and attempt, as weather-client does.
-- The existing `Docker` workflow builds on tags matching `v*`; confirm `ios-v*` does not match it.
+- The `Docker` workflow also builds the web image on every `v*` tag, including ones cut for iOS-only merges; that is accepted.
 - `docs/ios-release.md`, adapted from weather-client's: the secrets and how to produce each, how to tag, where the build appears.
 
-Acceptance: `actionlint` passes; the differences from weather-client's workflow are listed in the PR and are limited to Flutter removal, the second profile, the tag prefix, the entitlement check, the runner, and signing without Codemagic.
+Acceptance: `actionlint` passes; the differences from weather-client's workflow are listed in the PR and are limited to Flutter removal, the second profile, the skip when `ios/` is unchanged, the entitlement check, the runner, and signing without Codemagic.
 
 ### P0-X1 Local-build mode in budget-stack
 
@@ -111,7 +111,7 @@ Acceptance: `docker compose config` validates with and without the override; `ma
 ### P0-H3 Human: Signing secrets and first TestFlight build
 
 1. Create the distribution certificate and the two App Store profiles; add the seven secrets from `docs/ios-release.md`.
-2. Merge the PRs, confirm the `iOS` workflow is green, push tag `ios-v0.1.0`.
+2. Merge the PRs and confirm the `iOS` workflow is green. Merging the first PR that changes `ios/` makes `Release` cut the next `v*` tag, which starts the first TestFlight build (or dispatch **iOS Release** by hand).
 3. Install the build from TestFlight on each phone.
 
 The app needs an AppIcon in its asset catalog before the first upload.
@@ -125,7 +125,7 @@ This does not block the phase 0 exit check. It blocks P1-A4's FinanceKit read, p
 
 ## Exit check
 
-- A push touching `ios/` runs the iOS workflow and nothing else; a web-only push does not run it.
-- Tag `ios-v0.1.0` produces a TestFlight build that installs and shows version 0.1.0.
+- A branch push touching only `ios/` runs the iOS workflow and nothing else; a web-only push does not run it.
+- The first `v*` tag after the iOS PRs merge produces a TestFlight build that installs and shows that version; a later web-only tag skips the iOS build.
 - The installed build's entitlements include the App Group on both targets and FinanceKit on the app (Settings shows the app under Privacy → Wallet once it asks, in phase 1; for now check the archive's entitlements in the workflow log).
 - `make start-local` in budget-stack works and the web app behaves as before.
