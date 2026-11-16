@@ -29,7 +29,9 @@ The App IDs `net.carsonnetworks.OpenPersonalFinance` and `net.carsonnetworks.Ope
 
 Never commit these files or their encoded contents. Renew the certificate and profile secrets before they expire.
 
-Before building, the workflow checks that every secret is set, that each profile is for the right bundle ID and team and carries the App Group, and that the app's profile carries FinanceKit. A missing FinanceKit entitlement on the extension's profile is only a warning until `REQUIRE_EXTENSION_FINANCEKIT` is set to `true` in the workflow, which should happen when Apple grants it and the extension's profile is regenerated. It prints the signed entitlements of the archived app and extension in the **Show signed entitlements** step. Signing files and the temporary keychain are removed at the end of the job, even on failure.
+Before building, the workflow checks that every secret is set, that each profile is for the right bundle ID and team and carries the App Group, and that the app's profile carries FinanceKit. A missing FinanceKit entitlement on the extension's profile is only a warning until `REQUIRE_EXTENSION_FINANCEKIT` is set to `true` in the workflow.
+
+Until Apple grants FinanceKit to the extension, the extension is not embedded in the app: App Store Connect rejects any build whose background delivery extension lacks the entitlement (ITMS-91154). The extension target still compiles in CI, and the export leaves out its profile when the archive has no extension. When the grant arrives, regenerate the extension's profile, update `IOS_EXTENSION_PROVISIONING_PROFILE_BASE64`, then embed the extension again with its FinanceKit entitlement and set `REQUIRE_EXTENSION_FINANCEKIT` to `true`, in one PR. It prints the signed entitlements of the archived app and extension in the **Show signed entitlements** step. Signing files and the temporary keychain are removed at the end of the job, even on failure.
 
 ## Release a version
 
