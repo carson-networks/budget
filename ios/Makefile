@@ -2,7 +2,7 @@
 
 PROJECT := OpenPersonalFinance.xcodeproj
 SCHEME := OpenPersonalFinance
-# First available iPhone on an iOS 27 runtime; device names differ between Macs and CI.
+# First available iPhone on an iOS 27 runtime; device names differ between Macs and CI. 
 SIMULATOR_ID ?= $(shell xcrun simctl list devices available | awk '/^-- iOS 27/{ok=1; next} /^--/{ok=0} ok && /iPhone/' | grep -m1 -oE '[0-9A-F]{8}(-[0-9A-F]{4}){3}-[0-9A-F]{12}')
 SOURCES := OpenPersonalFinance OpenPersonalFinanceDelivery OpenPersonalFinanceKit
 WORKFLOWS := ../.github/workflows/ios.yml ../.github/workflows/ios-release.yml
