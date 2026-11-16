@@ -1,0 +1,289 @@
+name: iOS Release
+
+on:
+  push:
+    # Shares the web app's release tags; the changes job skips tags with no iOS changes.
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      build_version:
+        description: "App version (e.g. 1.0.2); leave blank to use the project's MARKETING_VERSION"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  PROJECT: ios/OpenPersonalFinance.xcodeproj
+  SCHEME: OpenPersonalFinance
+  APP_BUNDLE_ID: net.carsonnetworks.OpenPersonalFinance
+  EXTENSION_BUNDLE_ID: net.carsonnetworks.OpenPersonalFinance.Delivery
+  APP_GROUP: group.net.carsonnetworks.OpenPersonalFinance
+  # Set to true once Apple grants FinanceKit to the extension (plan task P0-H4).
+  REQUIRE_EXTENSION_FINANCEKIT: "false"
+
+jobs:
+  changes:
+    name: Check for iOS changes
+    runs-on: ubuntu-latest
+    outputs:
+      ios: ${{ steps.diff.outputs.ios }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Compare with the previous release tag
+        id: diff
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" != push ]]; then
+            echo "ios=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          previous="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' "$GITHUB_REF_NAME^" 2>/dev/null || true)"
+          if [[ -z "$previous" ]] || ! git diff --quiet "$previous" "$GITHUB_REF_NAME" -- ios; then
+            echo "iOS changed since ${previous:-the first commit}; releasing."
+            echo "ios=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No changes under ios/ since $previous; skipping the iOS release."
+            echo "ios=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  release:
+    name: Build and upload to App Store Connect
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
+    # Preview image; macos-26's Xcode 26 can't open the Xcode 27 project.
+    runs-on: xcode-27
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout selected ref
+        uses: actions/checkout@v7.0.1
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode_27.2.app
+          xcodebuild -version
+
+      - name: Resolve app version and validate credentials
+        id: version
+        env:
+          BUILD_VERSION_INPUT: ${{ inputs.build_version }}
+          IOS_DISTRIBUTION_CERTIFICATE_BASE64: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_BASE64 }}
+          IOS_DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+          IOS_APP_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_APP_PROVISIONING_PROFILE_BASE64 }}
+          IOS_EXTENSION_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_EXTENSION_PROVISIONING_PROFILE_BASE64 }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+        run: |
+          version_pattern='(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
+          if [[ "$GITHUB_EVENT_NAME" == push ]]; then
+            if [[ ! "$GITHUB_REF_NAME" =~ ^v${version_pattern}$ ]]; then
+              echo '::error::Expected a release tag like v1.2.3 (no prerelease suffix).'
+              exit 1
+            fi
+            build_name="${GITHUB_REF_NAME#v}"
+          else
+            build_name="$BUILD_VERSION_INPUT"
+            if [[ -z "$build_name" ]]; then
+              build_name="$(xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration Release -showBuildSettings -json \
+                | jq -r --arg id "$APP_BUNDLE_ID" '.[] | select(.buildSettings.PRODUCT_BUNDLE_IDENTIFIER == $id) | .buildSettings.MARKETING_VERSION')"
+            fi
+          fi
+          if [[ ! "$build_name" =~ ^${version_pattern}$ ]]; then
+            echo '::error::App version must be three numbers like 1.2.3 (no prerelease suffix).'
+            exit 1
+          fi
+          missing=0
+          for name in IOS_DISTRIBUTION_CERTIFICATE_BASE64 IOS_DISTRIBUTION_CERTIFICATE_PASSWORD IOS_APP_PROVISIONING_PROFILE_BASE64 IOS_EXTENSION_PROVISIONING_PROFILE_BASE64 APP_STORE_CONNECT_KEY_ID APP_STORE_CONNECT_ISSUER_ID APP_STORE_CONNECT_PRIVATE_KEY; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Missing GitHub Actions secret: $name"
+              missing=1
+            fi
+          done
+          if [[ "$missing" == 1 ]]; then
+            exit 1
+          fi
+          echo "name=$build_name" >> "$GITHUB_OUTPUT"
+          echo "number=${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
+
+      - name: Import distribution certificate
+        uses: apple-actions/import-codesign-certs@v7.1.0
+        with:
+          p12-file-base64: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_BASE64 }}
+          p12-password: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+
+      - name: Install and check provisioning profiles
+        id: profiles
+        env:
+          IOS_APP_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_APP_PROVISIONING_PROFILE_BASE64 }}
+          IOS_EXTENSION_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_EXTENSION_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          umask 077
+          signing_dir="$RUNNER_TEMP/ios-signing"
+          mkdir -p "$signing_dir"
+          printf '%s' "$IOS_APP_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$signing_dir/app.mobileprovision"
+          printf '%s' "$IOS_EXTENSION_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$signing_dir/extension.mobileprovision"
+
+          plist_value() { /usr/libexec/PlistBuddy -c "Print :$2" "$signing_dir/$1.plist" 2>/dev/null; }
+
+          check_profile() {
+            local name="$1" bundle_id="$2" require_financekit="$3" failed=0 app_id
+            app_id="$(plist_value "$name" 'Entitlements:application-identifier')"
+            if [[ "${app_id#*.}" != "$bundle_id" ]]; then
+              echo "::error::The $name profile is for ${app_id#*.}, expected $bundle_id."
+              failed=1
+            fi
+            if ! plist_value "$name" 'Entitlements:com.apple.security.application-groups' | sed 's/^ *//' | grep -qxF "$APP_GROUP"; then
+              echo "::error::The $name profile lacks the App Group $APP_GROUP."
+              failed=1
+            fi
+            if ! plist_value "$name" 'Entitlements:com.apple.developer.financekit' > /dev/null; then
+              if [[ "$require_financekit" == true ]]; then
+                echo "::error::The $name profile lacks the FinanceKit entitlement."
+                failed=1
+              else
+                echo "::warning::The $name profile lacks the FinanceKit entitlement (expected until Apple grants it)."
+              fi
+            fi
+            return "$failed"
+          }
+
+          failed=0
+          for name in app extension; do
+            security cms -D -i "$signing_dir/$name.mobileprovision" > "$signing_dir/$name.plist"
+          done
+          check_profile app "$APP_BUNDLE_ID" true || failed=1
+          check_profile extension "$EXTENSION_BUNDLE_ID" "$REQUIRE_EXTENSION_FINANCEKIT" || failed=1
+          app_team="$(plist_value app 'TeamIdentifier:0')"
+          if [[ "$app_team" != "$(plist_value extension 'TeamIdentifier:0')" ]]; then
+            echo '::error::The two profiles belong to different teams.'
+            failed=1
+          fi
+          if [[ "$failed" == 1 ]]; then
+            exit 1
+          fi
+
+          for directory in "$HOME/Library/MobileDevice/Provisioning Profiles" "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"; do
+            mkdir -p "$directory"
+            cp "$signing_dir/app.mobileprovision" "$directory/openpersonalfinance-app-ci.mobileprovision"
+            cp "$signing_dir/extension.mobileprovision" "$directory/openpersonalfinance-extension-ci.mobileprovision"
+          done
+
+          app_profile="$(plist_value app Name)"
+          extension_profile="$(plist_value extension Name)"
+          {
+            echo "team=$app_team"
+            echo "app=$app_profile"
+            echo "extension=$extension_profile"
+          } >> "$GITHUB_OUTPUT"
+
+          plist="$signing_dir/ExportOptions.plist"
+          plutil -create xml1 "$plist"
+          plutil -insert method -string app-store-connect "$plist"
+          plutil -insert destination -string export "$plist"
+          plutil -insert teamID -string "$app_team" "$plist"
+          plutil -insert signingStyle -string manual "$plist"
+          plutil -insert signingCertificate -string "Apple Distribution" "$plist"
+          plutil -insert manageAppVersionAndBuildNumber -bool false "$plist"
+          plutil -insert uploadSymbols -bool true "$plist"
+          plutil -insert provisioningProfiles -dictionary "$plist"
+          /usr/libexec/PlistBuddy \
+            -c "Add :provisioningProfiles:$APP_BUNDLE_ID string $app_profile" \
+            -c "Add :provisioningProfiles:$EXTENSION_BUNDLE_ID string $extension_profile" \
+            "$plist"
+
+      # PROFILE_$(TARGET_NAME) gives each target its own profile from one command line.
+      - name: Archive
+        env:
+          BUILD_NAME: ${{ steps.version.outputs.name }}
+          BUILD_NUMBER: ${{ steps.version.outputs.number }}
+          TEAM_ID: ${{ steps.profiles.outputs.team }}
+          APP_PROFILE: ${{ steps.profiles.outputs.app }}
+          EXTENSION_PROFILE: ${{ steps.profiles.outputs.extension }}
+        run: |
+          xcodebuild archive \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/build/OpenPersonalFinance.xcarchive" \
+            MARKETING_VERSION="$BUILD_NAME" \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROFILE_OpenPersonalFinance="$APP_PROFILE" \
+            PROFILE_OpenPersonalFinanceDelivery="$EXTENSION_PROFILE" \
+            'PROVISIONING_PROFILE_SPECIFIER=$(PROFILE_$(TARGET_NAME))'
+
+      - name: Show signed entitlements
+        run: |
+          products="$RUNNER_TEMP/build/OpenPersonalFinance.xcarchive/Products/Applications"
+          for bundle in "$products"/*.app "$products"/*.app/PlugIns/*.appex "$products"/*.app/Extensions/*.appex; do
+            [[ -e "$bundle" ]] || continue
+            echo "== $(basename "$bundle")"
+            codesign -d --entitlements - --xml "$bundle" | plutil -p -
+          done
+
+      - name: Export signed IPA
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/build/OpenPersonalFinance.xcarchive" \
+            -exportPath "$RUNNER_TEMP/build/ipa" \
+            -exportOptionsPlist "$RUNNER_TEMP/ios-signing/ExportOptions.plist"
+          shopt -s nullglob
+          ipas=("$RUNNER_TEMP"/build/ipa/*.ipa)
+          if [[ ${#ipas[@]} != 1 ]]; then
+            echo '::error::Expected exactly one exported IPA.'
+            exit 1
+          fi
+          echo "IOS_IPA_PATH=${ipas[0]}" >> "$GITHUB_ENV"
+
+      - name: Save IPA and debug symbols
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: openpersonalfinance-ios-${{ steps.version.outputs.name }}-${{ steps.version.outputs.number }}
+          path: |
+            ${{ runner.temp }}/build/ipa/*.ipa
+            ${{ runner.temp }}/build/OpenPersonalFinance.xcarchive/dSYMs
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload to App Store Connect
+        uses: apple-actions/upload-testflight-build@v5.6.0
+        with:
+          app-path: ${{ env.IOS_IPA_PATH }}
+          app-type: ios
+          issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          api-key-id: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          api-private-key: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+          wait-for-processing: "false"
+
+      - name: Write job summary
+        env:
+          BUILD_NAME: ${{ steps.version.outputs.name }}
+          BUILD_NUMBER: ${{ steps.version.outputs.number }}
+        run: |
+          {
+            echo "## OpenPersonalFinance iOS $BUILD_NAME ($BUILD_NUMBER)"
+            echo
+            printf 'Source: `%s` (`%s`)\n' "$GITHUB_REF_NAME" "$GITHUB_SHA"
+            echo
+            echo 'Signed IPA and debug symbols are saved in the workflow artifacts.'
+            echo 'Uploaded to App Store Connect. Check TestFlight after Apple finishes processing the build.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove signing credentials
+        if: always()
+        run: |
+          for directory in "$HOME/Library/MobileDevice/Provisioning Profiles" "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"; do
+            rm -f "$directory/openpersonalfinance-app-ci.mobileprovision" "$directory/openpersonalfinance-extension-ci.mobileprovision"
+          done
+          rm -rf "$RUNNER_TEMP/ios-signing"
