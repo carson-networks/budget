@@ -8,6 +8,8 @@ on:
     paths:
       - "ios/**"
       - ".github/workflows/ios.yml"
+      - ".github/workflows/ios-release.yml"
+      - ".github/actionlint.yaml"
 
 permissions:
   contents: read
