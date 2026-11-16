@@ -1,0 +1,37 @@
+name: iOS
+
+on:
+  push:
+    # Branches only: path filters are skipped for tag pushes, so tags would always run it.
+    branches:
+      - "**"
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios.yml"
+      - ".github/workflows/ios-release.yml"
+      - ".github/actionlint.yaml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Lint, build and test
+    # Preview image; macos-26's Xcode 26 can't open the Xcode 27 project.
+    runs-on: xcode-27
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      # Tool versions come from ios/mise.toml.
+      - uses: jdx/mise-action@v5.2.8
+        with:
+          working_directory: ios
+
+      - run: sudo xcode-select -s /Applications/Xcode_27.2.app
+
+      - run: xcodebuild -version
+
+      - run: make -C ios lint
+
+      - run: make -C ios test

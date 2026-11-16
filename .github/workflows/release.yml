@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - master
+    # Docs-only merges would otherwise cut a release; iOS changes still need one.
+    paths-ignore:
+      - "docs/**"
   workflow_dispatch:
 
 jobs:
