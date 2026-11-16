@@ -234,6 +234,10 @@ jobs:
 
       - name: Export signed IPA
         run: |
+          # The extension isn't embedded until Apple grants it FinanceKit (plan task P0-H4).
+          if ! compgen -G "$RUNNER_TEMP/build/OpenPersonalFinance.xcarchive/Products/Applications/*.app/Extensions/*.appex" > /dev/null; then
+            /usr/libexec/PlistBuddy -c "Delete :provisioningProfiles:$EXTENSION_BUNDLE_ID" "$RUNNER_TEMP/ios-signing/ExportOptions.plist"
+          fi
           xcodebuild -exportArchive \
             -archivePath "$RUNNER_TEMP/build/OpenPersonalFinance.xcarchive" \
             -exportPath "$RUNNER_TEMP/build/ipa" \

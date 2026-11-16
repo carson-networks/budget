@@ -31,7 +31,7 @@
       "name": "Products",
       "children": [
         { "path": "<PRODUCTS>/OpenPersonalFinance.app", "id": "000000000000000000000120", "type": "wrapper.application", "index": false },
-        { "path": "<PRODUCTS>/OpenPersonalFinanceDelivery.appex", "id": "9D5DB37730A836FC00A54464", "type": "wrapper.extensionkit-extension", "index": false, "target-membership": [ { "build-phase": "OpenPersonalFinance/copy/Embed ExtensionKit Extensions", "header-preservation": "remove-on-copy" } ] },
+        { "path": "<PRODUCTS>/OpenPersonalFinanceDelivery.appex", "id": "9D5DB37730A836FC00A54464", "type": "wrapper.extensionkit-extension", "index": false },
       ],
     },
   ],
@@ -46,9 +46,6 @@
       "product-type": "application",
       "package-product-members": [
         { "product-name": "OpenPersonalFinanceKit", "build-phase": { "build-phase": "frameworks" } },
-      ],
-      "dependencies": [
-        "OpenPersonalFinanceDelivery",
       ],
       "build-phases": [
         "compile-sources",
