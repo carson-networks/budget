@@ -57,7 +57,7 @@ Numbered so tasks can refer to them.
 13. **iOS 27 minimum, iPhone only, Swift 6, SwiftUI, a committed Xcode 27 project.** The app is `OpenPersonalFinance`, bundle ID `net.carsonnetworks.OpenPersonalFinance`; the extension is `net.carsonnetworks.OpenPersonalFinance.Delivery`. It lives in `ios/` in the budget repo, with its own CI job. It shares the web app's `vX.Y.Z` release tags; the iOS release workflow runs on each tag but only builds when `ios/` changed since the previous one. No project generator: the `.xcodeproj` is committed in Xcode 27's project format (`project.xcproj`) and uses folder-synchronized groups.
 14. **Credit limit only.** Due date, minimum payment and overdue amount are available from FinanceKit but left to phase 11.
 15. **Local state is Codable files in the App Group container** (tokens, outbox, run log), shared by the app and the extension. No SwiftData.
-16. **FinanceKit is granted per bundle ID.** The app has it; the extension has only the App Group until Apple grants its own request. Until then the extension can log wakes but not read FinanceKit, and the release workflow requires FinanceKit on the app's profile only. The grant is needed by P1-A4's read, phase 2's background-delivery test and phase 7.
+16. **FinanceKit is granted per bundle ID.** The app has it; the extension has only the App Group until Apple grants its own request. App Store Connect rejects a build whose background delivery extension lacks FinanceKit (ITMS-91154), so until the grant the extension target compiles but is not embedded in the app, and the release workflow requires FinanceKit on the app's profile only. The grant is needed by P1-A4, phase 2's background-delivery test and phase 7.
 17. **CI runs on GitHub's `xcode-27` runner with Xcode 27.2 selected**, matching local development. The default `macos-26` runner's Xcode 26 cannot open the project. `xcode-27` is a public preview; move to the GA label when there is one.
 
 ## FinanceKit facts this plan relies on
@@ -74,6 +74,7 @@ Checked against Apple's documentation on 2026-11-13.
 | Background delivery | `enableBackgroundDelivery(for:frequency:)`, `BackgroundDataType` (`accounts`, `accountBalances`, `transactions`), `UpdateFrequency` (`hourly`, `daily`, `weekly`), `BackgroundDeliveryExtension.didReceiveData(for:)` / `willTerminate()`; extension point `com.apple.financekit.background-delivery` |
 | The wake-up names only data types, not accounts or items | `didReceiveData(for:)` gets `[BackgroundDataType]`; the extension asks each linked account's history since its saved token |
 | Entitlements are granted per bundle ID | The extension needs its own FinanceKit approval (decision 16) |
+| A shipped background delivery extension must carry FinanceKit | ITMS-91154 on upload; the extension stays unembedded until granted (decision 16) |
 | Extension needs an App Group shared with the app | "Implementing a background delivery extension" |
 | No data in the Simulator | Everything is built behind a protocol with a fake source |
 
