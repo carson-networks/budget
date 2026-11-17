@@ -1,0 +1,200 @@
+{
+  "accountChanges": [
+    {
+      "inserted": [
+        {
+          "id": "0A000000-0000-4000-8000-000000000001",
+          "displayName": "Apple Card",
+          "institutionName": "Apple",
+          "kind": "liability",
+          "currencyCode": "USD",
+          "creditLimit": "5000.00"
+        },
+        {
+          "id": "0A000000-0000-4000-8000-000000000002",
+          "displayName": "Savings",
+          "institutionName": "Apple",
+          "kind": "asset",
+          "currencyCode": "USD"
+        }
+      ]
+    }
+  ],
+  "accountHistories": [
+    {
+      "accountID": "0A000000-0000-4000-8000-000000000001",
+      "balanceChanges": [
+        {
+          "inserted": [
+            {
+              "id": "0B000000-0000-4000-8000-000000000001",
+              "accountID": "0A000000-0000-4000-8000-000000000001",
+              "available": { "amount": "4587.50", "indicator": "credit" },
+              "booked": { "amount": "412.50", "indicator": "debit" },
+              "asOf": "2026-11-10T18:00:00Z"
+            }
+          ]
+        },
+        {
+          "inserted": [
+            {
+              "id": "0B000000-0000-4000-8000-000000000002",
+              "accountID": "0A000000-0000-4000-8000-000000000001",
+              "available": { "amount": "4592.00", "indicator": "credit" },
+              "booked": { "amount": "408.00", "indicator": "debit" },
+              "asOf": "2026-11-12T18:00:00Z"
+            }
+          ]
+        }
+      ],
+      "transactionChanges": [
+        {
+          "inserted": [
+            {
+              "id": "0C000000-0000-4000-8000-000000000001",
+              "accountID": "0A000000-0000-4000-8000-000000000001",
+              "amount": { "amount": "4.50", "indicator": "debit" },
+              "currencyCode": "USD",
+              "transactionDescription": "Corner Coffee",
+              "originalTransactionDescription": "CORNER COFFEE #12 SPRINGFIELD",
+              "merchantName": "Corner Coffee",
+              "merchantCategoryCode": 5814,
+              "transactionDate": "2026-11-10T08:15:00Z",
+              "status": "pending",
+              "transactionType": "pointOfSale"
+            },
+            {
+              "id": "0C000000-0000-4000-8000-000000000002",
+              "accountID": "0A000000-0000-4000-8000-000000000001",
+              "amount": { "amount": "82.17", "indicator": "debit" },
+              "currencyCode": "USD",
+              "transactionDescription": "Fresh Market",
+              "originalTransactionDescription": "FRESH MARKET 0042",
+              "merchantName": "Fresh Market",
+              "merchantCategoryCode": 5411,
+              "transactionDate": "2026-11-08T17:40:00Z",
+              "postedDate": "2026-11-09T06:00:00Z",
+              "status": "booked",
+              "transactionType": "pointOfSale"
+            },
+            {
+              "id": "0C000000-0000-4000-8000-000000000003",
+              "accountID": "0A000000-0000-4000-8000-000000000001",
+              "amount": { "amount": "120.00", "indicator": "debit" },
+              "currencyCode": "USD",
+              "transactionDescription": "Gadget Shop",
+              "originalTransactionDescription": "GADGET SHOP ONLINE",
+              "merchantName": "Gadget Shop",
+              "merchantCategoryCode": 5732,
+              "transactionDate": "2026-11-09T21:05:00Z",
+              "status": "authorized",
+              "transactionType": "pointOfSale"
+            },
+            {
+              "id": "0C000000-0000-4000-8000-000000000004",
+              "accountID": "0A000000-0000-4000-8000-000000000001",
+              "amount": { "amount": "25.00", "indicator": "debit" },
+              "currencyCode": "USD",
+              "transactionDescription": "Parking Garage",
+              "originalTransactionDescription": "CITY PARKING GARAGE 3",
+              "transactionDate": "2026-11-07T12:00:00Z",
+              "postedDate": "2026-11-08T06:00:00Z",
+              "status": "booked",
+              "transactionType": "pointOfSale"
+            },
+            {
+              "id": "0C000000-0000-4000-8000-000000000005",
+              "accountID": "0A000000-0000-4000-8000-000000000001",
+              "amount": { "amount": "300.00", "indicator": "credit" },
+              "currencyCode": "USD",
+              "transactionDescription": "Payment",
+              "originalTransactionDescription": "ACH DEPOSIT INTERNET TRANSFER",
+              "transactionDate": "2026-11-05T09:00:00Z",
+              "postedDate": "2026-11-05T09:00:00Z",
+              "status": "booked",
+              "transactionType": "billPayment"
+            }
+          ]
+        },
+        {
+          "updated": [
+            {
+              "id": "0C000000-0000-4000-8000-000000000001",
+              "accountID": "0A000000-0000-4000-8000-000000000001",
+              "amount": { "amount": "4.50", "indicator": "debit" },
+              "currencyCode": "USD",
+              "transactionDescription": "Corner Coffee",
+              "originalTransactionDescription": "CORNER COFFEE #12 SPRINGFIELD",
+              "merchantName": "Corner Coffee",
+              "merchantCategoryCode": 5814,
+              "transactionDate": "2026-11-10T08:15:00Z",
+              "postedDate": "2026-11-11T06:00:00Z",
+              "status": "booked",
+              "transactionType": "pointOfSale"
+            },
+            {
+              "id": "0C000000-0000-4000-8000-000000000003",
+              "accountID": "0A000000-0000-4000-8000-000000000001",
+              "amount": { "amount": "120.00", "indicator": "debit" },
+              "currencyCode": "USD",
+              "transactionDescription": "Gadget Shop",
+              "originalTransactionDescription": "GADGET SHOP ONLINE",
+              "merchantName": "Gadget Shop",
+              "merchantCategoryCode": 5732,
+              "transactionDate": "2026-11-09T21:05:00Z",
+              "status": "rejected",
+              "transactionType": "pointOfSale"
+            }
+          ],
+          "deleted": ["0C000000-0000-4000-8000-000000000004"]
+        }
+      ]
+    },
+    {
+      "accountID": "0A000000-0000-4000-8000-000000000002",
+      "balanceChanges": [
+        {
+          "inserted": [
+            {
+              "id": "0B000000-0000-4000-8000-000000000003",
+              "accountID": "0A000000-0000-4000-8000-000000000002",
+              "available": { "amount": "1003.21", "indicator": "credit" },
+              "booked": { "amount": "1003.21", "indicator": "credit" },
+              "asOf": "2026-11-10T18:00:00Z"
+            }
+          ]
+        }
+      ],
+      "transactionChanges": [
+        {
+          "inserted": [
+            {
+              "id": "0C000000-0000-4000-8000-000000000006",
+              "accountID": "0A000000-0000-4000-8000-000000000002",
+              "amount": { "amount": "1000.00", "indicator": "credit" },
+              "currencyCode": "USD",
+              "transactionDescription": "Transfer from Apple Cash",
+              "originalTransactionDescription": "Transfer from Apple Cash",
+              "transactionDate": "2026-11-01T10:00:00Z",
+              "postedDate": "2026-11-01T10:00:00Z",
+              "status": "booked",
+              "transactionType": "transfer"
+            },
+            {
+              "id": "0C000000-0000-4000-8000-000000000007",
+              "accountID": "0A000000-0000-4000-8000-000000000002",
+              "amount": { "amount": "3.21", "indicator": "credit" },
+              "currencyCode": "USD",
+              "transactionDescription": "Interest",
+              "originalTransactionDescription": "Interest Paid",
+              "transactionDate": "2026-11-01T00:00:00Z",
+              "postedDate": "2026-11-01T00:00:00Z",
+              "status": "booked",
+              "transactionType": "interest"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

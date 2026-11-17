@@ -8,7 +8,7 @@ let package = Package(
         .library(name: "OpenPersonalFinanceKit", targets: ["OpenPersonalFinanceKit"])
     ],
     targets: [
-        .target(name: "OpenPersonalFinanceKit"),
+        .target(name: "OpenPersonalFinanceKit", resources: [.copy("Fixtures")]),
         .testTarget(name: "OpenPersonalFinanceKitTests", dependencies: ["OpenPersonalFinanceKit"]),
     ]
 )
