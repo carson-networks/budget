@@ -109,7 +109,6 @@ Repo: `../budget-stack`.
 - `compose.local.yaml`: an override giving `budget-server` and `web` a `build:` context at the sibling checkouts (`../budget-server`, `../budget`) and a `:local` image tag.
 - Make targets `start-local` (build, then start with the override) and `rebuild-local` (`make rebuild-local s=budget-server`). The Go image builds with `-mod=vendor`, so the target runs `go mod vendor` first, inside `golang:1.27-alpine` so Go isn't needed on the host. A missing sibling checkout fails with a message naming the path.
 - `README.md`: a "Developing across repos" section, including that the iOS Simulator reaches the stack at `http://localhost:8080/api`.
-- Replace `docs/apple-sync-plan.md` with a pointer to `budget/docs/plan/README.md`, and commit it (it is currently untracked).
 
 Acceptance: `docker compose config` validates with and without the override; `make start-local` runs both services from local source and a visible change shows up after `make rebuild-local`.
 
