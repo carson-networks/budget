@@ -20,7 +20,7 @@ Change `[ ]` to `[x]` when a task's PR is merged, or for human tasks when the st
 | [x] | P0-A2 | CI for `ios/` | budget | Agent |
 | [x] | P0-A3 | TestFlight release workflow | budget | Agent |
 | [ ] | P0-X1 | Local-build mode in budget-stack | budget-stack | Agent |
-| [ ] | P0-H3 | Signing secrets and first TestFlight build | — | Human |
+| [x] | P0-H3 | Signing secrets and first TestFlight build | — | Human |
 | [x] | P0-H4 | FinanceKit for the extension | — | Human |
 | [ ] | — | Exit check passed | — | Human |
 
