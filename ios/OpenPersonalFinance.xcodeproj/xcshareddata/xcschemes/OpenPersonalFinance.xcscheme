@@ -20,20 +20,6 @@
                ReferencedContainer = "container:OpenPersonalFinance.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "NO"
-            buildForArchiving = "NO"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "9D5DB37630A836FC00A54464"
-               BuildableName = "OpenPersonalFinanceDelivery.appex"
-               BlueprintName = "OpenPersonalFinanceDelivery"
-               ReferencedContainer = "container:OpenPersonalFinance.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction

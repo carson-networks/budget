@@ -21,8 +21,8 @@ env:
   APP_BUNDLE_ID: net.carsonnetworks.OpenPersonalFinance
   EXTENSION_BUNDLE_ID: net.carsonnetworks.OpenPersonalFinance.Delivery
   APP_GROUP: group.net.carsonnetworks.OpenPersonalFinance
-  # Set to true once Apple grants FinanceKit to the extension (plan task P0-H4).
-  REQUIRE_EXTENSION_FINANCEKIT: "false"
+  # Apple granted FinanceKit to the extension (plan task P0-H4); a profile without it now fails.
+  REQUIRE_EXTENSION_FINANCEKIT: "true"
 
 jobs:
   changes:
@@ -234,10 +234,6 @@ jobs:
 
       - name: Export signed IPA
         run: |
-          # The extension isn't embedded until Apple grants it FinanceKit (plan task P0-H4).
-          if ! compgen -G "$RUNNER_TEMP/build/OpenPersonalFinance.xcarchive/Products/Applications/*.app/Extensions/*.appex" > /dev/null; then
-            /usr/libexec/PlistBuddy -c "Delete :provisioningProfiles:$EXTENSION_BUNDLE_ID" "$RUNNER_TEMP/ios-signing/ExportOptions.plist"
-          fi
           xcodebuild -exportArchive \
             -archivePath "$RUNNER_TEMP/build/OpenPersonalFinance.xcarchive" \
             -exportPath "$RUNNER_TEMP/build/ipa" \
