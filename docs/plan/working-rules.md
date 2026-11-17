@@ -29,7 +29,7 @@ Task IDs are `P<phase>-<system><n>`; human tasks use `H`. Within one system (A, 
 - Do not copy code from the LunchSync repository; it has no licence. Reading it for ideas is fine.
 - Comments: one-line "why" only, no long explanatory blocks.
 - Do not weaken or delete an existing test to make a change pass.
-- Each phase file opens with a progress table. Do not tick a row yourself: the human ticks it when the task's PR is merged. If a task needs splitting or a new task appears, add a row and say so in the PR.
+- **Keep the progress tables current as you go.** Each phase file opens with one. Tick an agent task's row once its PR is merged, and a human task's row once the human says it's done, in the next change you make to the plan (or a small docs PR if nothing else is pending). When the human reports a phase's exit check passed, tick its row in the overview's phase table too. Check off only what is confirmed: a PR still open, or a human step you only assume happened, stays unticked. If a task needs splitting or a new task appears, add a row and say so in the PR.
 - A task is done when its acceptance items hold and the repo's checks pass. Paste the check output in the PR description. If a check cannot be run, say so; do not claim it passed.
 - Stop and ask instead of guessing when: a task conflicts with the contract or README, an existing behaviour would have to change for Plaid or manual accounts, a migration would touch existing rows, or a FinanceKit API does not behave as the contract says.
 

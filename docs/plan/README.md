@@ -139,7 +139,7 @@ flowchart TD
 - **Phase 7 needs app phase 5, not phase 6.** Phase 8 needs only the server. Phases 9 and 10 do not depend on each other.
 - **Within one repo area, tasks go one at a time:** the server chain shares migration numbers and the app tasks share one package. Human tasks and exit checks are the real bottleneck.
 
-Each phase file opens with a progress table listing its tasks and a **Depends on** line; tick the phase here when its exit check has passed.
+Each phase file opens with a progress table listing its tasks and a **Depends on** line. Rows are ticked as tasks are confirmed done (see the working rules), and the phase is ticked here when its exit check has passed.
 
 Supporting files:
 
