@@ -21,7 +21,7 @@ Change `[ ]` to `[x]` when a task's PR is merged, or for human tasks when the st
 | [ ] | P0-A3 | TestFlight release workflow | budget | Agent |
 | [ ] | P0-X1 | Local-build mode in budget-stack | budget-stack | Agent |
 | [ ] | P0-H3 | Signing secrets and first TestFlight build | — | Human |
-| [ ] | P0-H4 | FinanceKit for the extension (with Apple) | — | Human |
+| [ ] | P0-H4 | FinanceKit for the extension | — | Human |
 | [ ] | — | Exit check passed | — | Human |
 
 ## Layout
@@ -45,7 +45,7 @@ docs/
 
 ### P0-H1 Human: Apple identifiers and capabilities
 
-1. Register two App IDs: `net.carsonnetworks.OpenPersonalFinance` for the app and `net.carsonnetworks.OpenPersonalFinance.Delivery` for the extension. Enable **App Groups** on both with one shared group, `group.net.carsonnetworks.OpenPersonalFinance`, and **FinanceKit** (a managed capability, under Additional Capabilities) on the app. FinanceKit is granted per bundle ID, so the extension's is requested separately (P0-H4).
+1. Register two App IDs: `net.carsonnetworks.OpenPersonalFinance` for the app and `net.carsonnetworks.OpenPersonalFinance.Delivery` for the extension. Enable **App Groups** on both with one shared group, `group.net.carsonnetworks.OpenPersonalFinance`, and **FinanceKit** (a managed capability, under Additional Capabilities) on the app. FinanceKit is granted per bundle ID, so the extension's is requested separately and enabled once granted (P0-H4).
 2. Create the App Store Connect app record and add the phones' Apple IDs as internal testers.
 3. Tell the agent the team ID. It is not secret.
 
@@ -57,7 +57,7 @@ Created 2026-11-14; the agent then fixed the name, bundle ID, platforms and enti
 
 1. In Xcode 27: File → New → Project → **iOS** → App (not Multiplatform). Name `OpenPersonalFinance`, bundle ID `net.carsonnetworks.OpenPersonalFinance`, SwiftUI, Swift Testing, saved in `ios/`.
 2. File → New → Target → **Background Delivery Extension**, named `OpenPersonalFinanceDelivery`, bundle ID `net.carsonnetworks.OpenPersonalFinance.Delivery`.
-3. Signing & Capabilities: **App Groups** with `group.net.carsonnetworks.OpenPersonalFinance` on both targets; **FinanceKit** on the app only until P0-H4.
+3. Signing & Capabilities: **App Groups** with `group.net.carsonnetworks.OpenPersonalFinance` on both targets; **FinanceKit** on the app, and on the extension once P0-H4 is granted.
 4. Set both targets to iPhone only, iOS 27.
 5. Commit the result on a branch and hand it to the agent. Do not add `xcuserdata`.
 
@@ -90,7 +90,7 @@ Copy the shape of `weather-client/.github/workflows/ios-release.yml`, replacing 
 - `.github/workflows/ios-release.yml`: triggered by the shared `v*.*.*` release tags and by `workflow_dispatch` with an optional version input. A first job on `ubuntu-latest` compares the tag with the previous `v*` tag and skips the build unless `ios/` changed. The `Release` workflow keeps tagging iOS-only merges (it ignores only `docs/**`). Same version validation, same secret presence check, same certificate import, same upload action, same clean-up step.
 - Two provisioning profiles, one per target (app and extension). Secrets: `IOS_DISTRIBUTION_CERTIFICATE_BASE64`, `IOS_DISTRIBUTION_CERTIFICATE_PASSWORD`, `IOS_APP_PROVISIONING_PROFILE_BASE64`, `IOS_EXTENSION_PROVISIONING_PROFILE_BASE64`, `APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID`, `APP_STORE_CONNECT_PRIVATE_KEY`.
 - Runs on `xcode-27` with Xcode 27.2. Codemagic's `xcode-project use-profiles` reads the project with the `xcodeproj` gem, which looks for `project.pbxproj`; the Xcode 27 format has `project.xcproj` instead, so signing settings are passed to `xcodebuild` and written to the export options directly.
-- Fail early if either profile is for the wrong bundle ID or lacks the App Group, or the app's profile lacks FinanceKit. The extension's FinanceKit is a warning until P0-H4 is granted, then required. Phase 10 adds a production-push check for the app profile.
+- Fail early if either profile is for the wrong bundle ID or lacks the App Group, or the app's profile lacks FinanceKit. The extension's profile must also carry FinanceKit (`REQUIRE_EXTENSION_FINANCEKIT`, a warning only while P0-H4 was pending). Phase 10 adds a production-push check for the app profile.
 - Marketing version from the tag; build number from the run number and attempt, as weather-client does.
 - The `Docker` workflow also builds the web image on every `v*` tag, including ones cut for iOS-only merges; that is accepted.
 - `docs/ios-release.md`, adapted from weather-client's: the secrets and how to produce each, how to tag, where the build appears.
@@ -119,9 +119,9 @@ The app needs an AppIcon in its asset catalog before the first upload.
 ### P0-H4 Human: FinanceKit for the extension
 
 1. Request the FinanceKit entitlement for `net.carsonnetworks.OpenPersonalFinance.Delivery` (Account Holder) and answer Apple's follow-up questions.
-2. When granted: enable it on the App ID, regenerate the extension's profile and update `IOS_EXTENSION_PROVISIONING_PROFILE_BASE64`, then tell the agent. In one PR it embeds the extension in the app again, adds the entitlement to the extension target, and sets `REQUIRE_EXTENSION_FINANCEKIT` to `true`.
+2. When granted: enable it on the App ID, regenerate the extension's profile and update `IOS_EXTENSION_PROVISIONING_PROFILE_BASE64`. The agent then embeds the extension, adds its entitlement and sets `REQUIRE_EXTENSION_FINANCEKIT` to `true`.
 
-Until then the extension is not embedded: App Store Connect rejected the first upload (0.11.0) with ITMS-91154 because the embedded extension lacked FinanceKit. Apple granted the request on 2026-11-16.
+Granted 2026-11-16. While it was pending the extension was left out of the app (#88), because App Store Connect rejected the first upload (0.11.0) with ITMS-91154. It was embedded again with FinanceKit in #89; release 0.13.0 was the first TestFlight build with it.
 
 This does not block the phase 0 exit check. It blocks P1-A4's FinanceKit read, phase 2's background-delivery test and phase 7.
 
@@ -129,5 +129,5 @@ This does not block the phase 0 exit check. It blocks P1-A4's FinanceKit read, p
 
 - A branch push touching only `ios/` runs the iOS workflow and nothing else; a web-only push does not run it.
 - The first `v*` tag after the iOS PRs merge produces a TestFlight build that installs and shows that version; a later web-only tag skips the iOS build.
-- The installed build's entitlements include FinanceKit and the App Group on the app; the extension is not embedded until P0-H4 (Settings shows the app under Privacy → Wallet once it asks, in phase 1; for now check the archive's entitlements in the workflow log).
+- The installed build's app and extension both carry FinanceKit and the App Group (Settings shows the app under Privacy → Wallet once it asks, in phase 1; for now check the archive's entitlements in the workflow log).
 - `make start-local` in budget-stack works and the web app behaves as before.

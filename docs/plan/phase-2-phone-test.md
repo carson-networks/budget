@@ -30,7 +30,7 @@ Use the phase 1 TestFlight build. Fill in the "Phone test results" table in the 
 4. **Rejected or reversed.** If one occurs during the test (for example a declined or cancelled charge), note how it arrives. Leave blank otherwise.
 5. **Credit limit.** Confirm it is populated and matches Wallet.
 6. **Two phones, one account.** On both phones that can see the same account, compare `Account.id` and the IDs of the same three transactions.
-7. **Background delivery** (needs P0-H4). Set frequency to hourly, close the app, make a purchase, lock the phone. Read the wake log over 48 hours: when the extension woke, whether the read succeeded while locked, and how that compares with `BGAppRefreshTask`.
+7. **Background delivery.** Set frequency to hourly, close the app, make a purchase, lock the phone. Read the wake log over 48 hours: when the extension woke, whether the read succeeded while locked, and how that compares with `BGAppRefreshTask`.
 8. **Reachability.** From the phone's browser, open the budget web app on Wi-Fi, on cellular, and over the VPN. Set the VPN to on-demand for the server's hostname if it is not reachable on cellular.
 9. Export one redacted fixture per account, including one export taken before and one after the pending charge settled, and hand them to the agent.
 
