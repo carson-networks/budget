@@ -107,12 +107,12 @@ Acceptance: `actionlint` passes; the differences from weather-client's workflow 
 Repo: `../budget-stack`.
 
 - `compose.yaml` profiles: `release` runs the pinned `web` and `budget-server` images; `local` runs `web-local` and `budget-server-local`, built from the sibling checkouts (`../budget`, `../budget-server`) with network aliases so `edge` reaches them by the same names. Postgres and `edge` are shared.
-- Make targets `start` and `start-local`, each stopping the other profile's services first. `start-local` rebuilds on every run, so it is also how a change is picked up. The Go image builds with `-mod=vendor`, so it runs `go mod vendor` first, inside `golang:1.27-alpine` so Go isn't needed on the host.
+- Make targets `start` and `start-local`, each stopping the other profile's services first. `start-local` rebuilds on every run, so it is also how a change is picked up.
 - `README.md`: a "Developing across repos" section, including that the iOS Simulator reaches the stack at `http://localhost:8080/api`.
 
 Acceptance: `docker compose config` validates for both profiles; `make start-local` runs both services from local source, a visible change shows up after rerunning it, and `make start` switches back.
 
-Known issue: budget-server `master` does not vendor, because its `go.sum` lacks the `h1:` entry for `github.com/vektra/mockery/v3` v3.9.1, so `start-local` only works with budget-server v0.19.0 until that is fixed. Fix it before server phase 3.
+budget-server's image downloads its own Go modules, so `start-local` needs nothing installed beyond Docker. Until that Dockerfile change and the `go.sum` fix for `github.com/vektra/mockery/v3` v3.9.1 are on budget-server `master`, `start-local` only builds a budget-server checkout that has them. Fix this before server phase 3.
 
 ### P0-H3 Human: Signing secrets and first TestFlight build
 
