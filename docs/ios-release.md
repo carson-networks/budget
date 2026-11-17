@@ -10,7 +10,7 @@ It runs on GitHub's `xcode-27` runner with Xcode 27.2 selected, because the proj
 
 ## One-time setup
 
-The App IDs `net.carsonnetworks.OpenPersonalFinance` and `net.carsonnetworks.OpenPersonalFinance.Delivery` must exist in the Apple Developer team, both with the App Group `group.net.carsonnetworks.OpenPersonalFinance`, and the app record must exist in App Store Connect (plan task P0-H1). The app's App ID needs **FinanceKit**; the extension's gets it once Apple grants it (plan task P0-H4).
+The App IDs `net.carsonnetworks.OpenPersonalFinance` and `net.carsonnetworks.OpenPersonalFinance.Delivery` must exist in the Apple Developer team, both with **FinanceKit** and the App Group `group.net.carsonnetworks.OpenPersonalFinance`, and the app record must exist in App Store Connect (plan tasks P0-H1 and P0-H4).
 
 1. In **Certificates, Identifiers & Profiles**, create an **Apple Distribution** certificate if there isn't one, install it, and export it from Keychain Access as a `.p12` with a nonempty password.
 2. Create two **App Store Connect** distribution profiles with that certificate: one for the app ID, one for the extension ID. Download both `.mobileprovision` files. If FinanceKit or the App Group was enabled on an App ID after a profile was made, regenerate the profile.
@@ -29,9 +29,9 @@ The App IDs `net.carsonnetworks.OpenPersonalFinance` and `net.carsonnetworks.Ope
 
 Never commit these files or their encoded contents. Renew the certificate and profile secrets before they expire.
 
-Before building, the workflow checks that every secret is set, that each profile is for the right bundle ID and team and carries the App Group, and that the app's profile carries FinanceKit. A missing FinanceKit entitlement on the extension's profile is only a warning until `REQUIRE_EXTENSION_FINANCEKIT` is set to `true` in the workflow.
+Before building, the workflow checks that every secret is set, that each profile is for the right bundle ID and team and carries the App Group, and that the app's profile carries FinanceKit. `REQUIRE_EXTENSION_FINANCEKIT` makes a missing FinanceKit entitlement on the extension's profile an error; it is `true` now that Apple has granted it.
 
-Until Apple grants FinanceKit to the extension, the extension is not embedded in the app: App Store Connect rejects any build whose background delivery extension lacks the entitlement (ITMS-91154). The extension target still compiles in CI, and the export leaves out its profile when the archive has no extension. When the grant arrives, regenerate the extension's profile, update `IOS_EXTENSION_PROVISIONING_PROFILE_BASE64`, then embed the extension again with its FinanceKit entitlement and set `REQUIRE_EXTENSION_FINANCEKIT` to `true`, in one PR. It prints the signed entitlements of the archived app and extension in the **Show signed entitlements** step. Signing files and the temporary keychain are removed at the end of the job, even on failure.
+Both profiles must carry FinanceKit: App Store Connect rejects a build whose background delivery extension lacks it (ITMS-91154). If an App ID's capabilities change, regenerate its profile and update the matching secret. It prints the signed entitlements of the archived app and extension in the **Show signed entitlements** step. Signing files and the temporary keychain are removed at the end of the job, even on failure.
 
 ## Release a version
 
