@@ -56,7 +56,7 @@ Task IDs are `P<phase>-<system><n>`; human tasks use `H`. Within one system (A, 
 ## Running and testing locally
 
 - **budget-stack is the local environment.** Anything beyond unit tests is done with the whole stack up: Postgres, budget-server, the web app and the edge proxy.
-- **Use local builds of what you changed.** `make start-local` in budget-stack (added in task P0-X1) builds images from the sibling checkouts. `make start` runs the pinned releases only.
+- **Use local builds of what you changed.** `make start-local` in budget-stack builds `web` and `budget-server` from the sibling checkouts (rerun it after a change); `make start` switches back to the pinned releases.
 - **The Simulator reaches the stack at `http://localhost:8080/api`** and uses the fake data source. FinanceKit returns nothing in the Simulator, so anything that needs real Wallet data is a human task.
 - **Unit tests stay in their area** and must not need the stack or a device.
 - **When a task spans repos,** check out each repo's branch side by side and run them together in the stack before opening any of the PRs. Say in each PR which branches of the other repos it was run against.
