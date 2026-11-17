@@ -1,12 +1,10 @@
 # FinanceKit sync: plan
 
-Status: in progress · 2026-11-13 · updated 2026-11-17
+Status: in progress
 
 ## Goal
 
-Get Apple Card, Apple Cash and Apple Savings accounts, transactions, balances and credit limits into budget-server. FinanceKit is on-device only, so an iOS app reads Wallet data on the phone and pushes it to budget-server over ConnectRPC. Apple approved the FinanceKit entitlement for the app on 2026-11-13 and for its background delivery extension on 2026-11-16 (decision 16).
-
-This replaces `budget-stack/docs/apple-sync-plan.md` and the abandoned LunchSync bridge plan (`budget-ingest`, in that repo's git history). Decisions from both are carried forward where they still apply.
+Get Apple Card, Apple Cash and Apple Savings accounts, transactions, balances and credit limits into budget-server. FinanceKit is on-device only, so an iOS app reads Wallet data on the phone and pushes it to budget-server over ConnectRPC. The app and its background delivery extension both have the FinanceKit entitlement (decision 16).
 
 ```
 ┌──────────────── iPhone ────────────────┐         ┌────────── home server ──────────┐
@@ -61,8 +59,6 @@ Numbered so tasks can refer to them.
 17. **CI runs on GitHub's `xcode-27` runner with Xcode 27.2 selected**, matching local development. The default `macos-26` runner's Xcode 26 cannot open the project. `xcode-27` is a public preview; move to the GA label when there is one.
 
 ## FinanceKit facts this plan relies on
-
-Checked against Apple's documentation on 2026-11-13.
 
 | Fact | API |
 |---|---|

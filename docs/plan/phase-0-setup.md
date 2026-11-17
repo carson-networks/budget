@@ -59,8 +59,6 @@ docs/
 
 Xcode's templates set up the extension correctly, so this is done by hand once, about five minutes. No project generator is used.
 
-Created 2026-11-14; the agent then fixed the name, bundle ID, platforms and entitlements, and it merged with P0-A1 (#86).
-
 1. In Xcode 27: File → New → Project → **iOS** → App (not Multiplatform). Name `OpenPersonalFinance`, bundle ID `net.carsonnetworks.OpenPersonalFinance`, SwiftUI, Swift Testing, saved in `ios/`.
 2. File → New → Target → **Background Delivery Extension**, named `OpenPersonalFinanceDelivery`, bundle ID `net.carsonnetworks.OpenPersonalFinance.Delivery`.
 3. Signing & Capabilities: **App Groups** with `group.net.carsonnetworks.OpenPersonalFinance` on both targets; **FinanceKit** on the app, and on the extension once P0-H4 is granted.
@@ -97,8 +95,8 @@ Copy the shape of `weather-client/.github/workflows/ios-release.yml`, replacing 
 - `.github/workflows/ios-release.yml`: triggered by the shared `v*.*.*` release tags and by `workflow_dispatch` with an optional version input. A first job on `ubuntu-latest` compares the tag with the previous `v*` tag and skips the build unless `ios/` changed. The `Release` workflow keeps tagging iOS-only merges (it ignores only `docs/**`). Same version validation, same secret presence check, same certificate import, same upload action, same clean-up step.
 - Two provisioning profiles, one per target (app and extension). Secrets: `IOS_DISTRIBUTION_CERTIFICATE_BASE64`, `IOS_DISTRIBUTION_CERTIFICATE_PASSWORD`, `IOS_APP_PROVISIONING_PROFILE_BASE64`, `IOS_EXTENSION_PROVISIONING_PROFILE_BASE64`, `APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID`, `APP_STORE_CONNECT_PRIVATE_KEY`.
 - Runs on `xcode-27` with Xcode 27.2. Codemagic's `xcode-project use-profiles` reads the project with the `xcodeproj` gem, which looks for `project.pbxproj`; the Xcode 27 format has `project.xcproj` instead, so signing settings are passed to `xcodebuild` and written to the export options directly.
-- Fail early if either profile is for the wrong bundle ID or lacks the App Group, or the app's profile lacks FinanceKit. The extension's profile must also carry FinanceKit (`REQUIRE_EXTENSION_FINANCEKIT`, a warning only while P0-H4 was pending). Phase 10 adds a production-push check for the app profile.
-- Marketing version from the tag; build number from the run number and attempt, as weather-client does. A manual run without a version uses the latest `v*` tag (#90), since the project's `MARKETING_VERSION` stays at 0.1.0 and App Store Connect rejects a lower version than one already uploaded.
+- Fail early if either profile is for the wrong bundle ID or lacks the App Group, or the app's profile lacks FinanceKit. The extension's profile must also carry FinanceKit (`REQUIRE_EXTENSION_FINANCEKIT`). Phase 10 adds a production-push check for the app profile.
+- Marketing version from the tag; build number from the run number and attempt, as weather-client does. A manual run without a version uses the latest `v*` tag, since the project's `MARKETING_VERSION` stays at 0.1.0 and App Store Connect rejects a lower version than one already uploaded.
 - The `Docker` workflow also builds the web image on every `v*` tag, including ones cut for iOS-only merges; that is accepted.
 - `docs/ios-release.md`, adapted from weather-client's: the secrets and how to produce each, how to tag, where the build appears.
 
@@ -115,7 +113,7 @@ Repo: `../budget-stack`.
 
 Acceptance: `docker compose config` validates with and without the override; `make start-local` runs both services from local source and a visible change shows up after `make rebuild-local`.
 
-Checked against budget-server v0.19.0. budget-server `master` (v0.20.0) does not vendor: its `go.sum` lacks the `h1:` entry for `github.com/vektra/mockery/v3` v3.9.1, and its own Docker build for v0.20.0 failed the same way. That needs fixing in budget-server before server phase 3.
+Known issue: budget-server `master` does not vendor, because its `go.sum` lacks the `h1:` entry for `github.com/vektra/mockery/v3` v3.9.1, so `start-local` only works with budget-server v0.19.0 until that is fixed. Fix it before server phase 3.
 
 ### P0-H3 Human: Signing secrets and first TestFlight build
 
@@ -125,10 +123,10 @@ Checked against budget-server v0.19.0. budget-server `master` (v0.20.0) does not
 
 ### P0-H4 Human: FinanceKit for the extension
 
-1. Request the FinanceKit entitlement for `net.carsonnetworks.OpenPersonalFinance.Delivery` (Account Holder) and answer Apple's follow-up questions.
-2. When granted: enable it on the App ID, regenerate the extension's profile and update `IOS_EXTENSION_PROVISIONING_PROFILE_BASE64`. The agent then embeds the extension, adds its entitlement and sets `REQUIRE_EXTENSION_FINANCEKIT` to `true`.
+1. Request the FinanceKit entitlement for `net.carsonnetworks.OpenPersonalFinance.Delivery` (Account Holder); Apple grants it per bundle ID, separately from the app's.
+2. Enable it on the App ID, regenerate the extension's App Store profile and update `IOS_EXTENSION_PROVISIONING_PROFILE_BASE64`.
 
-Granted 2026-11-16. While it was pending the extension was left out of the app (#88), because App Store Connect rejected the first upload (0.11.0) with ITMS-91154. It was embedded again with FinanceKit in #89; release 0.13.0 was the first TestFlight build with it.
+The extension can only be embedded once it has FinanceKit: App Store Connect rejects a build whose background delivery extension lacks it (ITMS-91154).
 
 ## Exit check
 
