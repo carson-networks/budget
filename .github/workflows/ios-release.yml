@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       build_version:
-        description: "App version (e.g. 1.0.2); leave blank to use the project's MARKETING_VERSION"
+        description: "App version (e.g. 1.0.2); leave blank to use the latest v* release tag"
         required: false
         type: string
 
@@ -64,6 +64,8 @@ jobs:
     steps:
       - name: Checkout selected ref
         uses: actions/checkout@v7.0.1
+        with:
+          fetch-tags: true
 
       - name: Select Xcode
         run: |
@@ -92,8 +94,9 @@ jobs:
           else
             build_name="$BUILD_VERSION_INPUT"
             if [[ -z "$build_name" ]]; then
-              build_name="$(xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration Release -showBuildSettings -json \
-                | jq -r --arg id "$APP_BUNDLE_ID" '.[] | select(.buildSettings.PRODUCT_BUNDLE_IDENTIFIER == $id) | .buildSettings.MARKETING_VERSION')"
+              # App Store Connect rejects a version below one already uploaded, and releases use the tags.
+              build_name="$(git tag --list 'v*' --sort=-v:refname | grep -m1 -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true)"
+              build_name="${build_name#v}"
             fi
           fi
           if [[ ! "$build_name" =~ ^${version_pattern}$ ]]; then

@@ -52,7 +52,7 @@ TestFlight builds expire after 90 days. Before then, merge an iOS change or disp
 
 ## Test a branch on devices
 
-Once this workflow is on `master`, open **Actions → iOS Release → Run workflow**, pick the branch, and optionally enter a version. Without one, the project's `MARKETING_VERSION` is used.
+Once this workflow is on `master`, open **Actions → iOS Release → Run workflow**, pick the branch, and optionally enter a version. Without one, it uses the latest `v*` release tag's version, since App Store Connect rejects a version lower than one already uploaded. To retry a failed tag release, use **Re-run jobs** on that run instead; it keeps the tag's version.
 
 ```bash
 gh workflow run ios-release.yml --ref your-branch
