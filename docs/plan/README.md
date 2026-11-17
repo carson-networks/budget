@@ -1,6 +1,6 @@
 # FinanceKit sync: plan
 
-Status: proposed · 2026-11-13 · updated 2026-11-15
+Status: in progress · 2026-11-13 · updated 2026-11-17
 
 ## Goal
 
