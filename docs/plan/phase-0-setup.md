@@ -121,7 +121,7 @@ The app needs an AppIcon in its asset catalog before the first upload.
 1. Request the FinanceKit entitlement for `net.carsonnetworks.OpenPersonalFinance.Delivery` (Account Holder) and answer Apple's follow-up questions.
 2. When granted: enable it on the App ID, regenerate the extension's profile and update `IOS_EXTENSION_PROVISIONING_PROFILE_BASE64`, then tell the agent. In one PR it embeds the extension in the app again, adds the entitlement to the extension target, and sets `REQUIRE_EXTENSION_FINANCEKIT` to `true`.
 
-Until then the extension is not embedded: App Store Connect rejected the first upload (0.11.0) with ITMS-91154 because the embedded extension lacked FinanceKit.
+Until then the extension is not embedded: App Store Connect rejected the first upload (0.11.0) with ITMS-91154 because the embedded extension lacked FinanceKit. Apple granted the request on 2026-11-16.
 
 This does not block the phase 0 exit check. It blocks P1-A4's FinanceKit read, phase 2's background-delivery test and phase 7.
 
