@@ -19,10 +19,10 @@ Change `[ ]` to `[x]` when a task's PR is merged, or for human tasks when the st
 | [x] | P0-A1 | Project skeleton | budget | Agent |
 | [x] | P0-A2 | CI for `ios/` | budget | Agent |
 | [x] | P0-A3 | TestFlight release workflow | budget | Agent |
-| [ ] | P0-X1 | Local-build mode in budget-stack | budget-stack | Agent |
+| [x] | P0-X1 | Local-build mode in budget-stack | budget-stack | Agent |
 | [x] | P0-H3 | Signing secrets and first TestFlight build | — | Human |
 | [x] | P0-H4 | FinanceKit for the extension | — | Human |
-| [ ] | — | Exit check passed | — | Human |
+| [x] | — | Exit check passed | — | Human |
 
 ## Layout
 
@@ -112,7 +112,7 @@ Repo: `../budget-stack`.
 
 Acceptance: `docker compose config` validates for both profiles; `make start-local` runs both services from local source, a visible change shows up after rerunning it, and `make start` switches back.
 
-budget-server's image downloads its own Go modules, so `start-local` needs nothing installed beyond Docker. Until that Dockerfile change and the `go.sum` fix for `github.com/vektra/mockery/v3` v3.9.1 are on budget-server `master`, `start-local` only builds a budget-server checkout that has them. Fix this before server phase 3.
+budget-server's image downloads its own Go modules, so `start-local` needs nothing installed beyond Docker.
 
 ### P0-H3 Human: Signing secrets and first TestFlight build
 
