@@ -1,12 +1,10 @@
 # FinanceKit sync: plan
 
-Status: proposed · 2026-11-13
+Status: in progress
 
 ## Goal
 
-Get Apple Card, Apple Cash and Apple Savings accounts, transactions, balances and credit limits into budget-server. FinanceKit is on-device only, so an iOS app reads Wallet data on the phone and pushes it to budget-server over ConnectRPC. The FinanceKit entitlement was approved on 2026-11-13.
-
-This replaces `budget-stack/docs/apple-sync-plan.md` and the abandoned LunchSync bridge plan (`budget-ingest`, in that repo's git history). Decisions from both are carried forward where they still apply.
+Get Apple Card, Apple Cash and Apple Savings accounts, transactions, balances and credit limits into budget-server. FinanceKit is on-device only, so an iOS app reads Wallet data on the phone and pushes it to budget-server over ConnectRPC. The app and its background delivery extension both have the FinanceKit entitlement (decision 16).
 
 ```
 ┌──────────────── iPhone ────────────────┐         ┌────────── home server ──────────┐
@@ -53,14 +51,14 @@ Numbered so tasks can refer to them.
 9. **Link tables on the server, as Plaid does it.** `financekit_account_links` and `financekit_transaction_links` map FinanceKit UUIDs to budget IDs. Writes are upserts keyed on the FinanceKit ID, so a replayed batch changes nothing.
 10. **A history token is saved only after the server acknowledges the batch it covers.** A killed run replays from the last saved token.
 11. **One syncing phone per account until the device test says otherwise.** Several phones may see the same Wallet account (Apple Card Family). Each link records which key owns it; a second phone sees the account as "synced by <key name>" and can take it over. Phase 2 tests whether FinanceKit IDs match across phones; if they do, the restriction is lifted in phase 9.
-12. **Background sync is the FinanceKit background delivery extension** (iOS 26) at a user-picked `hourly` / `daily` / `weekly` frequency, with `BGAppRefreshTask` and sync-on-open as backups. No APNs until phase 10, which adds a server-requested sync on top.
-13. **iOS 26 minimum, Swift 6, SwiftUI, a committed Xcode project.** The app is `OpenPersonalFinance`, bundle ID `net.carsonnetworks.OpenPersonalFinance`. It lives in `ios/` in the budget repo, with its own CI job and release tag prefix (`ios-v*`) so web releases are unaffected. No project generator: the `.xcodeproj` is committed and uses folder-synchronized groups.
+12. **Background sync is the FinanceKit background delivery extension** at a user-picked `hourly` / `daily` / `weekly` frequency, with `BGAppRefreshTask` and sync-on-open as backups. No APNs until phase 10, which adds a server-requested sync on top.
+13. **iOS 27 minimum, iPhone only, Swift 6, SwiftUI, a committed Xcode 27 project.** The app is `OpenPersonalFinance`, bundle ID `net.carsonnetworks.OpenPersonalFinance`; the extension is `net.carsonnetworks.OpenPersonalFinance.Delivery`. It lives in `ios/` in the budget repo, with its own CI job. It shares the web app's `vX.Y.Z` release tags; the iOS release workflow runs on each tag but only builds when `ios/` changed since the previous one. No project generator: the `.xcodeproj` is committed in Xcode 27's project format (`project.xcproj`) and uses folder-synchronized groups.
 14. **Credit limit only.** Due date, minimum payment and overdue amount are available from FinanceKit but left to phase 11.
 15. **Local state is Codable files in the App Group container** (tokens, outbox, run log), shared by the app and the extension. No SwiftData.
+16. **FinanceKit is granted per bundle ID.** The app and the extension each needed their own approval; both have it, and both App IDs carry FinanceKit and the App Group. App Store Connect rejects a build whose background delivery extension lacks FinanceKit (ITMS-91154), so the release workflow requires it on both profiles.
+17. **CI runs on GitHub's `xcode-27` runner with Xcode 27.2 selected**, matching local development. The default `macos-26` runner's Xcode 26 cannot open the project. `xcode-27` is a public preview; move to the GA label when there is one.
 
 ## FinanceKit facts this plan relies on
-
-Checked against Apple's documentation on 2026-11-13.
 
 | Fact | API |
 |---|---|
@@ -69,7 +67,10 @@ Checked against Apple's documentation on 2026-11-13.
 | Transaction status values | `authorized`, `pending`, `booked`, `rejected`, `memo` |
 | Credit data on liability accounts | `LiabilityAccount.creditInformation.creditLimit` (also `minimumNextPaymentAmount`, `nextPaymentDueDate`, `overduePaymentAmount`) |
 | Balance | `AccountBalance.currentBalance` (`available`, `booked`, or both) |
-| Background delivery, iOS 26+ | `enableBackgroundDelivery(for:frequency:)`, `BackgroundDataType` (`accounts`, `accountBalances`, `transactions`), `UpdateFrequency` (`hourly`, `daily`, `weekly`), `BackgroundDeliveryExtensionProviding.didReceiveData(for:)` / `willTerminate()` |
+| Background delivery | `enableBackgroundDelivery(for:frequency:)`, `BackgroundDataType` (`accounts`, `accountBalances`, `transactions`), `UpdateFrequency` (`hourly`, `daily`, `weekly`), `BackgroundDeliveryExtension.didReceiveData(for:)` / `willTerminate()`; extension point `com.apple.financekit.background-delivery` |
+| The wake-up names only data types, not accounts or items | `didReceiveData(for:)` gets `[BackgroundDataType]`; the extension asks each linked account's history since its saved token |
+| Entitlements are granted per bundle ID | The extension needs its own FinanceKit approval (decision 16) |
+| A shipped background delivery extension must carry FinanceKit | Otherwise ITMS-91154 on upload (decision 16) |
 | Extension needs an App Group shared with the app | "Implementing a background delivery extension" |
 | No data in the Simulator | Everything is built behind a protocol with a fake source |
 
@@ -134,7 +135,7 @@ flowchart TD
 - **Phase 7 needs app phase 5, not phase 6.** Phase 8 needs only the server. Phases 9 and 10 do not depend on each other.
 - **Within one repo area, tasks go one at a time:** the server chain shares migration numbers and the app tasks share one package. Human tasks and exit checks are the real bottleneck.
 
-Each phase file opens with a progress table listing its tasks and a **Depends on** line; tick the phase here when its exit check has passed.
+Each phase file opens with a progress table listing its tasks and a **Depends on** line. Rows are ticked as tasks are confirmed done (see the working rules), and the phase is ticked here when its exit check has passed.
 
 Supporting files:
 
@@ -152,5 +153,6 @@ Supporting files:
 | User revokes FinanceKit access or removes an account from sharing | The app shows the account as disconnected; the server keeps the data. |
 | Version coupling between app and server | The proto is fixed in phase 3; any later change stays additive; the app pins a budget-server proto tag; deploy the server first. |
 | Silent push is throttled or dropped by iOS | It is only a nudge (phase 10); the phase 7 triggers do not depend on it. |
-| TestFlight builds expire after 90 days | Calendar reminder; a tag push re-releases. |
+| TestFlight builds expire after 90 days | Calendar reminder; merge an iOS change or dispatch the iOS release workflow. |
 | macOS CI minutes | The iOS job only runs when `ios/**` changes. |
+| The `xcode-27` runner is a preview and may queue or break | Rerun; switch to the GA label once GitHub publishes it. |

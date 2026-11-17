@@ -45,7 +45,6 @@ Acceptance: engine and view-model tests for each case above.
 - An alert when no FinanceKit account has synced in 48 hours, using whatever the `uptime` stack in infra-prod already supports (a SQL or HTTP check against `last_synced_at`); if that needs a new unauthenticated endpoint, stop and ask.
 - Confirm the Postgres backup covers the new tables (they are in the same database, so this should be a check, not a change).
 - budget-stack and infra-prod READMEs: key rotation (create new, paste into the app, revoke old) and what a phone replacement involves (new key, FinanceKit access again, take over or relink each account).
-- `docs/ios-release.md`: a note that TestFlight builds expire after 90 days and how to re-release.
 
 ### P9-H1 Human: Go live on all accounts and phones
 
