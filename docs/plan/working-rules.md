@@ -37,11 +37,13 @@ Task IDs are `P<phase>-<system><n>`; human tasks use `H`. Within one system (A, 
 
 | Area | Run before opening a PR | Conventions |
 |---|---|---|
-| iOS (`ios/`) | `make -C ios format`, `make -C ios lint` (needs actionlint: `mise install` in `ios/`), `make -C ios test` (Simulator), then run the app in the Simulator against budget-stack with the fake data source | See "iOS conventions" below. |
+| iOS (`ios/`) | `make -C ios format`, `make -C ios lint` (needs actionlint: `mise install` in `ios/`), `make -C ios test` (Simulator), then run the app in the Simulator against budget-stack with the fake data source | See "iOS conventions" below and [ios/best-practices.md](../../ios/best-practices.md). |
 | budget-server | `make format`, `go test ./...`, then `make start-local` in budget-stack and exercise the change there | `plan/dev-rules.md`. Build with docker, not `go run`. After storage interface changes: `make generate-mocks`. After migrations: `make migrate` then `make generate`. After proto changes: `make proto-generate`. No message argument on `assert`/`require`. DB enums are explicit integers, never `iota`. |
 | Web (`src/`) | `pnpm lint`, `pnpm test`, `pnpm build`, then `make start-local` in budget-stack and check the change in the browser | `spec/arch.md`. Server state only through `src/queries/`; only `src/connectRPC/` imports generated code; logic in pure functions with unit tests. |
 
 ## iOS conventions
+
+Code structure and style are in [ios/best-practices.md](../../ios/best-practices.md). The points below are the ones every task is checked against.
 
 - **Everything testable lives in `OpenPersonalFinanceKit`.** The app and extension targets hold only SwiftUI views, the extension entry point and wiring. Views get view models from the package; they never import FinanceKit or the generated Connect code.
 - **FinanceKit is behind `FinanceDataSource`.** Only `FinanceKitDataSource` imports FinanceKit. Tests and the Simulator use `FakeFinanceDataSource`, driven by JSON fixtures.
