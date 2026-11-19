@@ -65,7 +65,7 @@ Acceptance: unit tests in `DomainTests` for every mapping row in the contract, i
 
 ### P3-A2 Endpoint and key settings, connection test
 
-- `SettingsStore` in `Storage`: endpoint URL and API key in the Keychain, in an access group shared with the extension, with `kSecAttrAccessibleAfterFirstUnlock` so background runs can read them while the phone is locked. The key is never written to `UserDefaults`, logs or the run log.
+- `SettingsStore` in `Storage` (conforming to `SettingsStoring` in `Domain`, backed by an in-memory fake in `Fakes`): endpoint URL and API key in the Keychain, shared with the extension by passing the App Group ID (`group.net.carsonnetworks.OpenPersonalFinance`) as `kSecAttrAccessGroup` (no extra `keychain-access-groups` entitlement or Team ID prefix needed), with `kSecAttrAccessibleAfterFirstUnlock` so background runs can read them while the phone is locked (intentionally not `ThisDeviceOnly` so encrypted device backups and phone upgrades carry the key across). The key is never written to `UserDefaults`, logs or the run log.
 - Settings screen, driven by `SettingsModel` in `Features`: endpoint URL field, API key field (secure entry, paste supported), **Test connection**, and a clear indication of the last result.
 - URL validation as a pure function in `Domain`: must parse, must be `https` (or `http://localhost` in debug builds), trailing slash normalised, a missing `/api` suffix is not added silently but hinted at.
 - **Test connection** calls `GetStatus`. For this phase, `Unimplemented` is shown as "Reached budget-server (not yet enabled)"; `.unreachable` shows the underlying reason (DNS, TLS, timeout).

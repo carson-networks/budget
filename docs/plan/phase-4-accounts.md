@@ -60,7 +60,7 @@ Acceptance:
 - When the server already has an unowned-by-me FinanceKit account that plausibly is the same one (same institution and type), the sheet offers **Link to existing** as well, which calls `LinkAccount` with `existing_account_id` and `take_over`.
 - **Take over** on a "Synced by" row, behind a confirmation that explains the other phone will stop syncing it.
 - **Stop syncing** (swipe action): `UnlinkAccount`, clears that account's tokens. Says plainly that the account and its transactions stay in budget and can be deleted from the web app.
-- The join and state derivation are one pure function in `Domain` with unit tests. `AccountsModel` in `Features` runs the actions and is tested against `FakeBudgetAPI` and `FakeFinanceDataSource`. Clearing tokens goes through the `Storage` token store.
+- The join and state derivation are one pure function in `Domain` with unit tests. `AccountsModel` in `Features` runs the actions against `Domain` protocols (`FinanceDataSource`, `BudgetAPI`, `TokenStoring`) and is tested against in-memory fakes from `Fakes`. Clearing tokens goes through `TokenStoring` (implemented by `Storage`'s `TokenStore`).
 - Settings shows the key name returned by `GetStatus`.
 
 Acceptance: unit tests for every row state and each action's success and failure; in the Simulator against `make start-local`, adding the fixture's two accounts creates them in budget-server and they appear in the web app.

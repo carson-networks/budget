@@ -37,29 +37,30 @@ Acceptance: tests for a repeated batch (second call: all `unchanged`, no row cha
 
 The engine in `Sync`, the outbox in `Storage`, following the "Sync run" steps in the contract.
 
-- `Outbox` actor: Codable files in the App Group, one per batch, each holding the request and the tokens it covers. Ordered, survives a kill, capped (oldest-first send; if it exceeds a size limit the engine stops reading new changes until it drains).
-- `SyncEngine` actor with `run(trigger:)`, built by `Dependencies.live` and given `FinanceDataSource` and `BudgetAPI` through its `init`: lock, drain the outbox, `GetStatus`, `ListAccounts`, then per owned account read changes, map, batch at 500, enqueue, push, and commit tokens only after the acknowledgement.
-- A token is saved only together with the removal of the outbox entry it belongs to; a crash between the push and the commit replays the batch, which the server treats as unchanged.
+- `Outbox` actor: versioned (`schemaVersion`) Codable files in the App Group, one per batch, each holding the request and any tokens committed when that batch succeeds. Ordered, survives a kill, capped (oldest-first send; if it exceeds a size limit the engine stops reading new changes until it drains). An undecodable/incompatible outbox file is moved aside (quarantined) and reported in the run log rather than stalling the queue.
+- `SyncEngine` actor (conforming to `SyncRunning` in `Domain`) with `run(trigger:)`, built by `Dependencies.live` and given `FinanceDataSource` and `BudgetAPI` through its `init`: acquire `FileLock` (releasing it and flushing the run log in Swift 6.4 `async defer` + `withTaskCancellationShield`), drain the outbox (stopping immediately on `.unauthenticated` or `.unreachable`), `GetStatus`, `ListAccounts`, then per owned account **skip any account that still has undrained outbox entries**; otherwise read changes, map, batch at 500, enqueue with the new history tokens attached **only to the final batch** of the split change set, push (renewing `FileLock` between batches), and commit any attached tokens only after acknowledgement.
+- After the server acknowledges a batch, save any tokens attached to that batch and then remove the outbox entry; each file write is atomic. Because intermediate batches carry no token, deleting each acknowledged batch from the outbox prevents resending it on retry while tokens only advance once the full split change set is acknowledged; because `PushChanges` is idempotent, a crash between push, token save and outbox removal replays safely.
 - Error handling per the contract: `.unauthenticated` stops the run and marks settings as needing attention; `.notFound` marks that account "Deleted on server" and clears its tokens; `.dataUnavailable` and `.unreachable` end the run quietly as "will retry"; `.invalidToken` clears that account's tokens and restarts it from nothing.
-- Cross-process file lock in the App Group (the phase 1 lock), with a stale-lock timeout.
+- Cross-process lease-file lock in the App Group (the phase 1 `FileLock`), renewed between batches, with a short stale-lock timeout (~45 s) and no kernel `flock` held across network calls.
 - First sync for a newly added account reads from no token, which returns everything the user authorised.
 
 Acceptance, all against the fakes:
 - A run against the hand-written fixture produces the expected requests.
 - Running twice sends nothing the second time.
 - Kill points: after enqueue, after push but before commit, mid-account. Each resumes with no loss and the server-side fake sees only duplicates of what it already had.
-- 1,200 transactions become three batches in order; a failure on the second keeps the first's token progress.
-- Two engines sharing one directory never run at once.
+- 1,200 transactions become three batches in order; only the third batch carries the new token; a failure on the second deletes only the first from the outbox, leaves the token unadvanced, skips re-reading that account on the next run while its outbox is non-empty, and resumes cleanly from the second batch.
+- An undecodable outbox entry is quarantined without blocking remaining accounts.
+- Two engines sharing one directory never run at once; a long multi-batch run renews its lease and is not stolen by a second engine.
 
 ### P5-A2 Sync now, status and run log
 
-- **Sync now** button on the Accounts tab; pull-to-refresh does the same. A sync also starts when the app becomes active, at most once every five minutes: the app target forwards the scene phase change to a `SyncStatusModel` in `Features`, which applies the throttle and runs the engine.
+- **Sync now** button on the Accounts tab; pull-to-refresh does the same. A sync also starts when the app becomes active, at most once every five minutes: the app target forwards the scene phase change to a `SyncStatusModel` in `Features` (which depends on `Domain`'s `SyncRunning` and `LogReading` protocols), which applies the throttle and runs the engine.
 - Per-account status line: last successful sync time, count of transactions sent in the last run, or the current problem.
 - A global banner for states that need the person: key refused, endpoint unreachable for more than a day, Wallet access revoked.
-- `RunLog` in `Storage`, in the App Group: one entry per run with trigger, start, duration, per-account counts and outcome; capped at 200 entries. A Run log screen under Settings lists them.
+- `RunLog` in `Storage`, in the App Group (versioned `schemaVersion` Codable file, conforming to `LogReading` in `Domain`, wiping and recreating cleanly with a warning if corrupt): one entry per run with trigger, start, duration, per-account counts and outcome; capped at 200 entries. A Run log screen under Settings lists them.
 - No merchant names or amounts in the run log.
 
-Acceptance: `SyncStatusModel` tests for each status and banner state; the foreground-activation throttle is a pure function in `Domain` with tests; in the Simulator against `make start-local`, **Sync now** puts the fixture's transactions into budget-server and they are visible in the web app.
+Acceptance: `SyncStatusModel` tests against in-memory fakes for each status and banner state; `RunLog` tests including corrupt/mismatched `schemaVersion` recovery; the foreground-activation throttle is a pure function in `Domain` with tests; in the Simulator against `make start-local`, **Sync now** puts the fixture's transactions into budget-server and they are visible in the web app.
 
 ## Exit check
 

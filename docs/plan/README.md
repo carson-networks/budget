@@ -52,9 +52,9 @@ Numbered so tasks can refer to them.
 10. **A history token is saved only after the server acknowledges the batch it covers.** A killed run replays from the last saved token.
 11. **One syncing phone per account until the device test says otherwise.** Several phones may see the same Wallet account (Apple Card Family). Each link records which key owns it; a second phone sees the account as "synced by <key name>" and can take it over. Phase 2 tests whether FinanceKit IDs match across phones; if they do, the restriction is lifted in phase 9.
 12. **Background sync is the FinanceKit background delivery extension** at a user-picked `hourly` / `daily` / `weekly` frequency, with `BGAppRefreshTask` and sync-on-open as backups. No APNs until phase 10, which adds a server-requested sync on top.
-13. **iOS 27 minimum, iPhone only, Swift 6, SwiftUI, a committed Xcode 27 project.** The app is `OpenPersonalFinance`, bundle ID `net.carsonnetworks.OpenPersonalFinance`; the extension is `net.carsonnetworks.OpenPersonalFinance.Delivery`. It lives in `ios/` in the budget repo, with its own CI job. It shares the web app's `vX.Y.Z` release tags; the iOS release workflow runs on each tag but only builds when `ios/` changed since the previous one. No project generator: the `.xcodeproj` is committed in Xcode 27's project format (`project.xcproj`) and uses folder-synchronized groups.
+13. **iOS 27 minimum, iPhone only, Swift 6.4 (Swift 6 language mode), SwiftUI, a committed Xcode 27 project.** The app is `OpenPersonalFinance`, bundle ID `net.carsonnetworks.OpenPersonalFinance`; the extension is `net.carsonnetworks.OpenPersonalFinance.Delivery`. It lives in `ios/` in the budget repo, with its own CI job. It shares the web app's `vX.Y.Z` release tags; the iOS release workflow runs on each tag but only builds when `ios/` changed since the previous one. No project generator: the `.xcodeproj` is committed in Xcode 27's project format (`project.xcproj`) and uses folder-synchronized groups.
 14. **Credit limit only.** Due date, minimum payment and overdue amount are available from FinanceKit but left to phase 11.
-15. **Local state is Codable files in the App Group container** (tokens, outbox, run log), shared by the app and the extension. No SwiftData.
+15. **Local state is versioned Codable files in the App Group container** (tokens, outbox, run log), shared by the app and the extension. No SwiftData.
 16. **FinanceKit is granted per bundle ID.** The app and the extension each needed their own approval; both have it, and both App IDs carry FinanceKit and the App Group. App Store Connect rejects a build whose background delivery extension lacks FinanceKit (ITMS-91154), so the release workflow requires it on both profiles.
 17. **CI runs on GitHub's `xcode-27` runner with Xcode 27.2 selected**, matching local development. The default `macos-26` runner's Xcode 26 cannot open the project. `xcode-27` is a public preview; move to the GA label when there is one.
 
@@ -62,7 +62,8 @@ Numbered so tasks can refer to them.
 
 | Fact | API |
 |---|---|
-| Incremental reads with resumable tokens | `transactionHistory(forAccountID:since:isMonitoring:)`, `accountHistory(since:isMonitoring:)`, `accountBalanceHistory(forAccountID:since:isMonitoring:)`; `HistoryToken` is `Codable` |
+| Feature availability check (region / device eligibility) | `FinanceStore.isDataAvailable(.financialData)` |
+| Incremental reads with resumable tokens | `transactionHistory(forAccountID:since:isMonitoring:)`, `accountBalanceHistory(forAccountID:since:isMonitoring:)`, and store-wide `accountHistory(since:isMonitoring:)` (tracked per linked account in `TokenStore`); `HistoryToken` is `Codable` |
 | Each change set has inserted, updated and deleted items | `FinanceStore.Changes` |
 | Transaction status values | `authorized`, `pending`, `booked`, `rejected`, `memo` |
 | Credit data on liability accounts | `LiabilityAccount.creditInformation.creditLimit` (also `minimumNextPaymentAmount`, `nextPaymentDueDate`, `overduePaymentAmount`) |

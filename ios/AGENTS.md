@@ -1,6 +1,6 @@
 # ios/
 
-The OpenPersonalFinance iPhone app, its FinanceKit background delivery extension, and the `OpenPersonalFinanceKit` Swift package. Xcode 27.2, Swift 6, SwiftUI, iOS 27.
+The OpenPersonalFinance iPhone app, its FinanceKit background delivery extension, and the `OpenPersonalFinanceKit` Swift package. Xcode 27.2, Swift 6.4, SwiftUI, iOS 27.
 
 Before writing or reviewing Swift here, read:
 

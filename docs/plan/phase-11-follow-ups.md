@@ -16,3 +16,4 @@ Unscheduled. Each is a separate piece of work to be specified before an agent pi
 | [ ] | 8 | Non-USD accounts and `foreignCurrencyAmount`. |
 | [ ] | 9 | CSV/OFX statement upload as a push source for accounts FinanceKit cannot see. |
 | [ ] | 10 | App Store release instead of TestFlight, removing the 90-day expiry. |
+| [ ] | 11 | Optional Face ID / passcode gate (`LocalAuthentication`) on Diagnostics or app launch. |

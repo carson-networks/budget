@@ -36,7 +36,7 @@ Do the branch the contract's "Ownership" section names, and delete the other fro
 - A key revoked on the server: every trigger stops after `GetStatus`; one notification, not one per wake.
 - Outbox poison: a batch refused with `InvalidArgument` three times is moved aside, reported in the run log and on the account row, and the account is queued for a full resync.
 - Clock and time zone: transaction dates are sent as instants; add a test that a purchase near midnight lands in the same month the web UI shows for it.
-- Accessibility pass on every screen: Dynamic Type, VoiceOver labels on status rows, dark mode.
+- Accessibility, privacy and iOS 27 layout pass on every screen: Dynamic Type, VoiceOver labels on status rows, dark mode, resizable window widths (iPad multitasking / iPhone Mirroring), `.appearsActive` / toolbar visibility priority, and `.privacySensitive()` redaction in the App Switcher snapshot.
 
 Acceptance: engine and `Features` model tests for each case above.
 
@@ -44,7 +44,7 @@ Acceptance: engine and `Features` model tests for each case above.
 
 - An alert when no FinanceKit account has synced in 48 hours, using whatever the `uptime` stack in infra-prod already supports (a SQL or HTTP check against `last_synced_at`); if that needs a new unauthenticated endpoint, stop and ask.
 - Confirm the Postgres backup covers the new tables (they are in the same database, so this should be a check, not a change).
-- budget-stack and infra-prod READMEs: key rotation (create new, paste into the app, revoke old) and what a phone replacement involves (new key, FinanceKit access again, take over or relink each account).
+- budget-stack and infra-prod READMEs: key rotation (create new, paste into the app, revoke old) and what a phone replacement involves (confirming the key restored from an encrypted backup or issuing a new one, re-granting FinanceKit access, and taking over or relinking each account if a new key is used).
 
 ### P9-H1 Human: Go live on all accounts and phones
 
