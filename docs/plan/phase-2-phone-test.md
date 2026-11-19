@@ -36,7 +36,7 @@ Use the phase 1 TestFlight build. Fill in the "Phone test results" table in the 
 
 ### P2-A1 Reconcile the contract with what the phones showed
 
-- Add the exported fixtures under `ios/OpenPersonalFinanceKit/Tests/OpenPersonalFinanceKitTests/Fixtures/` with a test that loads each.
+- Add the exported fixtures under `ios/OpenPersonalFinanceKit/Sources/Fakes/Fixtures/Phone/`, as resources of `Fakes` so any test target and the Simulator can load them, with a test in `FakesTests` that loads each.
 - Record the results table in the contract. For every answer that contradicts the contract, change the contract in the same PR: the balance row and sign, the pending row, the rejected row.
 - Fix `FinanceKitDataSource` or the P1-A1 types for anything the fixtures show is missing or wrong.
 - Write the shared-account outcome into the contract's "Ownership" section:

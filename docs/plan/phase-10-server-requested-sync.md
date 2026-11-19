@@ -68,13 +68,14 @@ Acceptance: tests with the mocked client for one push per phone across several a
 ### P10-A1 Register for push and sync on a silent push
 
 - The `remote-notification` background mode on the app target, and the `aps-environment` entitlement that P10-H1's capability adds.
-- Register for remote notifications at launch. This needs no permission prompt for silent pushes. Send the token with `RegisterPushToken` when it is new or changed, and only when `GetStatus` reports `push_enabled`; the environment comes from the build's entitlement.
+- Register for remote notifications at launch. This needs no permission prompt for silent pushes. The app target's delegate adaptor only forwards the token and the push to package code.
+- `PushRegistrar` in `Sync` sends the token with `RegisterPushToken` when it is new or changed, and only when `GetStatus` reports `push_enabled`; the environment comes from the build's entitlement. The last sent token is kept in `Storage`.
 - A silent push runs `SyncEngine.run(trigger: .serverRequest)` with the same time budget and cancellation handling as the extension, and reports the fetch result to the system.
-- `BudgetAPI` and `FakeBudgetAPI` gain the new call. The generated client already has it from phase 3.
+- `BudgetAPI` (`Domain`), `ConnectBudgetAPI` (`BudgetClient`) and `FakeBudgetAPI` (`Fakes`) gain the new call. The generated client already has it from phase 3.
 - Settings shows whether server-requested sync is available; the run log shows the new trigger.
 - `ios-release.yml`: the app profile check also requires production push, as weather-client's does.
 
-Acceptance: tests for token registration (new, unchanged, rotated, server without push) and for a server-requested run ending on a committed boundary when cancelled; the PR states that delivery can only be observed on a device.
+Acceptance: `PushRegistrar` tests against `FakeBudgetAPI` for token registration (new, unchanged, rotated, server without push) and for a server-requested run ending on a committed boundary when cancelled; the PR states that delivery can only be observed on a device.
 
 ### P10-X1 APNs configuration in the stack and production
 

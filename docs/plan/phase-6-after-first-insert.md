@@ -53,9 +53,9 @@ Acceptance: tests for balance applied and stale balance ignored, credit limit on
 - Balance and account tokens are committed with that batch, like transaction tokens.
 - **Full resync** per account, under the account's detail screen behind a confirmation: clears that account's tokens, reads everything, sends it marked as a resync, and marks the last batch complete.
 - An automatic full resync when FinanceKit rejects a saved token.
-- Account detail screen: balance, credit limit, last sync, counts, **Sync now**, **Full resync**, **Stop syncing**.
+- Account detail screen, driven by `AccountDetailModel` in `Features`: balance, credit limit, last sync, counts, **Sync now**, **Full resync**, **Stop syncing**.
 
-Acceptance: engine tests for balance-only changes (no transactions) still producing a push, credit limit sent only for liability accounts, a multi-batch resync marking only the last batch, and token invalidation triggering a resync; in the Simulator against `make start-local`, the fixture's pending → booked, rejected and deleted cases end in the right server state.
+Acceptance: `AccountDetailModel` tests against the fakes for each action; engine tests for balance-only changes (no transactions) still producing a push, credit limit sent only for liability accounts, a multi-batch resync marking only the last batch, and token invalidation triggering a resync; in the Simulator against `make start-local`, the fixture's pending → booked, rejected and deleted cases end in the right server state.
 
 ## Exit check
 

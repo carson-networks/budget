@@ -38,7 +38,7 @@ Do the branch the contract's "Ownership" section names, and delete the other fro
 - Clock and time zone: transaction dates are sent as instants; add a test that a purchase near midnight lands in the same month the web UI shows for it.
 - Accessibility pass on every screen: Dynamic Type, VoiceOver labels on status rows, dark mode.
 
-Acceptance: engine and view-model tests for each case above.
+Acceptance: engine and `Features` model tests for each case above.
 
 ### P9-X1 Operations
 

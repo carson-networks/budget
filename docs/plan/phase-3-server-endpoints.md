@@ -53,24 +53,26 @@ Acceptance:
 
 Needs a budget-server release containing P3-S1.
 
-- `ios/buf.gen.yaml` generating Swift messages (`swift-protobuf`) and Connect clients (`connect-swift`) for `financekit.v1` and `account.v1` from the budget-server repo at that release tag, into `ios/OpenPersonalFinanceKit/Sources/OpenPersonalFinanceKit/Gen/`. `make -C ios proto-generate`; commit the output. CI verifies it is up to date, as weather-client's `proto` job does.
-- Add `connect-swift` and `swift-protobuf` to the package, versions pinned.
-- `BudgetAPI` protocol with one async method per RPC (all but `RegisterPushToken`, which phase 10 adds), taking and returning the package's own value types, not generated messages. `ConnectBudgetAPI` implements it: base URL and key supplied per call from settings, `Authorization: Bearer` header, JSON encoding to match the web, a request timeout.
-- A typed `BudgetAPIError`: `.unauthenticated`, `.notFound`, `.failedPrecondition`, `.invalidArgument`, `.unimplemented`, `.unreachable`, `.other`.
-- `FakeBudgetAPI` for tests.
-- Pure mapping functions from the P1-A1 wallet types to request values, following the contract's mapping table: sign, name fallback, status, decimal strings.
+- `ios/buf.gen.yaml` generating Swift messages (`swift-protobuf`) and Connect clients (`connect-swift`) for `financekit.v1` and `account.v1` from the budget-server repo at that release tag, into `ios/OpenPersonalFinanceKit/Sources/BudgetClient/Gen/`, with `Visibility=Internal` on both plugins. `make -C ios proto-generate`; commit the output. CI verifies it is up to date, as weather-client's `proto` job does.
+- Add `connect-swift` and `swift-protobuf` to the package, versions pinned, as dependencies of `BudgetClient` only.
+- In `Domain`: the `BudgetAPI` protocol with one async method per RPC (all but `RegisterPushToken`, which phase 10 adds), and the request and response value types it takes and returns.
+- In `BudgetClient`: `ConnectBudgetAPI` implements it, converting those values to and from generated messages: base URL and key supplied per call from settings, `Authorization: Bearer` header, JSON encoding to match the web, a request timeout.
+- A typed `BudgetAPIError` in `Domain`: `.unauthenticated`, `.notFound`, `.failedPrecondition`, `.invalidArgument`, `.unimplemented`, `.unreachable`, `.other`. Connect codes are mapped to it inside `BudgetClient`.
+- `FakeBudgetAPI` in `Fakes`.
+- Pure mapping functions in `Domain` from the P1-A1 wallet types to request values, following the contract's mapping table: sign, name fallback, status, decimal strings.
 
-Acceptance: unit tests for every mapping row in the contract, including the P2 fixtures; a test with an in-process stub confirms the bearer header is sent and each Connect code maps to the right error; no file outside `ConnectBudgetAPI` and `Gen/` imports generated code.
+Acceptance: unit tests in `DomainTests` for every mapping row in the contract, including the P2 fixtures; `BudgetClientTests` checks request bodies against captured JSON, and an in-process stub confirms the bearer header is sent and each Connect code maps to the right error; nothing outside `BudgetClient` imports Connect or SwiftProtobuf, and no generated type is `public`.
 
 ### P3-A2 Endpoint and key settings, connection test
 
-- `SettingsStore`: endpoint URL and API key in the Keychain, in an access group shared with the extension. The key is never written to `UserDefaults`, logs or the run log.
-- Settings screen: endpoint URL field, API key field (secure entry, paste supported), **Test connection**, and a clear indication of the last result.
-- URL validation as a pure function: must parse, must be `https` (or `http://localhost` in debug builds), trailing slash normalised, a missing `/api` suffix is not added silently but hinted at.
+- `SettingsStore` in `Storage`: endpoint URL and API key in the Keychain, in an access group shared with the extension, with `kSecAttrAccessibleAfterFirstUnlock` so background runs can read them while the phone is locked. The key is never written to `UserDefaults`, logs or the run log.
+- Settings screen, driven by `SettingsModel` in `Features`: endpoint URL field, API key field (secure entry, paste supported), **Test connection**, and a clear indication of the last result.
+- URL validation as a pure function in `Domain`: must parse, must be `https` (or `http://localhost` in debug builds), trailing slash normalised, a missing `/api` suffix is not added silently but hinted at.
 - **Test connection** calls `GetStatus`. For this phase, `Unimplemented` is shown as "Reached budget-server (not yet enabled)"; `.unreachable` shows the underlying reason (DNS, TLS, timeout).
 - First-run flow: endpoint and key, then the phase 1 authorization screen.
+- `Dependencies.live` gains the settings store and `ConnectBudgetAPI`; the Simulator still uses the fake finance data source with the real API.
 
-Acceptance: unit tests for URL validation and for the connection-test view model across every error case; in the Simulator against `make start-local`, **Test connection** reaches the stack at `http://localhost:8080/api`.
+Acceptance: unit tests for URL validation and for `SettingsModel`'s connection test against `FakeBudgetAPI` across every error case; in the Simulator against `make start-local`, **Test connection** reaches the stack at `http://localhost:8080/api`.
 
 ## Exit check
 

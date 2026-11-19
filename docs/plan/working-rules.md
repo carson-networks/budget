@@ -45,14 +45,14 @@ Task IDs are `P<phase>-<system><n>`; human tasks use `H`. Within one system (A, 
 
 Code structure and style are in [ios/best-practices.md](../../ios/best-practices.md). The points below are the ones every task is checked against.
 
-- **Everything testable lives in `OpenPersonalFinanceKit`.** The app and extension targets hold only SwiftUI views, the extension entry point and wiring. Views get view models from the package; they never import FinanceKit or the generated Connect code.
-- **FinanceKit is behind `FinanceDataSource`.** Only `FinanceKitDataSource` imports FinanceKit. Tests and the Simulator use `FakeFinanceDataSource`, driven by JSON fixtures.
-- **The server is behind `BudgetAPI`.** Only its Connect implementation imports generated code. Tests use a fake.
-- **Mapping is pure.** FinanceKit value → wire message conversions are plain functions with unit tests, in one module.
-- **One `SyncEngine` actor** runs every sync, whatever triggered it. The app and extension coordinate through a file lock in the App Group.
+- **Everything testable lives in `OpenPersonalFinanceKit`, one target per concern** (`Domain`, `FinanceKitSource`, `BudgetClient`, `Storage`, `Sync`, `Live`, `Features`, `Fakes`; see the best practices for what each holds and may depend on). The app and extension targets hold only SwiftUI views, entry points, system registrations and wiring. Views get screen models from `Features`.
+- **FinanceKit is behind `FinanceDataSource` and `BackgroundDeliveryControl`.** Only the `FinanceKitSource` target imports FinanceKit, plus the extension entry point for its base class; `make lint` checks this. Tests and the Simulator use the fakes in `Fakes`, driven by JSON fixtures.
+- **The server is behind `BudgetAPI`.** Only the `BudgetClient` target imports Connect, SwiftProtobuf or generated code, and generated types are internal to it. Tests use `FakeBudgetAPI`.
+- **Mapping is pure.** FinanceKit → wallet types in `FinanceKitSource`, wallet → request values in `Domain`, request values ↔ generated messages in `BudgetClient`. Each is plain functions with unit tests.
+- **One `SyncEngine` actor** in `Sync` runs every sync, whatever triggered it. The app and extension build it from `Live` and coordinate through a file lock in the App Group.
 - Swift 6 language mode with strict concurrency. Swift Testing for unit tests. No third-party dependencies beyond `connect-swift` and `swift-protobuf` without asking.
 - Xcode 27.2 locally and in CI. The Xcode project (`ios/OpenPersonalFinance.xcodeproj`, Xcode 27 format) is committed and uses folder-synchronized groups, so adding a source file does not touch the project file. No project generator. Change targets, capabilities and build settings only when a task says to, and keep such changes in their own commit. Generated Connect/protobuf Swift is committed, as the web's generated code is.
-- The Xcode 27 project format (`project.xcproj`, JSON) is undocumented. The local package is declared in the top-level `packages` list (`{ "kind": "local", "path": "OpenPersonalFinanceKit" }`) and linked per target with `package-product-members` → `{ "product-name": "OpenPersonalFinanceKit", "build-phase": { "build-phase": "frameworks" } }`. Unknown keys are silently ignored, so check any hand edit with a build. Third-party packages (`connect-swift`, `swift-protobuf`) go in `OpenPersonalFinanceKit/Package.swift`, not the project.
+- The Xcode 27 project format (`project.xcproj`, JSON) is undocumented. The local package is declared in the top-level `packages` list (`{ "kind": "local", "path": "OpenPersonalFinanceKit" }`) and linked per target with `package-product-members` → `{ "product-name": "<product>", "build-phase": { "build-phase": "frameworks" } }`: the app links `Features`, `Live` and `Fakes`, the extension links only `Live`. Unknown keys are silently ignored, so check any hand edit with a build. Third-party packages (`connect-swift`, `swift-protobuf`) go in `OpenPersonalFinanceKit/Package.swift` as dependencies of `BudgetClient` only, not the project.
 - The endpoint must be `https`, except `localhost` in debug builds.
 
 ## Running and testing locally

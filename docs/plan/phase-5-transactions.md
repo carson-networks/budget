@@ -35,10 +35,10 @@ Acceptance: tests for a repeated batch (second call: all `unchanged`, no row cha
 
 ### P5-A1 `SyncEngine`, outbox and tokens
 
-In `OpenPersonalFinanceKit`, following the "Sync run" steps in the contract.
+The engine in `Sync`, the outbox in `Storage`, following the "Sync run" steps in the contract.
 
-- `Outbox`: Codable files in the App Group, one per batch, each holding the request and the tokens it covers. Ordered, survives a kill, capped (oldest-first send; if it exceeds a size limit the engine stops reading new changes until it drains).
-- `SyncEngine` actor with `run(trigger:)`: lock, drain the outbox, `GetStatus`, `ListAccounts`, then per owned account read changes, map, batch at 500, enqueue, push, and commit tokens only after the acknowledgement.
+- `Outbox` actor: Codable files in the App Group, one per batch, each holding the request and the tokens it covers. Ordered, survives a kill, capped (oldest-first send; if it exceeds a size limit the engine stops reading new changes until it drains).
+- `SyncEngine` actor with `run(trigger:)`, built by `Dependencies.live` and given `FinanceDataSource` and `BudgetAPI` through its `init`: lock, drain the outbox, `GetStatus`, `ListAccounts`, then per owned account read changes, map, batch at 500, enqueue, push, and commit tokens only after the acknowledgement.
 - A token is saved only together with the removal of the outbox entry it belongs to; a crash between the push and the commit replays the batch, which the server treats as unchanged.
 - Error handling per the contract: `.unauthenticated` stops the run and marks settings as needing attention; `.notFound` marks that account "Deleted on server" and clears its tokens; `.dataUnavailable` and `.unreachable` end the run quietly as "will retry"; `.invalidToken` clears that account's tokens and restarts it from nothing.
 - Cross-process file lock in the App Group (the phase 1 lock), with a stale-lock timeout.
@@ -53,13 +53,13 @@ Acceptance, all against the fakes:
 
 ### P5-A2 Sync now, status and run log
 
-- **Sync now** button on the Accounts tab; pull-to-refresh does the same. A sync also starts when the app becomes active, at most once every five minutes.
+- **Sync now** button on the Accounts tab; pull-to-refresh does the same. A sync also starts when the app becomes active, at most once every five minutes: the app target forwards the scene phase change to a `SyncStatusModel` in `Features`, which applies the throttle and runs the engine.
 - Per-account status line: last successful sync time, count of transactions sent in the last run, or the current problem.
 - A global banner for states that need the person: key refused, endpoint unreachable for more than a day, Wallet access revoked.
-- `RunLog` in the App Group: one entry per run with trigger, start, duration, per-account counts and outcome; capped at 200 entries. A Run log screen under Settings lists them.
+- `RunLog` in `Storage`, in the App Group: one entry per run with trigger, start, duration, per-account counts and outcome; capped at 200 entries. A Run log screen under Settings lists them.
 - No merchant names or amounts in the run log.
 
-Acceptance: view-model tests for each status and banner state; the foreground-activation throttle is a pure function with tests; in the Simulator against `make start-local`, **Sync now** puts the fixture's transactions into budget-server and they are visible in the web app.
+Acceptance: `SyncStatusModel` tests for each status and banner state; the foreground-activation throttle is a pure function in `Domain` with tests; in the Simulator against `make start-local`, **Sync now** puts the fixture's transactions into budget-server and they are visible in the web app.
 
 ## Exit check
 

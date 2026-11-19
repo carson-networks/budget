@@ -4,7 +4,7 @@ How Swift code in `ios/` is structured and written. Process rules (branches, PRs
 
 ## Status
 
-`OpenPersonalFinanceKit` still has a single target holding `AppVersion`. Split it into the targets below before any phase 1 code lands; `AppVersion` moves to `Domain`. Changing the package's products also changes `package-product-members` in `project.xcproj`, which goes in its own commit.
+`OpenPersonalFinanceKit` still has a single target holding `AppVersion`. Phase 1 task P1-A0 splits it into the targets below before any other phase 1 code lands.
 
 ## Layout
 
@@ -27,18 +27,18 @@ Group by feature, not by kind. There are no top-level `Views/`, `ViewModels/` or
 
 ## Package targets
 
-Each rule in the working rules about who may import what is enforced by a target boundary, so the compiler rejects a bad import.
+Each rule in the working rules about who may import what is a target boundary, so the compiler rejects an import of a package module the target does not depend on.
 
 | Target | Holds | Depends on |
 |---|---|---|
-| `Domain` | Value types (`WalletAccount`, `WalletTransaction`, `Money`, `SyncTrigger`, `AppVersion`), domain errors, the `FinanceDataSource` and `BudgetAPI` protocols, pure mapping functions. Foundation only. | nothing |
-| `FinanceKitSource` | `FinanceKitDataSource`. The only target that imports FinanceKit. | `Domain` |
-| `BudgetClient` | `ConnectBudgetAPI` and `Gen/`. The only target that imports Connect or SwiftProtobuf. | `Domain`, `connect-swift`, `swift-protobuf` |
-| `Storage` | App Group file stores (tokens, outbox, run log), the file lock, `SettingsStore` (Keychain). | `Domain` |
-| `Sync` | `SyncEngine` actor. Talks to sources, the API and storage only through protocols. | `Domain`, `Storage` |
-| `Live` | `Dependencies` and `Dependencies.live(...)`: the one place real implementations are wired together. | `Sync`, `Storage`, `FinanceKitSource`, `BudgetClient` |
+| `Domain` | Value types (`WalletAccount`, `WalletBalance`, `WalletTransaction`, `ChangeSet`, `SyncTrigger`, `SyncFrequency`, `AppVersion`), request and response values for the server, domain errors, the `FinanceDataSource`, `BackgroundDeliveryControl`, `BudgetAPI` and `StaleNotifier` protocols, the fixture format, and pure functions: wallet → request mapping, URL validation, redaction, schedule and throttle calculations. Foundation only. | nothing |
+| `FinanceKitSource` | `FinanceKitDataSource` and `FinanceKitBackgroundDelivery`, with the FinanceKit → wallet type mapping. The only target that imports FinanceKit. | `Domain` |
+| `BudgetClient` | `ConnectBudgetAPI`, request values ↔ generated message conversion, and `Gen/`. The only target that imports Connect or SwiftProtobuf. | `Domain`, `connect-swift`, `swift-protobuf` |
+| `Storage` | App Group file stores (tokens, outbox, run log, wake log), the file lock, `SettingsStore` (Keychain). | `Domain` |
+| `Sync` | `SyncEngine` actor and the background work around it (wake probe, live monitor and debounce, push registration). Reaches FinanceKit and the server only through `Domain` protocols. | `Domain`, `Storage` |
+| `Live` | `Dependencies` and `Dependencies.live(...)`: the one place real implementations are wired together, plus thin system adapters such as the UserNotifications `StaleNotifier`. | `Sync`, `Storage`, `FinanceKitSource`, `BudgetClient` |
 | `Features` | `@Observable` screen models. `MainActor` by default. | `Domain`, `Sync`, `Storage` |
-| `Fakes` | `FakeFinanceDataSource`, `FakeBudgetAPI`, JSON fixtures as resources. Used by tests, previews and the Simulator. | `Domain` |
+| `Fakes` | `FakeFinanceDataSource`, `FakeBackgroundDelivery`, `FakeBudgetAPI`, and every JSON fixture (hand-written and phone exports) as resources. Used by tests, previews and the Simulator. | `Domain` |
 
 ```
 App target  ──► Features, Live, Fakes
@@ -50,7 +50,7 @@ Fakes ──► Domain
 
 - Dependencies only point down this graph. Nothing depends on `Live` except the two entry points.
 - The extension never links `Features` or SwiftUI.
-- The extension imports FinanceKit only for `BackgroundDeliveryExtension` and `FinanceStore.BackgroundDataType`; its body calls `Live` and nothing else.
+- Apple frameworks can be imported from any target, so the FinanceKit rule is also checked by `make lint`. The one exception is the extension entry point, which imports FinanceKit only for `BackgroundDeliveryExtension` and `FinanceStore.BackgroundDataType`; its body calls `Live` and nothing else.
 - Generated protobuf and Connect code is generated with `Visibility=Internal`, so wire types cannot leave `BudgetClient`.
 - Use `package` access for what targets share inside the package and `public` only for what the app or extension calls.
 - Each test target depends on the target under test and `Fakes`, nothing else.
@@ -66,6 +66,7 @@ Fakes ──► Domain
 ## Composition and dependency injection
 
 - The entry points are the composition roots. `OpenPersonalFinanceApp` calls `Dependencies.live(...)`, passing `FakeFinanceDataSource` in the Simulator, then builds the long-lived screen models once and injects them with `.environment(_:)`. The extension calls `Dependencies.live()`, runs the engine in a stored `Task`, and cancels it in `willTerminate()`.
+- The app target also owns system registrations that need an app: `BGTaskScheduler`, remote notifications, scene phase. Each handler is a one-line call into package code.
 - Below the roots, dependencies arrive through `init` parameters typed as protocols (`any FinanceDataSource`, `any BudgetAPI`).
 - No singletons, `static let shared`, service locators or DI frameworks.
 
@@ -109,6 +110,16 @@ struct AccountsView: View {
 }
 ```
 
+## Mapping
+
+Data crosses three pure, unit-tested mapping steps, each in the one target that can see both sides:
+
+| Step | Target |
+|---|---|
+| FinanceKit values → wallet types | `FinanceKitSource` |
+| Wallet types → request values (the sync contract's mapping table: sign, name fallback, status, decimal strings) | `Domain` |
+| Request and response values ↔ generated messages | `BudgetClient` |
+
 ## Networking
 
 - `BudgetAPI` takes and returns `Domain` types. `ConnectBudgetAPI` converts to and from generated messages inside `BudgetClient`.
@@ -131,7 +142,7 @@ struct AccountsView: View {
 
 ## Logging
 
-- `os.Logger`, subsystem `net.carsonnetworks.OpenPersonalFinance`, one category per target.
+- `os.Logger`, subsystem `net.carsonnetworks.OpenPersonalFinance`, one category per target, declared in that target's `Log.swift`.
 - Interpolations state their privacy. Counts, IDs and states are `.public`; anything describing money or merchants is `.private` and does not belong at info level at all.
 
 ## Testing
