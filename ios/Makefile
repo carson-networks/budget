@@ -15,16 +15,7 @@ format: ## Format Swift sources in place
 
 lint: ## Check Swift formatting, import boundaries and the iOS workflows
 	xcrun swift-format lint --strict --recursive --parallel $(SOURCES)
-	@bad="$$(find $(SOURCES) -name '*.swift' \
-		! -path '*/.build/*' \
-		! -path 'OpenPersonalFinanceKit/Sources/FinanceKitSource/*' \
-		! -path 'OpenPersonalFinanceDelivery/OpenPersonalFinanceDelivery.swift' \
-		-exec grep -HnE '^[[:space:]]*(@[[:alnum:]_]+[[:space:]]+)*((public|package|internal|fileprivate|private)[[:space:]]+)?import[[:space:]]+((typealias|struct|class|enum|protocol|let|var|func)[[:space:]]+)?FinanceKit(UI)?([[:space:].;]|$$)' {} + || true)"; \
-	if [ -n "$$bad" ]; then \
-		echo "FinanceKit may only be imported in FinanceKitSource and OpenPersonalFinanceDelivery.swift:"; \
-		echo "$$bad"; \
-		exit 1; \
-	fi
+	ast-grep scan $(SOURCES)
 	actionlint $(wildcard $(WORKFLOWS))
 
 build: ## Build the app for the Simulator
