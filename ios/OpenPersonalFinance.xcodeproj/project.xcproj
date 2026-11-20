@@ -45,7 +45,9 @@
       "product": "Products/OpenPersonalFinance.app",
       "product-type": "application",
       "package-product-members": [
-        { "product-name": "OpenPersonalFinanceKit", "build-phase": { "build-phase": "frameworks" } },
+        { "product-name": "Features", "build-phase": { "build-phase": "frameworks" } },
+        { "product-name": "Live", "build-phase": { "build-phase": "frameworks" } },
+        { "product-name": "Fakes", "build-phase": { "build-phase": "frameworks" } },
       ],
       "dependencies": [
         "OpenPersonalFinanceDelivery",
@@ -104,7 +106,7 @@
       "product": "Products/OpenPersonalFinanceDelivery.appex",
       "product-type": "extensionkit-extension",
       "package-product-members": [
-        { "product-name": "OpenPersonalFinanceKit", "build-phase": { "build-phase": "frameworks" } },
+        { "product-name": "Live", "build-phase": { "build-phase": "frameworks" } },
       ],
       "build-phases": [
         "compile-sources",
@@ -133,6 +135,7 @@
         "SKIP_INSTALL": "YES",
         "STRING_CATALOG_GENERATE_SYMBOLS": "YES",
         "SWIFT_APPROACHABLE_CONCURRENCY": "YES",
+        "SWIFT_DEFAULT_ACTOR_ISOLATION": "nonisolated",
         "SWIFT_EMIT_LOC_STRINGS": "YES",
         "SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY": "YES",
         "SWIFT_VERSION": "6.0",
