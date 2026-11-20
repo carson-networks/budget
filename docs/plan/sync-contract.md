@@ -36,13 +36,13 @@ Rules that hold everywhere:
 
 Every trigger runs the same steps in `SyncEngine`:
 
-1. Take the cross-process lock; if it is held, exit.
-2. Send any batches left in the outbox, oldest first.
+1. Take the cross-process lease lock; if it is held, exit. Release it inside `async defer` + `withTaskCancellationShield`, and renew the lease between batches so long foreground runs (like a full resync) never expire mid-run.
+2. Send any batches left in the outbox, oldest first. Stop the run immediately on `.unauthenticated` or `.unreachable` so no further batches are enqueued while offline or unauthenticated.
 3. `GetStatus`: stop with a clear state if the key is refused.
 4. `ListAccounts`: learn which FinanceKit accounts are linked and owned by this key.
-5. For each owned account: read account, balance and transaction changes since the saved tokens; map; split into batches of at most 500 transactions; write each batch and the tokens it covers to the outbox.
-6. `PushChanges` per batch. On success, save the tokens and delete the outbox entry. On failure, leave it for the next run.
-7. Append a line to the run log: trigger, duration, counts, outcome.
+5. For each owned account: **skip the account if it still has undrained batches in the outbox** (otherwise reading from an unadvanced token would re-enqueue duplicates). Otherwise read account, balance and transaction changes since that account's saved tokens (storing a separate `accountHistory` token per linked account and filtering to that `accountID`, since `accountHistory(since:)` is store-wide); coalesce multi-chunk changes chronologically by ID; map; split into batches of at most 500 transactions; write each batch to the outbox, **attaching the new history tokens only to the final batch** of that split (never intermediate batches).
+6. `PushChanges` per batch, renewing the lease between batches. On success, commit any tokens attached to that batch and delete the outbox entry; intermediate batches carry no token, so deleting each acknowledged batch from the outbox prevents resending it on retry while tokens advance only once the full split change set is acknowledged. On failure, leave the batch in the outbox for the next run.
+7. Append a line to the run log (flushed inside `async defer` + `withTaskCancellationShield`): trigger, duration, counts, outcome.
 
 Triggers: **Sync now**, app becoming active, live monitoring, FinanceKit background delivery and background refresh (phase 7), and a silent push requested by the server (phase 10).
 

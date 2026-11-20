@@ -32,11 +32,13 @@ ios/
   Makefile                        # help, format, lint, build, test; proto-generate added in phase 3
   mise.toml                       # pins actionlint; swift-format comes with Xcode 27.2
   .swift-format
+  AGENTS.md, CLAUDE.md            # agent entry points
+  best-practices.md               # code structure and style
   OpenPersonalFinance/            # app target: SwiftUI views, app entry, entitlements
   OpenPersonalFinanceDelivery/    # FinanceKit background delivery extension target
-  OpenPersonalFinanceKit/         # local Swift package: all logic and tests
-    Sources/OpenPersonalFinanceKit/
-    Tests/OpenPersonalFinanceKitTests/
+  OpenPersonalFinanceKit/         # local Swift package: all logic and tests, one target per concern (P1-A0)
+    Sources/<Target>/
+    Tests/<Target>Tests/
   buf.gen.yaml                    # added in phase 3
 .github/
   workflows/ios.yml               # P0-A2

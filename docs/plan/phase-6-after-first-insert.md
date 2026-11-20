@@ -49,13 +49,13 @@ Acceptance: tests for balance applied and stale balance ignored, credit limit on
 
 ### P6-A1 Send balances and credit limit; full resync
 
-- `SyncEngine` reads `balanceChanges` and `accountChanges` per account and attaches the latest balance and credit limit to the final batch of the run for that account. Balance field and sign follow the phase 2 results in the contract.
-- Balance and account tokens are committed with that batch, like transaction tokens.
-- **Full resync** per account, under the account's detail screen behind a confirmation: clears that account's tokens, reads everything, sends it marked as a resync, and marks the last batch complete.
+- `SyncEngine` reads `balanceChanges` and `accountChanges` per account and attaches the latest balance and credit limit to the final batch of the run for that account. Because `FinanceStore.accountHistory(since:)` is store-wide (no `accountID` parameter), `TokenStore` tracks a separate `accountToken` per linked account and `SyncEngine` filters `accountChanges(since:)` to that account so committing Account A's batch never skips an account-level update (such as a `creditLimit` change) for Account B if Account B fails to push. Balance field and sign follow the phase 2 results in the contract.
+- Balance and account tokens are committed with that final batch, like transaction tokens.
+- **Full resync** per account, under the account's detail screen behind a confirmation: clears that account's tokens (account, balance and transaction), reads everything, sends it marked as a resync, and marks only the last batch complete (renewing `FileLock` between batches).
 - An automatic full resync when FinanceKit rejects a saved token.
-- Account detail screen: balance, credit limit, last sync, counts, **Sync now**, **Full resync**, **Stop syncing**.
+- Account detail screen, driven by `AccountDetailModel` in `Features` (via `Domain` protocols): balance, credit limit, last sync, counts, **Sync now**, **Full resync**, **Stop syncing**. Apply `.privacySensitive()` to balances and credit limit.
 
-Acceptance: engine tests for balance-only changes (no transactions) still producing a push, credit limit sent only for liability accounts, a multi-batch resync marking only the last batch, and token invalidation triggering a resync; in the Simulator against `make start-local`, the fixture's pending → booked, rejected and deleted cases end in the right server state.
+Acceptance: `AccountDetailModel` tests against in-memory fakes for each action; engine tests for balance-only changes (no transactions) still producing a push, credit limit sent only for liability accounts, Account A committing its `accountToken` not skipping Account B's `creditLimit` update when Account B fails, a multi-batch resync marking only the last batch, and token invalidation triggering a resync; in the Simulator against `make start-local`, the fixture's pending → booked, rejected and deleted cases end in the right server state.
 
 ## Exit check
 
