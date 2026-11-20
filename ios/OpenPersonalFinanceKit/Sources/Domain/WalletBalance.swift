@@ -1,0 +1,90 @@
+import Foundation
+
+public struct WalletBalance: Identifiable, Codable, Equatable, Hashable, Sendable {
+    public struct Entry: Codable, Equatable, Hashable, Sendable {
+        public let amount: Decimal
+        public let creditDebitIndicator: WalletCreditDebitIndicator
+        public let asOfDate: Date
+
+        public init(
+            amount: Decimal,
+            creditDebitIndicator: WalletCreditDebitIndicator,
+            asOfDate: Date
+        ) {
+            self.amount = amount
+            self.creditDebitIndicator = creditDebitIndicator
+            self.asOfDate = asOfDate
+        }
+
+        private enum CodingKeys: String, CodingKey, CaseIterable {
+            case amount
+            case creditDebitIndicator
+            case asOfDate
+        }
+
+        public init(from decoder: any Decoder) throws {
+            try decoder.rejectUnknownKeys(allowed: CodingKeys.self)
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            amount = try DecimalStringCoding.decode(from: container, forKey: .amount)
+            creditDebitIndicator = try container.decode(
+                WalletCreditDebitIndicator.self,
+                forKey: .creditDebitIndicator
+            )
+            asOfDate = try container.decode(Date.self, forKey: .asOfDate)
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try DecimalStringCoding.encode(amount, to: &container, forKey: .amount)
+            try container.encode(creditDebitIndicator, forKey: .creditDebitIndicator)
+            try container.encode(asOfDate, forKey: .asOfDate)
+        }
+    }
+
+    public let id: UUID
+    public let accountID: UUID
+    public let currencyCode: String
+    public let available: Entry?
+    public let booked: Entry?
+
+    public init(
+        id: UUID,
+        accountID: UUID,
+        currencyCode: String,
+        available: Entry? = nil,
+        booked: Entry? = nil
+    ) {
+        self.id = id
+        self.accountID = accountID
+        self.currencyCode = currencyCode
+        self.available = available
+        self.booked = booked
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+        case id
+        case accountID
+        case currencyCode
+        case available
+        case booked
+    }
+
+    public init(from decoder: any Decoder) throws {
+        try decoder.rejectUnknownKeys(allowed: CodingKeys.self)
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        accountID = try container.decode(UUID.self, forKey: .accountID)
+        currencyCode = try container.decode(String.self, forKey: .currencyCode)
+        available = try container.decodeIfPresent(Entry.self, forKey: .available)
+        booked = try container.decodeIfPresent(Entry.self, forKey: .booked)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(accountID, forKey: .accountID)
+        try container.encode(currencyCode, forKey: .currencyCode)
+        try container.encodeIfPresent(available, forKey: .available)
+        try container.encodeIfPresent(booked, forKey: .booked)
+    }
+}
