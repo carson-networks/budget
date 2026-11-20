@@ -1,4 +1,4 @@
-import OpenPersonalFinanceKit
+import Domain
 import SwiftUI
 
 struct ContentView: View {

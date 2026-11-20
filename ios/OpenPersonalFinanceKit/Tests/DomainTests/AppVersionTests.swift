@@ -1,6 +1,5 @@
+import Domain
 import Testing
-
-@testable import OpenPersonalFinanceKit
 
 struct AppVersionTests {
     @Test func readsVersionAndBuild() {

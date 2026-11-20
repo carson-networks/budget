@@ -1,0 +1,13 @@
+id: no-financekit-import
+language: swift
+severity: error
+message: FinanceKit may only be imported in FinanceKitSource and OpenPersonalFinanceDelivery.swift.
+ignores:
+  - OpenPersonalFinanceKit/Sources/FinanceKitSource/**
+  - OpenPersonalFinanceDelivery/OpenPersonalFinanceDelivery.swift
+  - "**/.build/**"
+rule:
+  kind: import_declaration
+  has:
+    kind: identifier
+    regex: "^FinanceKit(UI)?(\\.|$)"

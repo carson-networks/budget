@@ -2,10 +2,6 @@
 
 How Swift code in `ios/` is structured and written. Process rules (branches, PRs, checks, task order) live in [docs/plan/working-rules.md](../docs/plan/working-rules.md); where the two overlap, they agree.
 
-## Status
-
-`OpenPersonalFinanceKit` still has a single target holding `AppVersion`. Phase 1 task P1-A0 splits it into the targets below before any other phase 1 code lands.
-
 ## Layout
 
 ```
@@ -36,7 +32,7 @@ Each rule in the working rules about who may import what is a target boundary, s
 | `BudgetClient` | `ConnectBudgetAPI`, request values ↔ generated message conversion, and `Gen/`. The only target that imports Connect or SwiftProtobuf. | `Domain`, `connect-swift`, `swift-protobuf` |
 | `Storage` | App Group file stores (tokens, outbox, run log, wake log), the file lock, `SettingsStore` (Keychain). Conforms to `Domain` storage protocols. | `Domain` |
 | `Sync` | `SyncEngine` actor and the background work around it (wake probe, live monitor and debounce, push registration). Conforms to `SyncRunning` and reaches FinanceKit and the server only through `Domain` protocols. | `Domain`, `Storage` |
-| `Live` | `Dependencies` and `Dependencies.live(...)`: the one place real implementations are wired together, plus thin system adapters such as the UserNotifications `StaleNotifier`. | `Sync`, `Storage`, `FinanceKitSource`, `BudgetClient` |
+| `Live` | `Dependencies` and `Dependencies.live(...)`: the one place real implementations are wired together, plus thin system adapters such as the UserNotifications `StaleNotifier`. | `Domain`, `Sync`, `Storage`, `FinanceKitSource`, `BudgetClient` |
 | `Features` | `@Observable` screen models. `MainActor` by default. Depends on `Domain` protocols only, keeping screen-model tests fully in-memory via `Fakes`. | `Domain` |
 | `Fakes` | `FakeFinanceDataSource`, `FakeBackgroundDelivery`, `FakeBudgetAPI`, in-memory fakes for `Domain` storage/sync protocols, and every JSON fixture (hand-written and phone exports) as resources. Used by tests, previews and the Simulator. | `Domain` |
 

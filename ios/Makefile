@@ -13,8 +13,9 @@ help: ## List targets
 format: ## Format Swift sources in place
 	xcrun swift-format format --in-place --recursive --parallel $(SOURCES)
 
-lint: ## Check Swift formatting and the iOS workflows
+lint: ## Check Swift formatting, import boundaries and the iOS workflows
 	xcrun swift-format lint --strict --recursive --parallel $(SOURCES)
+	ast-grep scan $(SOURCES)
 	actionlint $(wildcard $(WORKFLOWS))
 
 build: ## Build the app for the Simulator
@@ -22,4 +23,4 @@ build: ## Build the app for the Simulator
 
 test: build ## Build the app, then run the package tests on an iOS Simulator
 	@test -n "$(SIMULATOR_ID)" || { echo 'no iOS 27 iPhone simulator found'; exit 1; }
-	cd OpenPersonalFinanceKit && xcodebuild test -scheme OpenPersonalFinanceKit -destination 'id=$(SIMULATOR_ID)'
+	cd OpenPersonalFinanceKit && xcodebuild test -scheme OpenPersonalFinanceKit-Package -destination 'id=$(SIMULATOR_ID)'

@@ -14,7 +14,7 @@ Change `[ ]` to `[x]` when a task's PR is merged, or for human tasks when the st
 
 | Done | Task | What | Repo | Who |
 |---|---|---|---|---|
-| [ ] | P1-A0 | Split the package into targets | budget | Agent |
+| [x] | P1-A0 | Split the package into targets | budget | Agent |
 | [ ] | P1-A1 | `FinanceDataSource`, models and the fake | budget | Agent |
 | [ ] | P1-A2 | FinanceKit implementation and authorization | budget | Agent |
 | [ ] | P1-A3 | Diagnostics screen and fixture export | budget | Agent |
