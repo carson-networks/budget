@@ -30,7 +30,7 @@ struct OnboardingView: View {
                     systemImage: "wallet.bifold",
                     description: Text("Wallet account data isn't available on this iPhone or in your region.")
                 )
-            case .denied, .restricted:
+            case .denied:
                 ContentUnavailableView {
                     Label("Wallet Access Off", systemImage: "lock")
                 } description: {
@@ -67,15 +67,15 @@ private struct SettingsButton: View {
 
 #Preview("Not determined") {
     OnboardingView()
-        .environment(OnboardingModel(source: FakeFinanceDataSource.sample(authorizationStatus: .notDetermined)))
+        .environment(OnboardingModel(source: FakeFinanceDataSource(authorizationStatus: .notDetermined)))
 }
 
 #Preview("Denied") {
     OnboardingView()
-        .environment(OnboardingModel(source: FakeFinanceDataSource.sample(authorizationStatus: .denied)))
+        .environment(OnboardingModel(source: FakeFinanceDataSource(authorizationStatus: .denied)))
 }
 
 #Preview("Unavailable") {
     OnboardingView()
-        .environment(OnboardingModel(source: FakeFinanceDataSource.sample(isDataAvailable: false)))
+        .environment(OnboardingModel(source: FakeFinanceDataSource(isDataAvailable: false)))
 }

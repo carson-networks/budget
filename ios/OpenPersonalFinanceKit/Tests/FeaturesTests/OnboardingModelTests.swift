@@ -5,7 +5,7 @@ import Testing
 
 struct OnboardingModelTests {
     @Test func showsUnavailableWithoutAskingForAccess() async {
-        let model = OnboardingModel(source: FakeFinanceDataSource.sample(isDataAvailable: false))
+        let model = OnboardingModel(source: FakeFinanceDataSource(isDataAvailable: false))
         await model.load()
         #expect(model.state == .unavailable)
 
@@ -14,7 +14,7 @@ struct OnboardingModelTests {
     }
 
     @Test func skipsPromptWhenAlreadyAuthorized() async {
-        let model = OnboardingModel(source: FakeFinanceDataSource.sample())
+        let model = OnboardingModel(source: FakeFinanceDataSource())
         await model.load()
         #expect(model.state == .authorized)
     }
@@ -24,7 +24,7 @@ struct OnboardingModelTests {
         (.denied, .denied),
     ])
     func requestsAccessWhenNotDetermined(answer: WalletAuthorization, expected: OnboardingModel.State) async {
-        let source = FakeFinanceDataSource.sample(authorizationStatus: .notDetermined, authorizationOnRequest: answer)
+        let source = FakeFinanceDataSource(authorizationStatus: .notDetermined, authorizationOnRequest: answer)
         let model = OnboardingModel(source: source)
 
         await model.load()
@@ -34,21 +34,17 @@ struct OnboardingModelTests {
         #expect(model.state == expected)
     }
 
-    @Test(arguments: [
-        (WalletAuthorization.denied, OnboardingModel.State.denied),
-        (.restricted, .restricted),
-    ])
-    func reportsStatusTheUserMustChangeInSettings(status: WalletAuthorization, expected: OnboardingModel.State) async {
-        let model = OnboardingModel(source: FakeFinanceDataSource.sample(authorizationStatus: status))
+    @Test func reportsDeniedWithoutAskingAgain() async {
+        let model = OnboardingModel(source: FakeFinanceDataSource(authorizationStatus: .denied))
         await model.load()
-        #expect(model.state == expected)
+        #expect(model.state == .denied)
 
         await model.requestAccess()
-        #expect(model.state == expected)
+        #expect(model.state == .denied)
     }
 
     @Test func failsAndRecoversOnRetry() async {
-        let source = FakeFinanceDataSource.sample(authorizationStatus: .notDetermined)
+        let source = FakeFinanceDataSource(authorizationStatus: .notDetermined)
         let model = OnboardingModel(source: source)
 
         await source.setInjectedError(.dataUnavailable)

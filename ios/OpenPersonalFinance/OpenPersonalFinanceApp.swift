@@ -24,10 +24,10 @@ struct OpenPersonalFinanceApp: App {
     // Release builds on a device always read FinanceKit.
     private static func fakeFinanceData() -> (any FinanceDataSource)? {
         #if targetEnvironment(simulator)
-            return FakeFinanceDataSource.sample(authorizationStatus: .notDetermined)
+            return FakeFinanceDataSource(authorizationStatus: .notDetermined)
         #elseif DEBUG
             guard ProcessInfo.processInfo.arguments.contains("-useFakeFinanceData") else { return nil }
-            return FakeFinanceDataSource.sample(authorizationStatus: .notDetermined)
+            return FakeFinanceDataSource(authorizationStatus: .notDetermined)
         #else
             return nil
         #endif

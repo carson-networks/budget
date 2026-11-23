@@ -11,7 +11,6 @@ public final class OnboardingModel {
         case requesting
         case authorized
         case denied
-        case restricted
         case failed
     }
 
@@ -55,7 +54,6 @@ public final class OnboardingModel {
         case .notDetermined: .needsAuthorization
         case .authorized: .authorized
         case .denied: .denied
-        case .restricted: .restricted
         }
     }
 }

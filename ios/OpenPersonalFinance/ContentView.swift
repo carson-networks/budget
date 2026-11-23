@@ -17,5 +17,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .environment(OnboardingModel(source: FakeFinanceDataSource.sample(authorizationStatus: .notDetermined)))
+        .environment(OnboardingModel(source: FakeFinanceDataSource(authorizationStatus: .notDetermined)))
 }
