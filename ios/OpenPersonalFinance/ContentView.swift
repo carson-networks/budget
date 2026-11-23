@@ -8,7 +8,11 @@ struct ContentView: View {
 
     var body: some View {
         if onboarding.state == .authorized {
-            VersionView()
+            TabView {
+                Tab("Settings", systemImage: "gear") {
+                    SettingsView()
+                }
+            }
         } else {
             OnboardingView()
         }
@@ -16,6 +20,8 @@ struct ContentView: View {
 }
 
 #Preview {
+    let source = FakeFinanceDataSource.sample(authorizationStatus: .notDetermined)
     ContentView()
-        .environment(OnboardingModel(source: FakeFinanceDataSource(authorizationStatus: .notDetermined)))
+        .environment(OnboardingModel(source: source))
+        .environment(DiagnosticsModel(source: source))
 }
