@@ -55,11 +55,11 @@ Acceptance:
 
 ### P4-A1 Accounts screen: add, take over, unlink
 
-- Accounts tab, the app's main screen. Rows are the union of Wallet accounts (from `FinanceDataSource`) and `ListAccounts`, joined on FinanceKit account ID, each in one of these states: **Not added**, **Syncing** (linked and owned by this phone), **Synced by <key name>** (owned by another key), **Removed from Wallet** (linked here but no longer shared by FinanceKit), **Deleted on server** (was linked, now gone).
-- **Add to budget** on a "Not added" row: a sheet with name (default `displayName`), and for asset accounts a Cash / Savings choice; then `LinkAccount` with `new_account`.
-- When the server already has an unowned-by-me FinanceKit account that plausibly is the same one (same institution and type), the sheet offers **Link to existing** as well, which calls `LinkAccount` with `existing_account_id` and `take_over`.
-- **Take over** on a "Synced by" row, behind a confirmation that explains the other phone will stop syncing it.
-- **Stop syncing** (swipe action): `UnlinkAccount`, clears that account's tokens. Says plainly that the account and its transactions stay in budget and can be deleted from the web app.
+- Accounts tab, the app's main screen. Rows are the union of Wallet accounts (from `FinanceDataSource`) and `ListAccounts`, joined on FinanceKit account ID, each in one of these states: **Not Added**, **Syncing** (linked and owned by this phone), **Synced by <key name>** (owned by another key), **Removed from Wallet** (linked here but no longer shared by FinanceKit), **Deleted on Server** (was linked, now gone).
+- **Add to Budget** on a "Not Added" row: a sheet with name (default `displayName`), and for asset accounts a Cash / Savings choice; then `LinkAccount` with `new_account`.
+- When the server already has an unowned-by-me FinanceKit account that plausibly is the same one (same institution and type), the sheet offers **Link to Existing** as well, which calls `LinkAccount` with `existing_account_id` and `take_over`.
+- **Take Over** on a "Synced by" row, behind a confirmation that explains the other phone will stop syncing it.
+- **Stop Syncing** (swipe action): `UnlinkAccount`, clears that account's tokens. Says plainly that the account and its transactions stay in budget and can be deleted from the web app.
 - The join and state derivation are one pure function in `Domain` with unit tests. `AccountsModel` in `Features` runs the actions against `Domain` protocols (`FinanceDataSource`, `BudgetAPI`, `TokenStoring`) and is tested against in-memory fakes from `Fakes`. Clearing tokens goes through `TokenStoring` (implemented by `Storage`'s `TokenStore`).
 - `BudgetAPI` (`Domain`), `ConnectBudgetAPI` (`BudgetClient`) and `FakeBudgetAPI` (`Fakes`) gain `listAccounts`, `linkAccount` and `unlinkAccount` with their request and response values, and `BudgetAPIError` gains `.failedPrecondition`. `BudgetClientTests` covers the new request bodies.
 - Settings shows the key name returned by `GetStatus`.
@@ -76,7 +76,7 @@ Acceptance: the commands in both documents work when pasted against budget-stack
 
 ## Exit check
 
-- Without a key, or with a wrong or revoked one, **Test connection** says so and nothing else works.
+- Without a key, or with a wrong or revoked one, **Test Connection** says so and nothing else works.
 - Adding a Wallet account in the app creates it in budget-server; it shows in the web UI's account list.
 - The second phone, with its own key, shows that account as "Synced by <first phone>" and can take it over.
 - A manual account and a Plaid account do **not** appear in the app.

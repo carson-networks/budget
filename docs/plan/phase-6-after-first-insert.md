@@ -52,9 +52,9 @@ Acceptance: tests for balance applied and stale balance ignored, credit limit on
 - `SyncEngine` reads `balanceChanges` and `accountChanges` per account and attaches the latest balance and credit limit to the final batch of the run for that account. Because `FinanceStore.accountHistory(since:)` is store-wide (no `accountID` parameter), `TokenStore` tracks a separate `accountToken` per linked account and `SyncEngine` filters `accountChanges(since:)` to that account so committing Account A's batch never skips an account-level update (such as a `creditLimit` change) for Account B if Account B fails to push. Balance field and sign follow the phase 2 results in the contract.
 - Balance and account tokens are committed with that final batch, like transaction tokens.
 - The `PushChanges` request value gains balance, credit limit and the resync flags, with pure mapping functions in `Domain` from `WalletBalance` and `WalletAccount` following the contract's balance and credit-limit rows.
-- **Full resync** per account, under the account's detail screen behind a confirmation: clears that account's tokens (account, balance and transaction), reads everything, sends it marked as a resync, and marks only the last batch complete (renewing `FileLock` between batches).
+- **Full Resync** per account, under the account's detail screen behind a confirmation: clears that account's tokens (account, balance and transaction), reads everything, sends it marked as a resync, and marks only the last batch complete (renewing `FileLock` between batches).
 - An automatic full resync when FinanceKit rejects a saved token.
-- Account detail screen, driven by `AccountDetailModel` in `Features` (via `Domain` protocols): balance, credit limit, last sync, counts, **Sync now**, **Full resync**, **Stop syncing**. Apply `.privacySensitive()` to balances and credit limit.
+- Account detail screen, driven by `AccountDetailModel` in `Features` (via `Domain` protocols): balance, credit limit, last sync, counts, **Sync Now**, **Full Resync**, **Stop Syncing**. Apply `.privacySensitive()` to balances and credit limit.
 
 Acceptance: `DomainTests` for the balance and credit-limit mapping rows; `AccountDetailModel` tests against in-memory fakes for each action; engine tests for balance-only changes (no transactions) still producing a push, credit limit sent only for liability accounts, Account A committing its `accountToken` not skipping Account B's `creditLimit` update when Account B fails, a multi-batch resync marking only the last batch, and token invalidation triggering a resync; in the Simulator against `make start-local`, the fixture's pending → booked, rejected and deleted cases end in the right server state.
 
@@ -64,5 +64,5 @@ Acceptance: `DomainTests` for the balance and credit-limit mapping rows; `Accoun
 - Balances for each account in the web UI match the Wallet app.
 - The Apple Card's credit limit is stored (check through the API).
 - `last_synced_at` advances after a sync.
-- Delete a FinanceKit transaction's row by hand in the database, run **Full resync**: it comes back. Insert a stray linked row: it is removed.
+- Delete a FinanceKit transaction's row by hand in the database, run **Full Resync**: it comes back. Insert a stray linked row: it is removed.
 - If a rejected charge occurs, it disappears from the web UI.

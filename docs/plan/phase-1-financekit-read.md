@@ -79,9 +79,9 @@ Acceptance: `DomainTests` for `ChangeSet.merging` (insert → update, insert →
 Adds what makes the pending → booked lifecycle observable and lets phase 2 capture real data.
 
 - Tokens are stored through a `TokenStore` actor in `Storage` (conforming to `TokenStoring` in `Domain`, backed by an in-memory fake in `Fakes` for `FeaturesTests`), in a versioned (`schemaVersion`) Codable file in the App Group container storing per-account `(accountToken, balanceToken, transactionToken)`; corrupt or incompatible files clear cleanly with a warning. This is the store the sync engine uses later.
-- "Read again from saved token" and "Reset tokens" buttons on the diagnostics screen, showing the size of each resulting change set.
+- "Read Again from Saved Token" and "Reset Tokens" buttons on the diagnostics screen, showing the size of each resulting change set.
 - The fixture format gains an ordered list of change steps for accounts and for each account's balances and transactions, and a `schemaVersion`. `FakeFinanceDataSource` serves one step per token and rejects corrupt or cross-stream tokens with `.invalidToken`. The hand-written fixture gains a pending charge that later books, a rejected charge and a deleted charge.
-- "Export fixture": writes what was read as a `WalletFixture` and opens the share sheet. A "Redact" toggle, on by default, replaces descriptions and merchant names with stable placeholders and scales amounts by a random factor chosen per export. Redaction is a pure function in `Domain`, with the random factor passed in.
+- "Export Fixture": writes what was read as a `WalletFixture` and opens the share sheet. A "Redact" toggle, on by default, replaces descriptions and merchant names with stable placeholders and scales amounts by a random factor chosen per export. Redaction is a pure function in `Domain`, with the random factor passed in.
 
 Acceptance: unit tests for the fake's token progression, for redaction (stable placeholders, no original string survives), for `TokenStore` against a temporary directory (including corrupt/mismatched `schemaVersion` recovery), and for `DiagnosticsModel`'s new actions against the in-memory fakes; an exported fixture loads back into `FakeFinanceDataSource`.
 

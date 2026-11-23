@@ -29,7 +29,7 @@ No server changes. Every trigger runs the same `SyncEngine.run`; this phase only
 | `BGAppRefreshTask` | When iOS grants it; requested at the chosen interval | Backup, and the only one that retries an outbox left by a failed push |
 | App becomes active | Every open, throttled to five minutes | Guaranteed |
 | Live monitoring | While the app is open | Keeps the screen current |
-| **Sync now** | On demand | Manual |
+| **Sync Now** | On demand | Manual |
 | Silent push from the server | Added in phase 10 | A nudge from the web UI's Sync button |
 
 ## Tasks
@@ -54,7 +54,7 @@ Acceptance: tests for the reschedule calculation (pure, in `Domain`), the deboun
 
 ### P7-A3 Sync schedule settings and stale notification
 
-- Settings → Sync schedule: **Hourly**, **Daily**, **Weekly**, **Manual only**. This replaces the phase 1 frequency picker and its model. Changing it goes through `BackgroundDeliveryControl` (phase 1), and sets the refresh interval to match: 1 hour, 6 hours, 24 hours.
+- Settings → Sync Schedule: **Hourly**, **Daily**, **Weekly**, **Manual Only**. This replaces the phase 1 frequency picker and its model. Changing it goes through `BackgroundDeliveryControl` (phase 1), and sets the refresh interval to match: 1 hour, 6 hours, 24 hours.
 - Re-applied at every launch, since the system setting does not report back.
 - A plain-language note under the picker: iOS decides the exact timing, and Background App Refresh must be on for the app. Show a warning row when it is off.
 - Stale warning: a local notification, scheduled after each successful sync for a threshold later (twice the chosen interval, at least 48 hours) and replaced by the next success. If no sync succeeds, it fires: "OpenPersonalFinance hasn't synced since <date>. Open the app." Requires notification permission, requested from this settings screen, not at first launch. The engine reschedules it after a successful run from either process, through a `StaleNotifier` protocol in `Domain` implemented with UserNotifications in `Live`.

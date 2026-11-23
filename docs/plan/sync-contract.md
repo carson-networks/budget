@@ -44,7 +44,7 @@ Every trigger runs the same steps in `SyncEngine`:
 6. `PushChanges` per batch, renewing the lease between batches. On success, commit any tokens attached to that batch and delete the outbox entry; intermediate batches carry no token, so deleting each acknowledged batch from the outbox prevents resending it on retry while tokens advance only once the full split change set is acknowledged. On failure, leave the batch in the outbox for the next run.
 7. Append a line to the run log (flushed inside `async defer` + `withTaskCancellationShield`): trigger, duration, counts, outcome.
 
-Triggers: **Sync now**, app becoming active, live monitoring, FinanceKit background delivery and background refresh (phase 7), and a silent push requested by the server (phase 10).
+Triggers: **Sync Now**, app becoming active, live monitoring, FinanceKit background delivery and background refresh (phase 7), and a silent push requested by the server (phase 10).
 
 A full resync clears the tokens for an account and sends everything again, usually over several batches:
 
