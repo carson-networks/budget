@@ -155,6 +155,7 @@ Data crosses three pure, unit-tested mapping steps, each in the one target that 
 
 - One primary type per file, named after it. Extensions that add a concern go in `Type+Concern.swift` (`WalletTransaction+Wire.swift`).
 - `make format` and `make lint` must pass; `.swift-format` is the style source of truth.
+- Zero warnings. The project sets `SWIFT_TREAT_WARNINGS_AS_ERRORS` and `GCC_TREAT_WARNINGS_AS_ERRORS`, every package target uses `.treatAllWarnings(as: .error)`, and the Makefile fails `build` and `test` on any remaining `warning:` line (linker, asset catalog, build system). The only allowlisted line is the App Intents metadata notice, which Xcode prints for every target that does not link AppIntents. `make lint` runs `ast-grep scan --error`, so warning-level rules fail too.
 - Comments are one-line "why" only.
 - No third-party dependencies beyond `connect-swift` and `swift-protobuf` without asking.
 
