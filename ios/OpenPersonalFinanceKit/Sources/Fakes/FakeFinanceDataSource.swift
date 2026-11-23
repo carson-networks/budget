@@ -66,15 +66,26 @@ public actor FakeFinanceDataSource: FinanceDataSource {
         return try WalletFixture.decode(from: data)
     }
 
-    public static var sample: FakeFinanceDataSource {
+    public static func sample(
+        isDataAvailable: Bool = true,
+        authorizationStatus: WalletAuthorization = .authorized,
+        authorizationOnRequest: WalletAuthorization? = nil
+    ) -> FakeFinanceDataSource {
+        let fixture: WalletFixture
         do {
-            return try FakeFinanceDataSource(fixture: loadFixture())
+            fixture = try loadFixture()
         } catch {
             Log.logger.error(
                 "Failed to load bundled sample fixture: \(error.localizedDescription, privacy: .private)"
             )
-            return FakeFinanceDataSource(fixture: .empty)
+            fixture = .empty
         }
+        return FakeFinanceDataSource(
+            fixture: fixture,
+            isDataAvailable: isDataAvailable,
+            authorizationStatus: authorizationStatus,
+            authorizationOnRequest: authorizationOnRequest
+        )
     }
 
     public nonisolated func isDataAvailable() -> Bool {

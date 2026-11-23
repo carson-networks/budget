@@ -47,7 +47,7 @@ Fakes       ──► Domain
 
 - Dependencies only point down this graph. Nothing depends on `Live` except the two entry points.
 - The extension never links `Features` or SwiftUI.
-- Apple frameworks can be imported from any target, so the FinanceKit rule is also checked by `make lint`. The one exception is the extension entry point, which imports FinanceKit only for `BackgroundDeliveryExtension` and `FinanceStore.BackgroundDataType`; its body calls `Live` and nothing else.
+- Apple frameworks can be imported from any target, so the FinanceKit rule is also checked by `make lint`. The exceptions are `FinanceKitSourceTests`, and the extension entry point, which imports FinanceKit only for `BackgroundDeliveryExtension` and `FinanceStore.BackgroundDataType`; its body calls `Live` and nothing else.
 - Generated protobuf and Connect code is generated with `Visibility=Internal`, so wire types cannot leave `BudgetClient`.
 - Use `package` access for what targets share inside the package and `public` only for what the app or extension calls.
 - Each test target depends on the target under test and `Fakes`, nothing else.
@@ -105,7 +105,7 @@ struct AccountsView: View {
 }
 
 #Preview {
-    AccountsView().environment(AccountsModel(source: FakeFinanceDataSource.sample))
+    AccountsView().environment(AccountsModel(source: FakeFinanceDataSource.sample()))
 }
 ```
 
@@ -149,7 +149,7 @@ Data crosses three pure, unit-tested mapping steps, each in the one target that 
 
 - Swift Testing (`@Test`, `#expect`, `#require`), with parameterized tests for mapping tables.
 - Hand-written fakes from `Fakes`; no mocking libraries.
-- Test `Domain` mapping, `Storage`, `Sync`, `BudgetClient` encoding and `Features` models. SwiftUI views are covered by previews and the Simulator, not unit tests. `FinanceKitSource` is covered by the phone test.
+- Test `Domain` mapping, `Storage`, `Sync`, `BudgetClient` encoding and `Features` models. SwiftUI views are covered by previews and the Simulator, not unit tests. In `FinanceKitSource`, enum, error and token mapping is unit-tested (FinanceKit's enums can be built in tests); struct mapping (`Account`, `AccountBalance`, `Transaction`, which have no public initializers) is covered by the phone test.
 
 ## Files and style
 

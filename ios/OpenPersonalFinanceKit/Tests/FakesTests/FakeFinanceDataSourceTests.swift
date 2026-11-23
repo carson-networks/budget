@@ -217,13 +217,13 @@ struct FakeFinanceDataSourceTests {
     }
 
     @Test func sampleConvenienceLoadsBundledFixture() async throws {
-        let source = FakeFinanceDataSource.sample
+        let source = FakeFinanceDataSource.sample()
         let accounts = try await source.accountChanges(since: nil)
         #expect(accounts.inserted.count == 2)
     }
 
     @Test func unknownAccountIDReturnsEmptyRepeatableStreams() async throws {
-        let source = FakeFinanceDataSource.sample
+        let source = FakeFinanceDataSource.sample()
         let unknownID = UUID()
 
         let balance0 = try await source.balanceChanges(accountID: unknownID, since: nil)

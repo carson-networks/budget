@@ -77,5 +77,15 @@ let package = Package(
             dependencies: ["Domain", "Fakes"],
             swiftSettings: nonisolatedSwiftSettings
         ),
+        .testTarget(
+            name: "FinanceKitSourceTests",
+            dependencies: ["Domain", "FinanceKitSource"],
+            swiftSettings: nonisolatedSwiftSettings
+        ),
+        .testTarget(
+            name: "FeaturesTests",
+            dependencies: ["Domain", "Features", "Fakes"],
+            swiftSettings: mainActorSwiftSettings
+        ),
     ]
 )
