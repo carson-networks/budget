@@ -15,9 +15,9 @@ Change `[ ]` to `[x]` when a task's PR is merged, or for human tasks when the st
 | Done | Task | What | Repo | Who |
 |---|---|---|---|---|
 | [x] | P1-A0 | Split the package into targets | budget | Agent |
-| [ ] | P1-A1 | `FinanceDataSource`, models and the fake | budget | Agent |
-| [ ] | P1-A2 | FinanceKit implementation and authorization | budget | Agent |
-| [ ] | P1-A3 | Diagnostics screen and fixture export | budget | Agent |
+| [ ] | P1-A1 | Wallet authorization and onboarding | budget | Agent |
+| [ ] | P1-A2 | Read Wallet data and show it | budget | Agent |
+| [ ] | P1-A3 | Saved tokens and fixture export | budget | Agent |
 | [ ] | P1-A4 | Background delivery wake log | budget | Agent |
 | [ ] | — | Exit check passed | — | Human |
 
@@ -37,59 +37,64 @@ Lays out `OpenPersonalFinanceKit` as the "Package targets" section of [ios/best-
 
 Acceptance: `make format`, `make lint` and `make test` pass and `DomainTests` runs; the app and extension build for the Simulator and a device; a temporary `import FinanceKit` in `Features` fails `make lint` (say so in the PR, then remove it); the app still shows its version.
 
-### P1-A1 `FinanceDataSource`, models and the fake
+### P1-A1 Wallet authorization and onboarding
 
-Types, protocol and errors in `Domain`; the fake and its fixture in `Fakes`. No FinanceKit import in this task.
+The first slice of `FinanceDataSource`: availability and authorization, from the protocol through FinanceKit to a screen. No FinanceKit history reading yet.
 
-- Plain `Sendable`, `Codable` value types mirroring what the contract needs: `WalletAccount` (id, display name, institution, kind asset/liability, currency, credit limit), `WalletBalance` (account id, available, booked, each with amount as `Decimal` and credit/debit indicator, as-of), `WalletTransaction` (every field in the contract's mapping table plus `transactionType` and `originalTransactionDescription`), and `ChangeSet<T>` (inserted, updated, deleted ids, opaque new token as `Data`).
-- Protocol:
+- In `Domain`:
   ```swift
   public protocol FinanceDataSource: Sendable {
     func isDataAvailable() -> Bool
     func authorizationStatus() async throws -> WalletAuthorization
     func requestAuthorization() async throws -> WalletAuthorization
-    func accountChanges(since token: Data?) async throws -> ChangeSet<WalletAccount>
-    func balanceChanges(accountID: UUID, since token: Data?) async throws -> ChangeSet<WalletBalance>
-    func transactionChanges(accountID: UUID, since token: Data?) async throws -> ChangeSet<WalletTransaction>
   }
   ```
-  Each history call drains the non-monitoring sequence into per-chunk `ChangeSet`s and combines them via a pure `ChangeSet.merging(_ chunks:)` helper in `Domain` that coalesces chronologically by ID (a later update supersedes an earlier insert/update; a later delete removes any earlier insert/update and records the deletion, keeping the last chunk's token).
-- `WalletFixture` in `Domain`: the fixture format (accounts and an ordered list of change sets per account), so the app can write it in P1-A3 and `Fakes` can read it.
-- `FakeFinanceDataSource` in `Fakes`: loads a `WalletFixture` from its resources and serves the change sets by token (configurable `isDataAvailable`, defaulting to `true`). Ships a hand-written fixture in `Sources/Fakes/Fixtures/` with one card, one savings account, a pending charge that later books, a rejected charge and a deleted charge.
-- Errors: a typed `FinanceDataError` with `.notAuthorized`, `.dataUnavailable` (device locked) and `.invalidToken`.
-
-Acceptance: unit tests in `DomainTests` for `ChangeSet.merging` (insert → update, insert → delete, update → delete, empty chunks) and in `FakesTests` for the fake's token progression and for fixture decoding with unknown fields disallowed (`JSONDecoder` ignores unknown keys by default, so validate keys explicitly); the fixture format is documented in a short `README.md` in `Sources/Fakes/Fixtures/`.
-
-### P1-A2 FinanceKit implementation and authorization
-
-- `FinanceKitDataSource` in `FinanceKitSource`: implements `isDataAvailable()` via `FinanceStore.isDataAvailable(.financialData)`, maps `Account`, `AccountBalance`, `Transaction` and `FinanceStore.Changes` to the P1-A1 types, coalesces multi-chunk drains via `Domain`'s `ChangeSet.merging`, and encodes/decodes `HistoryToken` to `Data`.
-- Maps "data protected while locked" to `.dataUnavailable` and a rejected token to `.invalidToken`.
+  `WalletAuthorization` mirrors FinanceKit's `AuthorizationStatus` (`notDetermined`, `authorized`, `denied`). `FinanceDataError` starts with `.dataUnavailable` (data protected while locked).
+- `FinanceKitDataSource` in `FinanceKitSource`: `isDataAvailable()` via `FinanceStore.isDataAvailable(.financialData)`, the two authorization calls, and the status and error mapping as pure functions.
+- `FakeFinanceDataSource` in `Fakes`: configurable availability, starting status, the answer to a request, and an injected error.
 - `Dependencies.live(financeData:)` in `Live`. The app's composition root passes `FakeFinanceDataSource` only under `#if DEBUG || targetEnvironment(simulator)` (always in the Simulator, or when a debug launch argument is set), and `FinanceKitDataSource` otherwise so Release device builds never run against fakes.
-- Onboarding screen, driven by `OnboardingModel` in `Features`: checks `isDataAvailable()` first (showing a clear explanation if FinanceKit is unavailable in the user's region or on the device), explains what is read, then calls `requestAuthorization()`. Handles unavailable, denied and restricted (with a link to Settings).
-- Skips `memo` transactions here, so nothing downstream sees them.
+- Onboarding screen, driven by `OnboardingModel` in `Features`: checks `isDataAvailable()` first (showing a clear explanation if FinanceKit is unavailable in the user's region or on the device), explains what is read, then calls `requestAuthorization()`. Handles unavailable and denied (with a link to Settings). Once access is granted the app shows its version screen until P1-A2 replaces it.
 
-Acceptance: mapping functions are pure and unit-tested with hand-built inputs where FinanceKit types can be constructed, and reviewed by reading where they cannot (say which in the PR); `OnboardingModel` is tested against the fake for unavailable, granted, denied and restricted; the app builds for a device; in the Simulator the onboarding flow completes against the fake.
+Acceptance: parameterized tests for the status and error mapping in `FinanceKitSourceTests`; `OnboardingModel` tested against the fake for unavailable, granted, denied and a failed check; the app builds for a device; in the Simulator the onboarding flow completes against the fake.
 
-### P1-A3 Diagnostics screen and fixture export
+### P1-A2 Read Wallet data and show it
 
-- Diagnostics screen (reachable from a Settings tab, kept in release builds), driven by `DiagnosticsModel` in `Features`: authorization status; per account its id, kind, institution, both balances with indicators, credit limit, transaction count by status, and the date range covered. Apply `.privacySensitive()` to balances, credit limits and transaction rows.
-- A transaction list per account showing id, status, amount, indicator, dates and description, sorted newest first.
-- "Read again from saved token" and "Reset tokens" buttons, showing the size of each resulting change set, so the pending → booked lifecycle can be watched.
-- "Export fixture": writes what was read as a `WalletFixture` and opens the share sheet. A "Redact" toggle, on by default, replaces descriptions and merchant names with stable placeholders and scales amounts by a random factor chosen per export. Redaction is a pure function in `Domain`, with the random factor passed in.
+Adds FinanceKit history reading and its first caller, a read-only diagnostics screen.
+
+- `FinanceDataSource` gains:
+  ```swift
+  func accountChanges(since token: Data?) async throws -> ChangeSet<WalletAccount>
+  func balanceChanges(accountID: UUID, since token: Data?) async throws -> ChangeSet<WalletBalance>
+  func transactionChanges(accountID: UUID, since token: Data?) async throws -> ChangeSet<WalletTransaction>
+  ```
+- In `Domain`: plain `Sendable` value types mirroring what the contract needs: `WalletAccount` (id, display name, institution, kind asset/liability, currency, credit limit), `WalletBalance` (account id, available, booked, each with amount as `Decimal` and credit/debit indicator, as-of), `WalletTransaction` (every field in the contract's mapping table plus `transactionType` and `originalTransactionDescription`), and `ChangeSet<T>` (inserted, updated, deleted ids, opaque new token as `Data`) with a pure `ChangeSet.merging(_ chunks:)` that coalesces chronologically by ID (a later update supersedes an earlier insert/update; a later delete removes any earlier insert/update and records the deletion, keeping the last chunk's token). `FinanceDataError` gains `.notAuthorized` and `.invalidToken`.
+- `FinanceKitDataSource`: each history call drains the non-monitoring sequence into per-chunk `ChangeSet`s and merges them. It maps `Account`, `AccountBalance`, `Transaction` and `FinanceStore.Changes` to the wallet types, encodes and decodes `HistoryToken` as `Data`, maps a rejected token to `.invalidToken`, and skips `memo` transactions so nothing downstream sees them.
+- `WalletFixture` in `Domain`, decoded with unknown keys rejected (`JSONDecoder` ignores them by default, so validate keys explicitly): accounts, and one set of balances and transactions per account. `FakeFinanceDataSource` serves it. Ships a hand-written fixture in `Sources/Fakes/Fixtures/` with one card and one savings account, documented in a short `README.md` beside it.
+- Diagnostics screen (reachable from a Settings tab, kept in release builds), driven by `DiagnosticsModel` in `Features`, reading everything from no token: authorization status; per account its id, kind, institution, both balances with indicators, credit limit, transaction count by status, and the date range covered; a transaction list per account showing id, status, amount, indicator, dates and description, newest first. Apply `.privacySensitive()` to balances, credit limits and transaction rows.
+
+Acceptance: `DomainTests` for `ChangeSet.merging` (insert → update, insert → delete, update → delete, empty chunks); mapping functions are pure and unit-tested with hand-built inputs where FinanceKit types can be constructed, and reviewed by reading where they cannot (say which in the PR); `FakesTests` for fixture decoding with unknown fields disallowed; `DiagnosticsModel` tested against the fake; in the Simulator the diagnostics screen shows the fixture's accounts and transactions.
+
+### P1-A3 Saved tokens and fixture export
+
+Adds what makes the pending → booked lifecycle observable and lets phase 2 capture real data.
+
 - Tokens are stored through a `TokenStore` actor in `Storage` (conforming to `TokenStoring` in `Domain`, backed by an in-memory fake in `Fakes` for `FeaturesTests`), in a versioned (`schemaVersion`) Codable file in the App Group container storing per-account `(accountToken, balanceToken, transactionToken)`; corrupt or incompatible files clear cleanly with a warning. This is the store the sync engine uses later.
+- "Read again from saved token" and "Reset tokens" buttons on the diagnostics screen, showing the size of each resulting change set.
+- The fixture format gains an ordered list of change steps for accounts and for each account's balances and transactions, and a `schemaVersion`. `FakeFinanceDataSource` serves one step per token and rejects corrupt or cross-stream tokens with `.invalidToken`. The hand-written fixture gains a pending charge that later books, a rejected charge and a deleted charge.
+- "Export fixture": writes what was read as a `WalletFixture` and opens the share sheet. A "Redact" toggle, on by default, replaces descriptions and merchant names with stable placeholders and scales amounts by a random factor chosen per export. Redaction is a pure function in `Domain`, with the random factor passed in.
 
-Acceptance: unit tests for redaction (stable placeholders, no original string survives), for `TokenStore` against a temporary directory (including corrupt/mismatched `schemaVersion` recovery), and for `DiagnosticsModel` against the in-memory fakes; an exported fixture loads back into `FakeFinanceDataSource`.
+Acceptance: unit tests for the fake's token progression, for redaction (stable placeholders, no original string survives), for `TokenStore` against a temporary directory (including corrupt/mismatched `schemaVersion` recovery), and for `DiagnosticsModel`'s new actions against the in-memory fakes; an exported fixture loads back into `FakeFinanceDataSource`.
 
 ### P1-A4 Background delivery wake log
 
-- `WakeLog` and the cross-process `FileLock` in `Storage`. `FileLock` uses an atomic lease file (`O_CREAT | O_EXCL` with a timestamp and stale-lock timeout), never a kernel `flock` lock held across `await` calls (to avoid iOS `0xdead10cc` termination on suspension and blocking the cooperative thread pool). `FileLock` also supports `renew()` to extend the lease expiry between batches while keeping the stale-lock TTL short (~45 s), and callers release it in Swift 6.4 `async defer` + `withTaskCancellationShield`. `WakeLog` uses a versioned (`schemaVersion`) Codable file that wipes and recreates cleanly on corrupt data, conforms to `LogReading` in `Domain`, and retries briefly with `Task.sleep` on lock contention rather than dropping entries.
+- `WakeLog` and the cross-process `FileLock` in `Storage`. `FileLock` uses an atomic lease file (`O_CREAT | O_EXCL` with a timestamp and stale-lock timeout), never a kernel `flock` lock held across `await` calls (to avoid iOS `0xdead10cc` termination on suspension and blocking the cooperative thread pool). Its stale-lock TTL is short (~45 s), and callers release it in Swift 6.4 `async defer` + `withTaskCancellationShield`. `WakeLog` uses a versioned (`schemaVersion`) Codable file that wipes and recreates cleanly on corrupt data, conforms to `LogReading` in `Domain`, and retries briefly with `Task.sleep` on lock contention rather than dropping entries.
 - `WakeProbe` in `Sync`: given a trigger, reads each account's changes since its saved token through `FinanceDataSource` (without saving the token) and appends a line to the wake log (flushed in `async defer` + `withTaskCancellationShield`): time, trigger, data types, whether the read succeeded, and how many changes it saw. The extension's `didReceiveData(for:)` tracks active task(s) via a `Mutex` or actor (coalescing/serializing overlapping wakes so a second wake never overwrites an in-flight handle) and `willTerminate()` cancels active work **and awaits its graceful completion** (bounded by a short grace timeout) before returning; its body calls `Dependencies.live()` and nothing else.
 - `BackgroundDeliveryControl` protocol and `SyncFrequency` (hourly / daily / weekly / off) in `Domain`. `FinanceKitBackgroundDelivery` in `FinanceKitSource` calls `enableBackgroundDelivery(for:frequency:)` for all three data types, or `disableAllBackgroundDelivery()`. `FakeBackgroundDelivery` in `Fakes` records the calls.
 - A frequency picker on the Settings tab, driven by a model in `Features` using `Domain` protocols (`BackgroundDeliveryControl` and a schedule storage protocol implemented by `Storage`). The chosen frequency is saved in `Storage` and re-applied through `BackgroundDeliveryControl` at launch.
 - A `BGAppRefreshTask` handled via SwiftUI's `.backgroundTask(.appRefresh(...))` scene modifier (scheduled with `BGTaskScheduler.shared.submit`) whose handler only runs `WakeProbe` with trigger `.backgroundRefresh`, to compare how often each fires. In its own project commit, add the `fetch` background mode (`UIBackgroundModes`) and `BGTaskSchedulerPermittedIdentifiers` to the app target.
 - The diagnostics screen shows the wake log.
 
-Acceptance: unit tests for `FileLock` (lease renewal vs. stale expiry, concurrent writers from two processes), `WakeLog` (append, cap at 500 lines, corrupt/mismatched `schemaVersion` recovery), `WakeProbe` against the fake, and the frequency model against `FakeBackgroundDelivery` and in-memory storage fake; the PR states that real wake behaviour can only be observed in phase 2.
+Acceptance: unit tests for `FileLock` (stale expiry, concurrent writers from two processes), `WakeLog` (append, cap at 500 lines, corrupt/mismatched `schemaVersion` recovery), `WakeProbe` against the fake, and the frequency model against `FakeBackgroundDelivery` and in-memory storage fake; the PR states that real wake behaviour can only be observed in phase 2.
 
 ## Exit check
 

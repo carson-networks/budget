@@ -28,6 +28,7 @@ Task IDs are `P<phase>-<system><n>`; human tasks use `H`. Within one system (A, 
 - Financial data stays out of logs at info level: counts and IDs only, no merchant names or amounts. Fixtures captured from a real phone are redacted before they are committed.
 - Do not copy code from the LunchSync repository; it has no licence. Reading it for ideas is fine.
 - Comments: one-line "why" only, no long explanatory blocks.
+- **Add API with its caller.** A task adds only the types, methods, enum cases, fields and conformances (`Codable`, `Hashable`, ...) that its own code or the next task's code calls, so a reviewer can see each one used. A test counts as a caller when it tests other code, such as a fake's hook used by a model's tests; a test written only for the new API does not. When the caller is the next task, the PR names it. Generated code and the server proto are exempt (see [Fixed shapes](#fixed-shapes)).
 - Do not weaken or delete an existing test to make a change pass.
 - **Keep the progress tables current as you go.** Each phase file opens with one. Tick an agent task's row once its PR is merged, and a human task's row once the human says it's done, in the next change you make to the plan (or a small docs PR if nothing else is pending). When the human reports a phase's exit check passed, tick its row in the overview's phase table too. Check off only what is confirmed: a PR still open, or a human step you only assume happened, stays unticked. If a task needs splitting or a new task appears, add a row and say so in the PR.
 - A task is done when its acceptance items hold and the repo's checks pass. Paste the check output in the PR description. If a check cannot be run, say so; do not claim it passed.
@@ -68,7 +69,9 @@ Code structure and style are in [ios/best-practices.md](../../ios/best-practices
 ## Fixed shapes
 
 - **budget-server side:** the whole `FinanceKitService`, including the push-token RPC that phase 10 implements, and every new field are defined in phase 3 from the [sync contract](sync-contract.md). The app and the web UI generate clients from budget-server's protos with buf, pinned to a release tag.
-- **App side:** `FinanceDataSource` and the fixture format are fixed in phase 1 and corrected against real devices in phase 2.
+- **App side:** `FinanceDataSource` and the fixture format grow with their callers through phase 1, are corrected against real devices in phase 2, and change only additively after that.
+
+The proto is the one exception to adding API with its caller: it is a contract between repos, released and pinned by tag, so it is defined whole up front. The app's Swift API in front of it (`BudgetAPI`, request and response values) still grows with its callers.
 
 If a later task does need a shape or proto change, keep it additive, say so at the top of the PR, and for protos expect a new budget-server tag and a repin before dependent tasks can merge.
 

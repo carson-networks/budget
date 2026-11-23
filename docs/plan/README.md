@@ -45,7 +45,7 @@ Numbered so tasks can refer to them.
 3. **Last-synced time lives in budget-server**, updated by every write RPC, so the web UI can show it.
 4. **Pending is shown.** budget-server stores a `pending` flag; the UI badges it. A pending charge is updated in place when it books.
 5. **Rejected and deleted charges are removed automatically.** FinanceKit reports both, so the "vanished charge" gap in the LunchSync plan is gone.
-6. **Fixed shapes first, behaviour second.** The whole proto, including the phase 10 push-token RPC, is defined in phase 3 and implemented slice by slice.
+6. **Fixed shapes first, behaviour second.** The whole proto, including the phase 10 push-token RPC, is defined in phase 3 and implemented slice by slice. The app's own Swift API is the opposite: it is added in the task that first calls it.
 7. **Bearer API key, created by a command in the budget-server image**, printed once and stored hashed. One named key per phone. Only `FinanceKitService` checks it; the web RPCs stay as they are.
 8. **Accounts are created only from the app.** There is no web or generic RPC path that produces a FinanceKit-type account.
 9. **Link tables on the server, as Plaid does it.** `financekit_account_links` and `financekit_transaction_links` map FinanceKit UUIDs to budget IDs. Writes are upserts keyed on the FinanceKit ID, so a replayed batch changes nothing.
