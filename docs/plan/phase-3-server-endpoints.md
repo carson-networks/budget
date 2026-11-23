@@ -4,7 +4,7 @@
 
 Read the working rules before starting any task here.
 
-**Depends on:** P3-S1 needs only the sync contract and can start before phase 2 finishes, at the risk of an additive correction. P3-A1 needs a release of P3-S1 and P1-A1. P3-A2 needs P3-A1. See [Parallel work](README.md#parallel-work).
+**Depends on:** P3-S1 needs only the sync contract and can start before phase 2 finishes, at the risk of an additive correction. P3-A1 needs a release of P3-S1. P3-A2 needs P3-A1. See [Parallel work](README.md#parallel-work).
 
 **Outcome:** budget-server exposes the whole `FinanceKitService` and every new field, and the app has a generated client, an endpoint setting and a connection test that reaches them. Nothing is implemented: every RPC returns "unimplemented" and the new fields stay empty.
 
@@ -55,13 +55,12 @@ Needs a budget-server release containing P3-S1.
 
 - `ios/buf.gen.yaml` generating Swift messages (`swift-protobuf`) and Connect clients (`connect-swift`) for `financekit.v1` and `account.v1` from the budget-server repo at that release tag, into `ios/OpenPersonalFinanceKit/Sources/BudgetClient/Gen/`, with `Visibility=Internal` on both plugins. `make -C ios proto-generate`; commit the output. CI verifies it is up to date, as weather-client's `proto` job does.
 - Add `connect-swift` and `swift-protobuf` to the package, versions pinned, as dependencies of `BudgetClient` only.
-- In `Domain`: the `BudgetAPI` protocol with one async method per RPC (all but `RegisterPushToken`, which phase 10 adds), and the request and response value types it takes and returns.
+- In `Domain`: the `BudgetAPI` protocol with `getStatus` only, and its request and response values. Each later task adds the method it first calls: `listAccounts`, `linkAccount` and `unlinkAccount` in P4-A1, `pushChanges` in P5-A1, `registerPushToken` in P10-A1. The generated client covers every RPC from the start.
 - In `BudgetClient`: `ConnectBudgetAPI` implements it, converting those values to and from generated messages: base URL and key supplied per call from settings, `Authorization: Bearer` header, JSON encoding to match the web, a request timeout.
-- A typed `BudgetAPIError` in `Domain`: `.unauthenticated`, `.notFound`, `.failedPrecondition`, `.invalidArgument`, `.unimplemented`, `.unreachable`, `.other`. Connect codes are mapped to it inside `BudgetClient`.
+- A typed `BudgetAPIError` in `Domain` with the cases P3-A2's connection test shows: `.unauthenticated`, `.unimplemented`, `.unreachable`, `.other`. Connect codes are mapped to it inside `BudgetClient`; later tasks add `.failedPrecondition` (P4-A1), `.notFound` and `.invalidArgument` (P5-A1).
 - `FakeBudgetAPI` in `Fakes`.
-- Pure mapping functions in `Domain` from the P1-A1 wallet types to request values, following the contract's mapping table: sign, name fallback, status, decimal strings.
 
-Acceptance: unit tests in `DomainTests` for every mapping row in the contract, including the P2 fixtures; `BudgetClientTests` checks request bodies against captured JSON, and an in-process stub confirms the bearer header is sent and each Connect code maps to the right error; nothing outside `BudgetClient` imports Connect or SwiftProtobuf, and no generated type is `public`.
+Acceptance: `BudgetClientTests` checks the `GetStatus` request body against captured JSON, and an in-process stub confirms the bearer header is sent and each Connect code maps to the right error; nothing outside `BudgetClient` imports Connect or SwiftProtobuf, and no generated type is `public`.
 
 ### P3-A2 Endpoint and key settings, connection test
 
