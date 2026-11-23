@@ -106,7 +106,7 @@ struct AccountsView: View {
 }
 
 #Preview {
-    AccountsView().environment(AccountsModel(source: FakeFinanceDataSource.sample))
+    AccountsView().environment(AccountsModel(source: FakeFinanceDataSource.sample()))
 }
 ```
 

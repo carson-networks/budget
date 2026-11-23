@@ -64,11 +64,17 @@ let package = Package(
         .target(
             name: "Fakes",
             dependencies: ["Domain"],
+            resources: [.copy("Fixtures")],
             swiftSettings: nonisolatedSwiftSettings
         ),
         .testTarget(
             name: "DomainTests",
             dependencies: ["Domain"],
+            swiftSettings: nonisolatedSwiftSettings
+        ),
+        .testTarget(
+            name: "FakesTests",
+            dependencies: ["Domain", "Fakes"],
             swiftSettings: nonisolatedSwiftSettings
         ),
         .testTarget(

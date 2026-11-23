@@ -65,7 +65,7 @@ private struct SettingsButton: View {
     }
 }
 
-#Preview("Not determined") {
+#Preview("Not Determined") {
     OnboardingView()
         .environment(OnboardingModel(source: FakeFinanceDataSource(authorizationStatus: .notDetermined)))
 }
