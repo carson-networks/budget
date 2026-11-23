@@ -5,6 +5,7 @@ let commonSwiftSettings: [SwiftSetting] = [
     .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
     .enableUpcomingFeature("InferIsolatedConformances"),
     .enableUpcomingFeature("MemberImportVisibility"),
+    .treatAllWarnings(as: .error),
 ]
 
 let nonisolatedSwiftSettings: [SwiftSetting] =

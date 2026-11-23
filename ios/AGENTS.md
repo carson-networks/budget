@@ -8,7 +8,7 @@ Before writing or reviewing Swift here, read:
 - [docs/plan/working-rules.md](../docs/plan/working-rules.md): task process, repo checks and iOS conventions.
 - [docs/plan/README.md](../docs/plan/README.md): what the app does and the numbered design decisions.
 
-Checks before a PR, from this folder:
+Checks before a PR, from this folder. The build has a zero-warning rule: any warning fails `make lint`, `make build` or `make test`.
 
 ```bash
 make format
