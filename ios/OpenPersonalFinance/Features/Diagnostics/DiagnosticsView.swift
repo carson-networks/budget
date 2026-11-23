@@ -8,7 +8,7 @@ struct DiagnosticsView: View {
 
     var body: some View {
         List {
-            Section("Wallet access") {
+            Section("Wallet Access") {
                 LabeledContent("Authorization", value: model.authorization.map { String(describing: $0) } ?? "Checking")
                 if let failure = model.failure {
                     Text(Self.message(for: failure))
@@ -55,7 +55,7 @@ private struct AccountSection: View {
                 BalanceRow(title: "Booked", entry: entry, currencyCode: account.currencyCode)
             }
             if let creditLimit = account.creditLimit {
-                LabeledContent("Credit limit", value: creditLimit.formatted(.currency(code: account.currencyCode)))
+                LabeledContent("Credit Limit", value: creditLimit.formatted(.currency(code: account.currencyCode)))
                     .privacySensitive()
             }
             ForEach(summary.statusCounts) { count in
