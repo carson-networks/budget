@@ -22,10 +22,10 @@ Data only flows phone → server. FinanceKit background delivery and iOS decide 
 ## How it works for the user
 
 1. On the server, create an API key for the phone: `docker exec budget-server /budget-server-key create "Carson's iPhone"`.
-2. In the app, enter the **endpoint URL** (for example `https://budget.prod.carsonnetworks.net/api`) and paste the key. **Test connection** confirms both.
+2. In the app, enter the **endpoint URL** (for example `https://budget.prod.carsonnetworks.net/api`) and paste the key. **Test Connection** confirms both.
 3. Grant FinanceKit access and pick which Wallet accounts to share.
-4. For each Wallet account, tap **Add to budget**. This is the only way a FinanceKit account is created. The web UI's Add account menu only shows a call-out pointing at the app.
-5. Pick a sync frequency (hourly, daily or weekly). From then on the app syncs in the background, on open, and from a **Sync now** button.
+4. For each Wallet account, tap **Add to Budget**. This is the only way a FinanceKit account is created. The web UI's Add account menu only shows a call-out pointing at the app.
+5. Pick a sync frequency (hourly, daily or weekly). From then on the app syncs in the background, on open, and from a **Sync Now** button.
 
 ## Components
 
