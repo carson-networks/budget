@@ -3,7 +3,7 @@ import Foundation
 public struct WalletFixture: Codable, Equatable, Sendable {
     public static let currentSchemaVersion = 1
 
-    public static let empty = WalletFixture(accounts: [], accountChanges: [], histories: [])
+    package static let empty = WalletFixture(accounts: [], accountChanges: [], histories: [])
 
     public struct ChangeStep<Element: Identifiable & Codable & Equatable & Sendable>: Codable, Equatable, Sendable
     where Element.ID: Hashable & Codable & Sendable {
@@ -144,15 +144,15 @@ public struct WalletFixture: Codable, Equatable, Sendable {
         try container.encode(histories, forKey: .histories)
     }
 
-    public static func decode(from data: Data) throws -> WalletFixture {
+    package static func decode(from data: Data) throws -> WalletFixture {
         try makeDecoder().decode(WalletFixture.self, from: data)
     }
 
-    public func encodedJSON() throws -> Data {
+    package func encodedJSON() throws -> Data {
         try Self.makeEncoder().encode(self)
     }
 
-    public static func makeDecoder() -> JSONDecoder {
+    package static func makeDecoder() -> JSONDecoder {
         let decoder = JSONDecoder()
         let withFractional = Date.ISO8601FormatStyle(includingFractionalSeconds: true)
         let withoutFractional = Date.ISO8601FormatStyle(includingFractionalSeconds: false)
@@ -173,7 +173,7 @@ public struct WalletFixture: Codable, Equatable, Sendable {
         return decoder
     }
 
-    public static func makeEncoder() -> JSONEncoder {
+    package static func makeEncoder() -> JSONEncoder {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         let style = Date.ISO8601FormatStyle(includingFractionalSeconds: true)

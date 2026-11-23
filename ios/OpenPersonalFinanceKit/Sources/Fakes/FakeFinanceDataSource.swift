@@ -3,7 +3,7 @@ import Foundation
 import os
 
 public actor FakeFinanceDataSource: FinanceDataSource {
-    public enum FixtureError: Error, Equatable, Sendable {
+    package enum FixtureError: Error, Equatable, Sendable {
         case missingResource(name: String, subdirectory: String?)
     }
 
@@ -45,7 +45,7 @@ public actor FakeFinanceDataSource: FinanceDataSource {
         )
     }
 
-    public static func loadFixture(
+    package static func loadFixture(
         named name: String = "sample",
         subdirectory: String? = "Fixtures"
     ) throws -> WalletFixture {
@@ -61,7 +61,7 @@ public actor FakeFinanceDataSource: FinanceDataSource {
         return try loadFixture(at: url)
     }
 
-    public static func loadFixture(at url: URL) throws -> WalletFixture {
+    package static func loadFixture(at url: URL) throws -> WalletFixture {
         let data = try Data(contentsOf: url)
         return try WalletFixture.decode(from: data)
     }
@@ -71,7 +71,7 @@ public actor FakeFinanceDataSource: FinanceDataSource {
             return try FakeFinanceDataSource(fixture: loadFixture())
         } catch {
             Log.logger.error(
-                "Failed to load bundled sample fixture: \(error.localizedDescription, privacy: .public)"
+                "Failed to load bundled sample fixture: \(error.localizedDescription, privacy: .private)"
             )
             return FakeFinanceDataSource(fixture: .empty)
         }
@@ -142,11 +142,11 @@ public actor FakeFinanceDataSource: FinanceDataSource {
         )
     }
 
-    public func setAuthorizationStatus(_ status: WalletAuthorization) {
+    package func setAuthorizationStatus(_ status: WalletAuthorization) {
         authorization = status
     }
 
-    public func setInjectedError(_ error: FinanceDataError?) {
+    package func setInjectedError(_ error: FinanceDataError?) {
         injectedError = error
     }
 

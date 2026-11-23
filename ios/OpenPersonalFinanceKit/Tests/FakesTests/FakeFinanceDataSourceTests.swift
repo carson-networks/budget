@@ -25,12 +25,10 @@ struct FakeFinanceDataSourceTests {
         #expect(savings.currencyCode == "USD")
         #expect(savings.creditLimit == nil)
 
-        // Second account read at end of stream yields no changes and keeps the same token.
         let accountsStep1 = try await source.accountChanges(since: accountsStep0.newToken)
         #expect(accountsStep1.isEmpty)
         #expect(accountsStep1.newToken == accountsStep0.newToken)
 
-        // Card balances progress from initial insert to update, then stabilize empty.
         let cardBalance0 = try await source.balanceChanges(accountID: card.id, since: nil)
         #expect(cardBalance0.inserted.count == 1)
         #expect(cardBalance0.inserted[0].booked?.amount == Decimal(string: "59.25"))
@@ -44,7 +42,6 @@ struct FakeFinanceDataSourceTests {
         #expect(cardBalance2.isEmpty)
         #expect(cardBalance2.newToken == cardBalance1.newToken)
 
-        // Card transactions show pending -> booked, authorized -> rejected, and deleted.
         let cardTx0 = try await source.transactionChanges(accountID: card.id, since: nil)
         #expect(cardTx0.inserted.count == 5)
         #expect(cardTx0.updated.isEmpty)
@@ -75,7 +72,6 @@ struct FakeFinanceDataSourceTests {
         #expect(cardTx2.isEmpty)
         #expect(cardTx2.newToken == cardTx1.newToken)
 
-        // Savings transactions progress through initial deposit and interest credit.
         let savingsTx0 = try await source.transactionChanges(accountID: savings.id, since: nil)
         #expect(savingsTx0.inserted.count == 1)
         #expect(savingsTx0.inserted[0].transactionType == .deposit)

@@ -28,7 +28,7 @@ public struct ChangeSet<Element: Identifiable & Sendable>: Sendable where Elemen
         case deleted
     }
 
-    public static func merging(
+    package static func merging(
         _ chunks: [ChangeSet<Element>],
         fallbackToken: Data = Data()
     ) -> ChangeSet<Element> {
