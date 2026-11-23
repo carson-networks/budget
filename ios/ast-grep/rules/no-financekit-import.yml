@@ -1,9 +1,10 @@
 id: no-financekit-import
 language: swift
 severity: error
-message: FinanceKit may only be imported in FinanceKitSource and OpenPersonalFinanceDelivery.swift.
+message: FinanceKit may only be imported in FinanceKitSource, its tests and OpenPersonalFinanceDelivery.swift.
 ignores:
   - OpenPersonalFinanceKit/Sources/FinanceKitSource/**
+  - OpenPersonalFinanceKit/Tests/FinanceKitSourceTests/**
   - OpenPersonalFinanceDelivery/OpenPersonalFinanceDelivery.swift
   - "**/.build/**"
 rule:
