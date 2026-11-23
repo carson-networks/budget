@@ -1,6 +1,5 @@
-public enum WalletAuthorization: String, Codable, Equatable, Hashable, Sendable, CaseIterable {
+public enum WalletAuthorization: Sendable {
     case notDetermined
     case authorized
     case denied
-    case restricted
 }

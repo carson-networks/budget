@@ -1,5 +1,3 @@
-public enum FinanceDataError: Error, Equatable, Hashable, Sendable {
-    case notAuthorized
+public enum FinanceDataError: Error, Sendable {
     case dataUnavailable
-    case invalidToken
 }

@@ -64,7 +64,6 @@ let package = Package(
         .target(
             name: "Fakes",
             dependencies: ["Domain"],
-            resources: [.copy("Fixtures")],
             swiftSettings: nonisolatedSwiftSettings
         ),
         .testTarget(
@@ -73,9 +72,14 @@ let package = Package(
             swiftSettings: nonisolatedSwiftSettings
         ),
         .testTarget(
-            name: "FakesTests",
-            dependencies: ["Domain", "Fakes"],
+            name: "FinanceKitSourceTests",
+            dependencies: ["Domain", "FinanceKitSource"],
             swiftSettings: nonisolatedSwiftSettings
+        ),
+        .testTarget(
+            name: "FeaturesTests",
+            dependencies: ["Domain", "Features", "Fakes"],
+            swiftSettings: mainActorSwiftSettings
         ),
     ]
 )

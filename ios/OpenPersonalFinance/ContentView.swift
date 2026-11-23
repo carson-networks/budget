@@ -1,20 +1,21 @@
 import Domain
+import Fakes
+import Features
 import SwiftUI
 
 struct ContentView: View {
-    let version = AppVersion.current
+    @Environment(OnboardingModel.self) private var onboarding
 
     var body: some View {
-        VStack(spacing: 8) {
-            Text(version.name)
-                .font(.title)
-            Text("Version \(version.displayString)")
-                .foregroundStyle(.secondary)
+        if onboarding.state == .authorized {
+            VersionView()
+        } else {
+            OnboardingView()
         }
-        .padding()
     }
 }
 
 #Preview {
     ContentView()
+        .environment(OnboardingModel(source: FakeFinanceDataSource(authorizationStatus: .notDetermined)))
 }
