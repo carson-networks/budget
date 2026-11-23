@@ -41,10 +41,14 @@ The engine in `Sync`, the outbox in `Storage`, following the "Sync run" steps in
 - `SyncEngine` actor (conforming to `SyncRunning` in `Domain`) with `run(trigger:)`, built by `Dependencies.live` and given `FinanceDataSource` and `BudgetAPI` through its `init`: acquire `FileLock` (releasing it and flushing the run log in Swift 6.4 `async defer` + `withTaskCancellationShield`), drain the outbox (stopping immediately on `.unauthenticated` or `.unreachable`), `GetStatus`, `ListAccounts`, then per owned account **skip any account that still has undrained outbox entries**; otherwise read changes, map, batch at 500, enqueue with the new history tokens attached **only to the final batch** of the split change set, push (renewing `FileLock` between batches), and commit any attached tokens only after acknowledgement.
 - After the server acknowledges a batch, save any tokens attached to that batch and then remove the outbox entry; each file write is atomic. Because intermediate batches carry no token, deleting each acknowledged batch from the outbox prevents resending it on retry while tokens only advance once the full split change set is acknowledged; because `PushChanges` is idempotent, a crash between push, token save and outbox removal replays safely.
 - Error handling per the contract: `.unauthenticated` stops the run and marks settings as needing attention; `.notFound` marks that account "Deleted on server" and clears its tokens; `.dataUnavailable` and `.unreachable` end the run quietly as "will retry"; `.invalidToken` clears that account's tokens and restarts it from nothing.
-- Cross-process lease-file lock in the App Group (the phase 1 `FileLock`), renewed between batches, with a short stale-lock timeout (~45 s) and no kernel `flock` held across network calls.
+- Cross-process lease-file lock in the App Group (the phase 1 `FileLock`), which gains `renew()` here to extend the lease between batches, keeping the short stale-lock timeout (~45 s) and no kernel `flock` held across network calls.
+- `BudgetAPI`, `ConnectBudgetAPI` and `FakeBudgetAPI` gain `pushChanges`, and `BudgetAPIError` gains `.notFound` and `.invalidArgument`. The `PushChanges` request value carries what this phase sends: transactions and deleted IDs.
+- Pure mapping functions in `Domain` from `WalletTransaction` to request values, following the contract's mapping table: sign, name fallback, status, decimal strings.
 - First sync for a newly added account reads from no token, which returns everything the user authorised.
 
 Acceptance, all against the fakes:
+- `DomainTests` for every transaction mapping row in the contract, including the P2 fixtures; `BudgetClientTests` checks the `PushChanges` request body against captured JSON.
+- `FileLock` lease renewal keeps a lock past its original expiry; a lease that is not renewed expires.
 - A run against the hand-written fixture produces the expected requests.
 - Running twice sends nothing the second time.
 - Kill points: after enqueue, after push but before commit, mid-account. Each resumes with no loss and the server-side fake sees only duplicates of what it already had.
