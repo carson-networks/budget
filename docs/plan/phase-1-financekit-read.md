@@ -15,8 +15,8 @@ Change `[ ]` to `[x]` when a task's PR is merged, or for human tasks when the st
 | Done | Task | What | Repo | Who |
 |---|---|---|---|---|
 | [x] | P1-A0 | Split the package into targets | budget | Agent |
-| [ ] | P1-A1 | Wallet authorization and onboarding | budget | Agent |
-| [ ] | P1-A2 | Read Wallet data and show it | budget | Agent |
+| [x] | P1-A1 | Wallet authorization and onboarding | budget | Agent |
+| [x] | P1-A2 | Read Wallet data and show it | budget | Agent |
 | [ ] | P1-A3 | Saved tokens and fixture export | budget | Agent |
 | [ ] | P1-A4 | Background delivery wake log | budget | Agent |
 | [ ] | — | Exit check passed | — | Human |
