@@ -1,6 +1,6 @@
 import Foundation
 
-// Amounts decode from decimal strings so money never passes through Double.
+// Amounts travel as decimal strings so money never passes through Double.
 package enum DecimalStringCoding {
     private static let posixLocale = Locale(identifier: "en_US_POSIX")
 
@@ -35,6 +35,24 @@ package enum DecimalStringCoding {
             return nil
         }
         return try parse(raw, codingPath: container.codingPath + [key])
+    }
+
+    package static func encode<Key: CodingKey>(
+        _ value: Decimal,
+        to container: inout KeyedEncodingContainer<Key>,
+        forKey key: Key
+    ) throws {
+        // Decimal's description is locale-independent plain notation, which parse(_:codingPath:) accepts.
+        try container.encode(value.description, forKey: key)
+    }
+
+    package static func encodeIfPresent<Key: CodingKey>(
+        _ value: Decimal?,
+        to container: inout KeyedEncodingContainer<Key>,
+        forKey key: Key
+    ) throws {
+        guard let value else { return }
+        try encode(value, to: &container, forKey: key)
     }
 
     // Decimal(string:locale:) accepts partial prefixes like "12.34abc" and "1,000", so validate syntax first.

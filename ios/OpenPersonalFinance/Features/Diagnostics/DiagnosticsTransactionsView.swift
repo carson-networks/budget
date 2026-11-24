@@ -41,7 +41,8 @@ struct DiagnosticsTransactionsView: View {
 }
 
 #Preview {
-    @Previewable @State var model = DiagnosticsModel(source: FakeFinanceDataSource.sample())
+    @Previewable @State var model = DiagnosticsModel(
+        source: FakeFinanceDataSource.sample(), tokens: InMemoryTokenStore())
     NavigationStack {
         DiagnosticsTransactionsView(transactions: model.accounts.first?.transactions ?? [])
     }

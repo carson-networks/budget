@@ -1,7 +1,7 @@
 import Foundation
 
-public struct WalletAccount: Identifiable, Decodable, Sendable {
-    public enum Kind: String, Decodable, Sendable {
+public struct WalletAccount: Identifiable, Codable, Sendable {
+    public enum Kind: String, Codable, Sendable {
         case asset
         case liability
     }
@@ -47,5 +47,15 @@ public struct WalletAccount: Identifiable, Decodable, Sendable {
         kind = try container.decode(Kind.self, forKey: .kind)
         currencyCode = try container.decode(String.self, forKey: .currencyCode)
         creditLimit = try DecimalStringCoding.decodeIfPresent(from: container, forKey: .creditLimit)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(displayName, forKey: .displayName)
+        try container.encode(institutionName, forKey: .institutionName)
+        try container.encode(kind, forKey: .kind)
+        try container.encode(currencyCode, forKey: .currencyCode)
+        try DecimalStringCoding.encodeIfPresent(creditLimit, to: &container, forKey: .creditLimit)
     }
 }

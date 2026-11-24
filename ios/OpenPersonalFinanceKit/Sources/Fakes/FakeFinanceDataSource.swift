@@ -82,20 +82,22 @@ public actor FakeFinanceDataSource: FinanceDataSource {
         return authorization
     }
 
-    // The fixture has a single state, so every read returns all of it and the token is ignored.
+    // Serves one fixture step per token, like a FinanceKit history read that only moves past what changed since.
     public func accountChanges(since token: Data?) async throws -> ChangeSet<WalletAccount> {
         try verifyReadable()
-        return ChangeSet(inserted: fixture.accounts, newToken: Data())
+        return try FakeHistoryToken.read(fixture.accounts, stream: "accounts", since: token)
     }
 
     public func balanceChanges(accountID: UUID, since token: Data?) async throws -> ChangeSet<WalletBalance> {
         try verifyReadable()
-        return ChangeSet(inserted: fixture.balances.filter { $0.accountID == accountID }, newToken: Data())
+        let steps = fixture.history(for: accountID)?.balances ?? []
+        return try FakeHistoryToken.read(steps, stream: "balances/\(accountID.uuidString)", since: token)
     }
 
     public func transactionChanges(accountID: UUID, since token: Data?) async throws -> ChangeSet<WalletTransaction> {
         try verifyReadable()
-        return ChangeSet(inserted: fixture.transactions.filter { $0.accountID == accountID }, newToken: Data())
+        let steps = fixture.history(for: accountID)?.transactions ?? []
+        return try FakeHistoryToken.read(steps, stream: "transactions/\(accountID.uuidString)", since: token)
     }
 
     package func setInjectedError(_ error: FinanceDataError?) {

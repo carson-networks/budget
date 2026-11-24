@@ -30,5 +30,5 @@ struct SettingsView: View {
 
 #Preview {
     SettingsView()
-        .environment(DiagnosticsModel(source: FakeFinanceDataSource.sample()))
+        .environment(DiagnosticsModel(source: FakeFinanceDataSource.sample(), tokens: InMemoryTokenStore()))
 }

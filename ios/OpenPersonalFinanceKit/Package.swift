@@ -78,6 +78,11 @@ let package = Package(
             swiftSettings: nonisolatedSwiftSettings
         ),
         .testTarget(
+            name: "StorageTests",
+            dependencies: ["Domain", "Storage", "Fakes"],
+            swiftSettings: nonisolatedSwiftSettings
+        ),
+        .testTarget(
             name: "FinanceKitSourceTests",
             dependencies: ["Domain", "FinanceKitSource"],
             swiftSettings: nonisolatedSwiftSettings

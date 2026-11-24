@@ -1,14 +1,14 @@
 import Foundation
 
-public struct WalletTransaction: Identifiable, Decodable, Sendable {
-    public enum Status: String, Decodable, Sendable, CaseIterable {
+public struct WalletTransaction: Identifiable, Codable, Sendable {
+    public enum Status: String, Codable, Sendable, CaseIterable {
         case authorized
         case pending
         case booked
         case rejected
     }
 
-    public enum TransactionType: String, Decodable, Sendable, CaseIterable {
+    public enum TransactionType: String, Codable, Sendable, CaseIterable {
         case unknown
         case adjustment
         case atm
@@ -110,5 +110,22 @@ public struct WalletTransaction: Identifiable, Decodable, Sendable {
         status = try container.decode(Status.self, forKey: .status)
         transactionDate = try container.decode(Date.self, forKey: .transactionDate)
         postedDate = try container.decodeIfPresent(Date.self, forKey: .postedDate)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(accountID, forKey: .accountID)
+        try DecimalStringCoding.encode(amount, to: &container, forKey: .amount)
+        try container.encode(currencyCode, forKey: .currencyCode)
+        try container.encode(creditDebitIndicator, forKey: .creditDebitIndicator)
+        try container.encode(transactionDescription, forKey: .transactionDescription)
+        try container.encode(originalTransactionDescription, forKey: .originalTransactionDescription)
+        try container.encodeIfPresent(merchantName, forKey: .merchantName)
+        try container.encodeIfPresent(merchantCategoryCode, forKey: .merchantCategoryCode)
+        try container.encode(transactionType, forKey: .transactionType)
+        try container.encode(status, forKey: .status)
+        try container.encode(transactionDate, forKey: .transactionDate)
+        try container.encodeIfPresent(postedDate, forKey: .postedDate)
     }
 }

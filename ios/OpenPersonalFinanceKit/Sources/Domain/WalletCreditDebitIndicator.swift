@@ -1,4 +1,4 @@
-public enum WalletCreditDebitIndicator: String, Decodable, Sendable {
+public enum WalletCreditDebitIndicator: String, Codable, Sendable {
     case credit
     case debit
 }
