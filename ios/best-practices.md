@@ -27,14 +27,14 @@ Each rule in the working rules about who may import what is a target boundary, s
 
 | Target | Holds | Depends on |
 |---|---|---|
-| `Domain` | Value types (`WalletAccount`, `WalletBalance`, `WalletTransaction`, `ChangeSet`, `WalletChanges`, `WalletRead`, `SyncTrigger`, `SyncFrequency`, `AppVersion`), values exchanged with the server, named for what they mean rather than mirroring RPC messages (`ServerStatus`, `BudgetAccount`, `ChangeBatch`, ...), domain errors, behaviour protocols that screen models use (`FinanceDataSource`, `WalletHistoryReading`, `SyncScheduling`, `ActivityReading`, `ServerConnecting`, `AccountLinking`, `SyncRunning`), protocols only `Sync`, `BudgetClient` and `Live` use (`BudgetAPI`, `BackgroundDeliveryControl`, `StaleNotifier`, and the storage protocols `TokenStoring`, `SettingsStoring`, `ScheduleStoring`, `LogStoring`), the fixture format (`WalletFixture`, and the plain `Codable` structs for its file in `FixtureFile/`), and pure functions: chronological `ChangeSet` coalescing, wallet → request mapping, URL validation, redaction, schedule and throttle calculations. Foundation only. Values are never `Codable` and never mirror a wire message (see [Storage and network boundaries](#storage-and-network-boundaries)). | nothing |
+| `Domain` | Value types (`WalletAccount`, `WalletBalance`, `WalletTransaction`, `ChangeSet`, `SyncTrigger`, `SyncFrequency`, `AppVersion`), values exchanged with the server, domain errors, protocols (`FinanceDataSource`, `WalletHistoryReading`, `BackgroundDeliveryControl`, `BudgetAPI`, `StaleNotifier`, `TokenStoring`, `SettingsStoring`, `LogStoring`, `SyncRunning`), the fixture format and its `Codable` file structs (`FixtureFile/`), and pure functions: chronological `ChangeSet` coalescing, wallet → request mapping, URL validation, redaction, schedule and throttle calculations. Foundation only. | nothing |
 | `FinanceKitSource` | `FinanceKitDataSource` and `FinanceKitBackgroundDelivery`, with the FinanceKit → wallet type mapping. The only target that imports FinanceKit. | `Domain` |
-| `BudgetClient` | `ConnectBudgetAPI`, `Domain` values ↔ generated message conversion (every wire detail: field names, proto enums, decimal strings), Connect error mapping, and `Gen/`. The only target that imports Connect or SwiftProtobuf, and the only place a generated type exists. | `Domain`, `connect-swift`, `swift-protobuf` |
-| `Storage` | App Group file stores (tokens, outbox, run log, wake log, schedule), the file lock, `SettingsStore` (Keychain). Conforms to `Domain` storage protocols; each store owns its file layout as private `Codable` shapes. | `Domain` |
-| `Sync` | `SyncEngine` actor and the background work around it (wake probe, live monitor and debounce, push registration), and the services behind every screen-facing behaviour protocol: `WalletHistoryReader`, the sync schedule, activity (wake and run logs), server connection settings and account linking. The only code that decides when stored state is read, saved, cleared or re-applied, and when the server is called. Reaches FinanceKit, the server and storage only through `Domain` protocols. | `Domain`, `Storage` |
+| `BudgetClient` | `ConnectBudgetAPI`, `Domain` values ↔ generated message conversion, and `Gen/`. The only target that imports Connect or SwiftProtobuf. | `Domain`, `connect-swift`, `swift-protobuf` |
+| `Storage` | App Group file stores (tokens, outbox, run log, wake log), the file lock, `SettingsStore` (Keychain). Conforms to `Domain` storage protocols. | `Domain` |
+| `Sync` | `SyncEngine` actor, the background work around it (wake probe, live monitor and debounce, push registration), and the services screens use, such as `WalletHistoryReader`. Conforms to `SyncRunning` and reaches FinanceKit and the server only through `Domain` protocols. | `Domain`, `Storage` |
 | `Live` | `Dependencies` and `Dependencies.live(...)`: the one place real implementations are wired together, plus thin system adapters such as the UserNotifications `StaleNotifier`. | `Domain`, `Sync`, `Storage`, `FinanceKitSource`, `BudgetClient` |
-| `Features` | `@Observable` screen models. `MainActor` by default. Depends on `Domain` behaviour protocols only, never storage or the network, keeping screen-model tests fully in-memory via `Fakes`. | `Domain` |
-| `Fakes` | `FakeFinanceDataSource`, `FakeBackgroundDelivery`, `FakeBudgetAPI` (used by `SyncTests`), fakes for the screen-facing behaviour protocols (`FakeWalletHistoryReader`, ...) used by `FeaturesTests` and previews, in-memory storage fakes (`InMemoryTokenStore`, ...) used by `SyncTests`, and every JSON fixture (hand-written and phone exports) as resources. Used by tests, previews and the Simulator. | `Domain` |
+| `Features` | `@Observable` screen models. `MainActor` by default. Depends on `Domain` protocols only, never storage or `BudgetAPI`, keeping screen-model tests fully in-memory via `Fakes`. | `Domain` |
+| `Fakes` | `FakeFinanceDataSource`, `FakeBackgroundDelivery`, `FakeBudgetAPI`, in-memory fakes for `Domain` storage/sync protocols, and every JSON fixture (hand-written and phone exports) as resources. Used by tests, previews and the Simulator. | `Domain` |
 
 ```
 App target  ──► Features, Live, Fakes
@@ -64,7 +64,7 @@ Fakes       ──► Domain
 
 - The entry points are the composition roots. `OpenPersonalFinanceApp` calls `Dependencies.live(...)`—selecting `FakeFinanceDataSource` only under `#if DEBUG || targetEnvironment(simulator)` so Release builds on a device always use FinanceKit—then builds the long-lived screen models once in `@State` and injects them with `.environment(_:)`. The extension calls `Dependencies.live()`, tracks active run task(s) (coalescing or serializing overlapping `didReceiveData(for:)` calls so a second wake never overwrites an in-flight handle), and in `willTerminate()` cancels active work and awaits its graceful completion (bounded by a short grace timeout) before returning so lock release and log writes finish cleanly.
 - The app target also owns system registrations that need an app: `.backgroundTask(.appRefresh(...))` (scheduling with `BGTaskScheduler.shared.submit`), remote notifications (using the `async` delegate overload `application(_:didReceiveRemoteNotification:) async -> UIBackgroundFetchResult`), and scene phase. Each handler is a one-line call into package code.
-- Below the roots, dependencies arrive through `init` parameters typed as protocols (`any FinanceDataSource`, `any WalletHistoryReading`, `any SyncRunning`; `Sync` services also take `any BudgetAPI` and storage protocols such as `any TokenStoring`).
+- Below the roots, dependencies arrive through `init` parameters typed as protocols (`any FinanceDataSource`, `any WalletHistoryReading`, `any SyncRunning`).
 - No singletons, `static let shared`, service locators or DI frameworks.
 
 ## Views and screen models
@@ -112,48 +112,20 @@ struct AccountsView: View {
 
 ## Storage and network boundaries
 
-Files and the server are both outside the app, so the same two rules cover them: screens never reach either one, and neither one's format leaks into the app's values. `make lint` checks all of them.
+`make lint` checks these.
 
-- **Screen models never see storage or the network.** A model in `Features` depends only on behaviour protocols, such as `WalletHistoryReading`, `SyncScheduling`, `ActivityReading`, `ServerConnecting`, `AccountLinking`, `SyncRunning` and `FinanceDataSource`, never on a `*Storing` protocol or `BudgetAPI`. The `Sync` service behind each protocol decides when stored state is read, saved, cleared or re-applied and when the server is called; `Storage` only reads and writes files, and `BudgetClient` only talks to the server. Rules: `no-storage-in-screen-models`, `no-network-in-screen-models`.
-- **Domain values carry no serialization and mirror no wire message.** No `Domain` value type is `Codable`. Each file or exchange format gets its own plain `Codable` structs that look exactly like the format, with no hand-written `init(from:)` or `encode(to:)`, and money and enums kept as the strings the file holds. Each struct has a mapping in both directions: `init(_ value:)` from the `Domain` value and `toDomain()` back to it, which checks the strings and throws on bad ones. The structs belong to the code that reads and writes the format: `Domain/FixtureFile/` for fixtures, a `private` struct inside each `Storage` store, and the generated messages in `BudgetClient` (mapped there). Values the app exchanges with the server are named for what they mean (`ServerStatus`, `ChangeBatch`), not after an RPC's request or response; field names, proto enums, decimal strings and timestamps are written only in `BudgetClient`. Renaming a property on a value never changes a file or a request, and each format can change without touching the values. Rule: `no-codable-domain-values`.
-- **Generated code stays in `BudgetClient`.** Connect and SwiftProtobuf are imported only there; generated messages and clients are `internal` (`Visibility=Internal`), and `ConnectError` is mapped to `BudgetAPIError` before anything leaves. Rule: `no-network-import`.
+- **Screen models never see storage or the network.** They depend on behaviour protocols such as `WalletHistoryReading`, never on a `*Storing` protocol or `BudgetAPI`. The `Sync` service behind the protocol decides when to read, save or call the server.
+- **Domain values are never `Codable`.** Each file or network format gets plain `Codable` structs that match it, plus a mapping to and from the `Domain` value. Server values are named for what they mean (`ChangeBatch`), not after RPC messages.
+- **Generated code stays in `BudgetClient`.** Only it imports Connect and SwiftProtobuf.
 
 ```swift
-// Domain: what the screen needs, nothing about files
-public protocol WalletHistoryReading: Sendable {
-    func readSinceSavedTokens(accountID: UUID) async throws -> AccountHistoryRead
-}
-
-// Sync: decides when tokens are read and saved
-package struct WalletHistoryReader: WalletHistoryReading {
-    init(source: any FinanceDataSource, tokens: any TokenStoring) { ... }
-}
-
-// Storage: a plain Codable struct for the file, mapped to and from the Domain value
-package actor TokenStore: TokenStoring {
-    private struct StoredTokens: Codable {
-        let accountToken: Data?
-        ...
-        init(_ tokens: AccountTokens) { ... }
-        var tokens: AccountTokens { ... }
-    }
-}
-
-// Domain/FixtureFile: the same pattern for the fixture file
+// A plain Codable struct that matches the file, mapped to and from the Domain value
 struct FixtureTransaction: Codable {
     var amount: String   // as written in the file
     var status: String
-    ...
+
     init(_ transaction: WalletTransaction) { ... }
     func toDomain() throws -> WalletTransaction { ... }
-}
-
-// BudgetClient: the wire layout is private to the client
-struct ConnectBudgetAPI: BudgetAPI {
-    func pushChanges(_ batch: ChangeBatch) async throws -> PushResult {
-        let request = Financekit_V1_PushChangesRequest(batch)  // generated, internal
-        ...
-    }
 }
 ```
 
@@ -164,21 +136,20 @@ Data crosses these pure, unit-tested mapping steps, each in the one target that 
 | Step | Target |
 |---|---|
 | FinanceKit values → wallet types | `FinanceKitSource` |
-| Chronological `ChangeSet` coalescing (deduplicating multi-chunk inserts/updates/deletes by ID) and wallet types → server values such as `ChangeBatch` (the sync contract's mapping rules: sign, name fallback, status) | `Domain` |
-| Wallet types ↔ fixture file structs (`FixtureFile/`) | `Domain` |
-| Domain values ↔ each store's file shapes | `Storage` |
-| Server values ↔ generated messages (field names, proto enums, decimal strings, timestamps) | `BudgetClient` |
+| Chronological `ChangeSet` coalescing (deduplicating multi-chunk inserts/updates/deletes by ID) and wallet types → server values (the sync contract's mapping table: sign, name fallback, status) | `Domain` |
+| `Codable` file structs ↔ `Domain` values | the target that owns the file |
+| Server values ↔ generated messages (including decimal strings) | `BudgetClient` |
 
 ## Networking
 
-- `BudgetAPI` takes and returns `Domain` values named for what they mean. `ConnectBudgetAPI` converts to and from generated messages inside `BudgetClient`, and only `Sync` services call it.
+- `BudgetAPI` takes and returns `Domain` types. `ConnectBudgetAPI` converts to and from generated messages inside `BudgetClient`. Only `Sync` services call it.
 - Errors are mapped at that boundary into `BudgetAPIError` (`unauthorized`, `unreachable`, `server(code:)`, ...). Nothing outside `BudgetClient` sees a `ConnectError`.
 - The endpoint is `https`, except `localhost` in debug builds. The key goes in the `Authorization: Bearer` header and nowhere else.
-- `BudgetClientTests` checks request bodies against captured JSON so drift from the web client shows up as a test failure, and converts each response message back to its `Domain` value.
+- `BudgetClientTests` checks request bodies against captured JSON so drift from the web client shows up as a test failure.
 
 ## Storage
 
-- One `actor` per file. Each file's layout is a private `Codable` shape inside its store, converted from and to `Domain` values, wrapped in a versioned envelope (`schemaVersion: Int`), and written with `Data.write(to:options: .atomic)`. Define corrupt or incompatible recovery per store: `RunLog` and `WakeLog` wipe and recreate cleanly with a warning; `TokenStore` clears affected tokens so the next sync recovers via full resync; an undecodable `Outbox` file is quarantined alongside poison batches.
+- One `actor` per file. Each file is a private `Codable` struct mapped to and from `Domain` values, wrapped in a versioned envelope (`schemaVersion: Int`), and written with `Data.write(to:options: .atomic)`. Define corrupt or incompatible recovery per store: `RunLog` and `WakeLog` wipe and recreate cleanly with a warning; `TokenStore` clears affected tokens so the next sync recovers via full resync; an undecodable `Outbox` file is quarantined alongside poison batches.
 - All paths come from one `AppGroupDirectory` value so tests point it at a temporary directory.
 - The cross-process `FileLock` uses an atomic lease file (`O_CREAT | O_EXCL` with a timestamp and stale-lock timeout), never a kernel `flock`/`fcntl` lock held across `await` calls—holding a kernel lock in an App Group container on suspension triggers iOS `0xdead10cc` termination, and blocking locks stall Swift's cooperative thread pool. `FileLock` supports `renew()` to extend its expiry between batches during long foreground runs (such as a full resync) while keeping the stale-lock TTL short (~45 s) after a crash, and is released inside `async defer` + `withTaskCancellationShield`. `SyncEngine` takes the lock non-blocking and exits if held; short shared-file appends such as `WakeLog` retry briefly with `Task.sleep` rather than dropping entries.
 - The extension runs while the phone is locked. Keychain items use `kSecAttrAccessibleAfterFirstUnlock` (never the `WhenUnlocked` default, and intentionally not `ThisDeviceOnly` so encrypted device backups and phone upgrades carry the key over), and App Group files never use `.completeFileProtection`. A "locked" failure from FinanceKit means retry later, not an error.
@@ -198,8 +169,8 @@ Data crosses these pure, unit-tested mapping steps, each in the one target that 
 ## Testing
 
 - Swift Testing (`@Test`, `#expect`, `#require`), with parameterized tests for mapping tables.
-- Hand-written fakes from `Fakes`; no mocking libraries. `FeaturesTests` use fakes of the behaviour protocols; `SyncTests` run the real `Sync` services against `FakeFinanceDataSource`, `FakeBudgetAPI` and in-memory storage fakes; `BudgetClientTests` run `ConnectBudgetAPI` against an in-process stub; `StorageTests` run the real stores against a temporary directory.
-- Test `Domain` mapping (including fixture JSON round trips), `Storage`, `Sync`, `BudgetClient` encoding and `Features` models. SwiftUI views are covered by previews and the Simulator, not unit tests. In `FinanceKitSource`, enum, error and token mapping is unit-tested (FinanceKit's enums can be built in tests); struct mapping (`Account`, `AccountBalance`, `Transaction`, which have no public initializers) is covered by the phone test.
+- Hand-written fakes from `Fakes`; no mocking libraries.
+- Test `Domain` mapping, `Storage`, `Sync`, `BudgetClient` encoding and `Features` models. SwiftUI views are covered by previews and the Simulator, not unit tests. In `FinanceKitSource`, enum, error and token mapping is unit-tested (FinanceKit's enums can be built in tests); struct mapping (`Account`, `AccountBalance`, `Transaction`, which have no public initializers) is covered by the phone test.
 
 ## Files and style
 
