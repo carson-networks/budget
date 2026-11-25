@@ -22,4 +22,16 @@ package struct AppGroupDirectory: Sendable {
     var tokensFile: URL {
         url.appending(path: "tokens.json")
     }
+
+    var wakeLogFile: URL {
+        url.appending(path: "wake-log.json")
+    }
+
+    var wakeLogLockFile: URL {
+        url.appending(path: "wake-log.lock")
+    }
+
+    var scheduleFile: URL {
+        url.appending(path: "schedule.json")
+    }
 }
