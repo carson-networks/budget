@@ -55,12 +55,12 @@ Needs a budget-server release containing P3-S1.
 
 - `ios/buf.gen.yaml` generating Swift messages (`swift-protobuf`) and Connect clients (`connect-swift`) for `financekit.v1` and `account.v1` from the budget-server repo at that release tag, into `ios/OpenPersonalFinanceKit/Sources/BudgetClient/Gen/`, with `Visibility=Internal` on both plugins. `make -C ios proto-generate`; commit the output. CI verifies it is up to date, as weather-client's `proto` job does.
 - Add `connect-swift` and `swift-protobuf` to the package, versions pinned, as dependencies of `BudgetClient` only.
-- In `Domain`: the `BudgetAPI` protocol with `getStatus` only, and its request and response values. Each later task adds the method it first calls: `listAccounts`, `linkAccount` and `unlinkAccount` in P4-A1, `pushChanges` in P5-A1, `registerPushToken` in P10-A1. The generated client covers every RPC from the start.
-- In `BudgetClient`: `ConnectBudgetAPI` implements it, converting those values to and from generated messages: base URL and key supplied per call from settings, `Authorization: Bearer` header, JSON encoding to match the web, a request timeout.
+- In `Domain`: the `BudgetAPI` protocol with `getStatus` only, returning `ServerStatus` (a plain value named for what it means, not a copy of `GetStatusResponse`). Each later task adds the method it first calls: `listAccounts`, `linkAccount` and `unlinkAccount` in P4-A1, `pushChanges` in P5-A1, `registerPushToken` in P10-A1. The generated client covers every RPC from the start.
+- In `BudgetClient`: `ConnectBudgetAPI` implements it, converting generated messages to and from those values (every wire detail stays here): base URL and key supplied per call from settings, `Authorization: Bearer` header, JSON encoding to match the web, a request timeout.
 - A typed `BudgetAPIError` in `Domain` with the cases P3-A2's connection test shows: `.unauthenticated`, `.unimplemented`, `.unreachable`, `.other`. Connect codes are mapped to it inside `BudgetClient`; later tasks add `.failedPrecondition` (P4-A1), `.notFound` and `.invalidArgument` (P5-A1).
 - `FakeBudgetAPI` in `Fakes`.
 
-Acceptance: `BudgetClientTests` checks the `GetStatus` request body against captured JSON, and an in-process stub confirms the bearer header is sent and each Connect code maps to the right error; nothing outside `BudgetClient` imports Connect or SwiftProtobuf, and no generated type is `public`.
+Acceptance: `BudgetClientTests` checks the `GetStatus` request body against captured JSON, and an in-process stub confirms the bearer header is sent and each Connect code maps to the right error; nothing outside `BudgetClient` imports Connect or SwiftProtobuf (`no-network-import`), no generated type is `public`, and no `Domain` value mirrors a generated message.
 
 ### P3-A2 Endpoint and key settings, connection test
 

@@ -1,0 +1,10 @@
+id: no-network-in-screen-models
+language: swift
+severity: error
+message: Screen models never call the server. Depend on a behaviour protocol implemented in Sync, such as ServerConnecting or AccountLinking.
+files:
+  - OpenPersonalFinanceKit/Sources/Features/**
+  - OpenPersonalFinance/**
+rule:
+  kind: type_identifier
+  regex: "^BudgetAPI$"

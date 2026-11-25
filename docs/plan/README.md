@@ -57,6 +57,7 @@ Numbered so tasks can refer to them.
 15. **Local state is versioned Codable files in the App Group container** (tokens, outbox, run log), shared by the app and the extension. No SwiftData. Each store owns its file layout as private shapes, so `Domain` values are never `Codable`, and screens reach stored state only through `Sync` services, never through storage protocols.
 16. **FinanceKit is granted per bundle ID.** The app and the extension each needed their own approval; both have it, and both App IDs carry FinanceKit and the App Group. App Store Connect rejects a build whose background delivery extension lacks FinanceKit (ITMS-91154), so the release workflow requires it on both profiles.
 17. **CI runs on GitHub's `xcode-27` runner with Xcode 27.2 selected**, matching local development. The default `macos-26` runner's Xcode 26 cannot open the project. `xcode-27` is a public preview; move to the GA label when there is one.
+18. **Wire types stay in `BudgetClient`.** Generated Connect and protobuf code is internal to `BudgetClient`, which converts it to and from `Domain` values named for what they mean. Only `Sync` services call the server, so screens never see `BudgetAPI` and no value outside `BudgetClient` changes when a message does.
 
 ## FinanceKit facts this plan relies on
 
