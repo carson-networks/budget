@@ -45,8 +45,19 @@ struct WakeLogTests {
         #expect(!FileManager.default.fileExists(atPath: directory.appending(path: "wake-log.lock").path))
     }
 
+    // Seeded in one write rather than 500 appends, which would load a CI simulator for seconds.
     @Test func keepsTheNewestEntriesOnceFull() async throws {
-        for index in 0..<(WakeLog.capacity + 3) {
+        let stored = (0..<WakeLog.capacity).map { index in
+            """
+            {"date": \(Self.entry(index).date.timeIntervalSinceReferenceDate), "trigger": "backgroundDelivery", \
+            "dataTypes": ["transactions"], "outcome": "succeeded", "accountCount": 1, "changeCount": \(index)}
+            """
+        }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try Data(#"{"schemaVersion": 1, "entries": [\#(stored.joined(separator: ","))]}"#.utf8).write(to: file)
+        #expect(try await log.entries().count == WakeLog.capacity)
+
+        for index in WakeLog.capacity..<(WakeLog.capacity + 3) {
             try await log.append(Self.entry(index))
         }
         let entries = try await log.entries()
@@ -96,13 +107,14 @@ struct WakeLogTests {
     @Test func waitsForTheLockInsteadOfDroppingAnEntry() async throws {
         let lock = FileLock(file: directory.appending(path: "wake-log.lock"))
         let held = try #require(try lock.tryAcquire())
-        let releaser = Task {
-            try await Task.sleep(for: .milliseconds(100))
-            lock.release(held)
-        }
+        let patient = WakeLog(directory: AppGroupDirectory(url: directory), lockWait: .seconds(30))
 
-        try await log.append(Self.entry(1))
-        try await releaser.value
+        async let appended: Void = patient.append(Self.entry(1))
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(try await log.entries().isEmpty)
+        lock.release(held)
+        try await appended
+
         #expect(try await log.entries() == [Self.entry(1)])
     }
 
@@ -116,8 +128,8 @@ struct WakeLogTests {
 
     // Two logs on one directory stand in for the app and the extension: without the lock, appends are lost.
     @Test func concurrentWritersFromTwoProcessesLoseNothing() async throws {
-        let app = WakeLog(directory: AppGroupDirectory(url: directory))
-        let delivery = WakeLog(directory: AppGroupDirectory(url: directory))
+        let app = WakeLog(directory: AppGroupDirectory(url: directory), lockWait: .seconds(30))
+        let delivery = WakeLog(directory: AppGroupDirectory(url: directory), lockWait: .seconds(30))
         try await withThrowingTaskGroup(of: Void.self) { group in
             for index in 0..<40 {
                 group.addTask { try await (index.isMultiple(of: 2) ? app : delivery).append(Self.entry(index)) }

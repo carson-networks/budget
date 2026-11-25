@@ -62,14 +62,15 @@ struct FileLockTests {
 
     @Test func acquireWaitsForARelease() async throws {
         let held = try #require(try FileLock(file: file).tryAcquire())
-        let releaser = Task {
-            try await Task.sleep(for: .milliseconds(100))
-            FileLock(file: file).release(held)
-        }
 
-        let lease = try await FileLock(file: file).acquire(waitingUpTo: .seconds(5))
+        async let waiting = FileLock(file: file).acquire(waitingUpTo: .seconds(30))
+        try await Task.sleep(for: .milliseconds(100))
+        FileLock(file: file).release(held)
+        let lease = try await waiting
+
+        #expect(try FileLock(file: file).tryAcquire() == nil)
         FileLock(file: file).release(lease)
-        try await releaser.value
+        #expect(try FileLock(file: file).tryAcquire() != nil)
     }
 
     @Test func acquireGivesUpAfterItsLimit() async throws {
