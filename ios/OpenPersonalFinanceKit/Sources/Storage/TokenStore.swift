@@ -30,6 +30,13 @@ package actor TokenStore: TokenStoring {
         self.init(database: StorageDatabase(directory: directory))
     }
 
+    package func accountIDs() throws -> [UUID] {
+        try database.read { db in
+            try String.fetchAll(db, sql: "SELECT account_id FROM account_tokens ORDER BY account_id ASC")
+                .compactMap(UUID.init(uuidString:))
+        }
+    }
+
     package func tokens(for accountID: UUID) throws -> AccountTokens {
         try database.read { db in
             try TokenRow.fetchOne(
