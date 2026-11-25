@@ -6,6 +6,10 @@ public actor InMemoryTokenStore: TokenStoring {
 
     public init() {}
 
+    public func accountIDs() -> [UUID] {
+        tokensByAccount.keys.sorted { $0.uuidString < $1.uuidString }
+    }
+
     public func tokens(for accountID: UUID) -> AccountTokens {
         tokensByAccount[accountID] ?? .empty
     }

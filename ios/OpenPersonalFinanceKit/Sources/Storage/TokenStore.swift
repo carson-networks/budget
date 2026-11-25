@@ -38,6 +38,10 @@ package actor TokenStore: TokenStoring {
         file = directory.tokensFile
     }
 
+    package func accountIDs() throws -> [UUID] {
+        try load().keys.compactMap(UUID.init(uuidString:)).sorted { $0.uuidString < $1.uuidString }
+    }
+
     package func tokens(for accountID: UUID) throws -> AccountTokens {
         try load()[accountID.uuidString]?.tokens ?? .empty
     }
