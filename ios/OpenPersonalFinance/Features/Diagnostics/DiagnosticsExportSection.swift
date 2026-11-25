@@ -13,6 +13,7 @@ struct DiagnosticsExportSection: View {
             ShareLink(item: model.fixtureExport(redacted: redact), preview: SharePreview("Wallet Fixture")) {
                 Label("Export Fixture", systemImage: "square.and.arrow.up")
             }
+            .disabled(!model.canExport)
         } header: {
             Text("Fixture")
         } footer: {

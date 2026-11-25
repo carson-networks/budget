@@ -52,6 +52,7 @@ public final class DiagnosticsModel {
     public private(set) var accounts: [AccountSummary] = []
     public private(set) var failure: Failure?
     public private(set) var tokenReads: [TokenRead] = []
+    public private(set) var isReadingTokens = false
     private var hasLoaded = false
     // What was read, kept so it can be exported: the full read, then each read from saved tokens.
     private var fullRead = WalletFixture.empty
@@ -62,6 +63,10 @@ public final class DiagnosticsModel {
     public init(source: any FinanceDataSource, tokens: any TokenStoring) {
         self.source = source
         self.tokens = tokens
+    }
+
+    public var canExport: Bool {
+        !accounts.isEmpty
     }
 
     // Keeps reads from saved tokens when the screen reappears; pull to refresh starts over.
@@ -94,7 +99,7 @@ public final class DiagnosticsModel {
                     )
                 )
                 // Never overwrites, so a change made since an earlier read still shows on the next read.
-                if await tokens.tokens(for: account.id) == .empty {
+                if try await tokens.tokens(for: account.id) == .empty {
                     try await tokens.save(
                         AccountTokens(
                             accountToken: accountChanges.newToken,
@@ -119,13 +124,17 @@ public final class DiagnosticsModel {
 
     // Saves each account's new tokens as soon as it is read, so the next read shows only what changed since.
     public func readAgainFromSavedTokens() async {
+        // A second tap while reading would read from the same saved tokens and record the step twice.
+        guard !isReadingTokens else { return }
+        isReadingTokens = true
+        defer { isReadingTokens = false }
         var reads: [TokenRead] = []
         var accountSteps: [WalletFixtureStep<WalletAccount>] = []
         var histories: [WalletFixture.AccountHistory] = []
         do {
             for summary in accounts {
                 let account = summary.account
-                let saved = await tokens.tokens(for: account.id)
+                let saved = try await tokens.tokens(for: account.id)
                 let accountChanges = try await source.accountChanges(since: saved.accountToken)
                 let balances = try await source.balanceChanges(accountID: account.id, since: saved.balanceToken)
                 let transactions = try await source.transactionChanges(

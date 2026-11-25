@@ -8,8 +8,11 @@ struct DiagnosticsTokensSection: View {
 
     var body: some View {
         Section("Saved Tokens") {
-            Button("Read Again from Saved Token") { Task { await model.readAgainFromSavedTokens() } }
-            Button("Reset Tokens", role: .destructive) { Task { await model.resetTokens() } }
+            Group {
+                Button("Read Again from Saved Token") { Task { await model.readAgainFromSavedTokens() } }
+                Button("Reset Tokens", role: .destructive) { Task { await model.resetTokens() } }
+            }
+            .disabled(model.isReadingTokens || model.accounts.isEmpty)
             ForEach(model.tokenReads) { read in
                 TokenReadRow(read: read)
             }

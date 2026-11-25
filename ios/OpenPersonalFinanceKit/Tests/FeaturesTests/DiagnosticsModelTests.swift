@@ -150,6 +150,27 @@ struct DiagnosticsModelTests {
         #expect(descriptions.contains("Trader Joe's") == !redacted)
     }
 
+    @Test func exportNeedsSomethingRead() async {
+        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), tokens: InMemoryTokenStore())
+        #expect(!model.canExport)
+        await model.load()
+        #expect(model.canExport)
+    }
+
+    @Test func overlappingReadsRecordOneStep() async throws {
+        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), tokens: InMemoryTokenStore())
+        await model.load()
+
+        async let first: Void = model.readAgainFromSavedTokens()
+        async let second: Void = model.readAgainFromSavedTokens()
+        _ = await (first, second)
+        #expect(!model.isReadingTokens)
+
+        let fixture = try WalletFixture.decode(from: model.fixtureExport(redacted: false).data())
+        let card = try #require(fixture.accountHistories.first)
+        #expect(card.transactions.count == 2)
+    }
+
     private func counts(_ count: DiagnosticsModel.ChangeCount) -> [Int] {
         [count.inserted, count.updated, count.deleted]
     }

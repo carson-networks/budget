@@ -1,7 +1,7 @@
 import Foundation
 import os
 
-public struct AppGroupDirectory: Sendable {
+package struct AppGroupDirectory: Sendable {
     private static let identifier = "group.net.carsonnetworks.OpenPersonalFinance"
 
     private let url: URL
@@ -11,7 +11,7 @@ public struct AppGroupDirectory: Sendable {
     }
 
     // Falls back to Application Support when the App Group entitlement is missing, as in an unsigned build.
-    public static func live() -> AppGroupDirectory {
+    package static func live() -> AppGroupDirectory {
         if let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: identifier) {
             return AppGroupDirectory(url: container)
         }

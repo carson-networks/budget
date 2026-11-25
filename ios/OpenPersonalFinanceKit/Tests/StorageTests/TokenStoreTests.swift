@@ -21,8 +21,8 @@ struct TokenStoreTests {
 
     private var file: URL { directory.appending(path: "tokens.json") }
 
-    @Test func startsEmpty() async {
-        #expect(await store.tokens(for: card) == .empty)
+    @Test func startsEmpty() async throws {
+        #expect(try await store.tokens(for: card) == .empty)
     }
 
     @Test func savesPerAccountAndSurvivesANewInstance() async throws {
@@ -30,14 +30,14 @@ struct TokenStoreTests {
         try await store.save(AccountTokens(transactionToken: Data("s".utf8)), for: savings)
 
         let reopened = TokenStore(directory: AppGroupDirectory(url: directory))
-        #expect(await reopened.tokens(for: card) == tokens)
-        #expect(await reopened.tokens(for: savings) == AccountTokens(transactionToken: Data("s".utf8)))
+        #expect(try await reopened.tokens(for: card) == tokens)
+        #expect(try await reopened.tokens(for: savings) == AccountTokens(transactionToken: Data("s".utf8)))
     }
 
     @Test func overwritesAnAccountsTokens() async throws {
         try await store.save(tokens, for: card)
         try await store.save(AccountTokens(accountToken: Data("a2".utf8)), for: card)
-        #expect(await store.tokens(for: card) == AccountTokens(accountToken: Data("a2".utf8)))
+        #expect(try await store.tokens(for: card) == AccountTokens(accountToken: Data("a2".utf8)))
     }
 
     @Test func removeAllClearsEveryAccount() async throws {
@@ -46,8 +46,8 @@ struct TokenStoreTests {
         try await store.removeAll()
         try await store.removeAll()
 
-        #expect(await store.tokens(for: card) == .empty)
-        #expect(await store.tokens(for: savings) == .empty)
+        #expect(try await store.tokens(for: card) == .empty)
+        #expect(try await store.tokens(for: savings) == .empty)
     }
 
     @Test(arguments: [
@@ -60,12 +60,12 @@ struct TokenStoreTests {
         try await store.save(tokens, for: card)
         try Data(contents.utf8).write(to: file)
 
-        #expect(await store.tokens(for: card) == .empty)
+        #expect(try await store.tokens(for: card) == .empty)
         #expect(!FileManager.default.fileExists(atPath: file.path))
 
         try await store.save(tokens, for: savings)
-        #expect(await store.tokens(for: savings) == tokens)
-        #expect(await store.tokens(for: card) == .empty)
+        #expect(try await store.tokens(for: savings) == tokens)
+        #expect(try await store.tokens(for: card) == .empty)
     }
 
     @Test func writesAVersionedEnvelope() async throws {
@@ -73,5 +73,13 @@ struct TokenStoreTests {
         let object = try JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any]
         #expect(object?["schemaVersion"] as? Int == 1)
         #expect((object?["accounts"] as? [String: Any])?.keys.first == card.uuidString)
+    }
+
+    @Test func anUnreadableFileThrowsAndIsKept() async throws {
+        try FileManager.default.createDirectory(at: file, withIntermediateDirectories: true)
+
+        await #expect(throws: (any Error).self) { try await store.tokens(for: card) }
+        await #expect(throws: (any Error).self) { try await store.save(tokens, for: card) }
+        #expect(FileManager.default.fileExists(atPath: file.path))
     }
 }
