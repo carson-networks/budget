@@ -41,7 +41,7 @@ public actor FakeFinanceDataSource: FinanceDataSource {
     ) -> FakeFinanceDataSource {
         let fixture: WalletFixture
         do {
-            fixture = try loadFixture(named: "sample")
+            fixture = try FixtureFiles.load(named: "sample")
         } catch {
             Log.logger.error("Failed to load the sample fixture: \(String(describing: error), privacy: .private)")
             fixture = .empty
@@ -52,13 +52,6 @@ public actor FakeFinanceDataSource: FinanceDataSource {
             authorizationStatus: authorizationStatus,
             authorizationOnRequest: authorizationOnRequest
         )
-    }
-
-    package static func loadFixture(named name: String) throws -> WalletFixture {
-        guard let url = Bundle.module.url(forResource: name, withExtension: "json", subdirectory: "Fixtures") else {
-            throw CocoaError(.fileNoSuchFile)
-        }
-        return try WalletFixture.decode(from: Data(contentsOf: url))
     }
 
     public nonisolated func isDataAvailable() -> Bool {

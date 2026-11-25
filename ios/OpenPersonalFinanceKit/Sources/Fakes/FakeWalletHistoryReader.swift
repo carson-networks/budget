@@ -20,7 +20,7 @@ public actor FakeWalletHistoryReader: WalletHistoryReading {
 
     public static func sample() -> FakeWalletHistoryReader {
         do {
-            return FakeWalletHistoryReader(fixture: try FakeFinanceDataSource.loadFixture(named: "sample"))
+            return FakeWalletHistoryReader(fixture: try FixtureFiles.load(named: "sample"))
         } catch {
             Log.logger.error("Failed to load the sample fixture: \(String(describing: error), privacy: .private)")
             return FakeWalletHistoryReader(fixture: .empty)

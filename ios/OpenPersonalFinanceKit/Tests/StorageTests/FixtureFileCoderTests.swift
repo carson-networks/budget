@@ -1,8 +1,9 @@
 import Domain
 import Foundation
+import Storage
 import Testing
 
-struct WalletFixtureJSONTests {
+struct FixtureFileCoderTests {
     private static let accountID = UUID(uuidString: "11111111-1111-4111-8111-111111111111") ?? UUID()
     private static let date = Date(timeIntervalSince1970: 1_800_000_000)
 
@@ -63,12 +64,22 @@ struct WalletFixtureJSONTests {
     )
 
     @Test func roundTripsUnchanged() throws {
-        let encoded = try Self.fixture.encoded()
-        #expect(try WalletFixture.decode(from: encoded).encoded() == encoded)
+        let encoded = try FixtureFileCoder().encode(Self.fixture)
+        #expect(try FixtureFileCoder().encode(FixtureFileCoder().decode(encoded)) == encoded)
+    }
+
+    @Test func decodesTheValuesItEncoded() throws {
+        let decoded = try FixtureFileCoder().decode(FixtureFileCoder().encode(Self.fixture))
+        let changes = try #require(decoded.accountHistories.first?.transactions.first)
+        #expect(changes.inserted.map(\.amount) == [Decimal(string: "10.25")])
+        #expect(changes.inserted.first?.transactionDate == Self.date)
+        #expect(changes.inserted.first?.status == .pending)
+        #expect(changes.deleted == Self.fixture.accountHistories.first?.transactions.first?.deleted)
+        #expect(decoded.accounts.first?.inserted.first?.creditLimit == Decimal(string: "1000.50"))
     }
 
     @Test func writesMoneyAsDecimalStringsAndEnumsAsNames() throws {
-        let json = try #require(String(data: Self.fixture.encoded(), encoding: .utf8))
+        let json = try #require(String(data: FixtureFileCoder().encode(Self.fixture), encoding: .utf8))
         #expect(json.contains(#""creditLimit" : "1000.5""#))
         #expect(json.contains(#""amount" : "10.25""#))
         #expect(json.contains(#""status" : "pending""#))
@@ -78,10 +89,10 @@ struct WalletFixtureJSONTests {
     }
 
     @Test func rejectsAnUnknownEnumValue() throws {
-        let json = try #require(String(data: Self.fixture.encoded(), encoding: .utf8))
+        let json = try #require(String(data: FixtureFileCoder().encode(Self.fixture), encoding: .utf8))
             .replacingOccurrences(of: #""status" : "pending""#, with: #""status" : "settled""#)
         #expect(throws: DecodingError.self) {
-            try WalletFixture.decode(from: Data(json.utf8))
+            try FixtureFileCoder().decode(Data(json.utf8))
         }
     }
 }

@@ -1,3 +1,4 @@
+import Domain
 import Foundation
 
 // Checks the file's strings while mapping to Domain values; errors are DecodingErrors like any other bad file.

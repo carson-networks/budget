@@ -1,3 +1,4 @@
+import Domain
 import Foundation
 
 // The fixture's JSON for one account; money and enums are strings, as in the file.

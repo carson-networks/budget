@@ -1,3 +1,4 @@
+import Domain
 import Foundation
 
 // Empty lists are left out of the file, so each is optional here.

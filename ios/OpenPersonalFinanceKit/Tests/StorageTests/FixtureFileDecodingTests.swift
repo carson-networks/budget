@@ -1,13 +1,14 @@
 import Domain
 import Fakes
 import Foundation
+import Storage
 import Testing
 
-struct WalletFixtureDecodingTests {
+struct FixtureFileDecodingTests {
     private static let card = UUID(uuidString: "11111111-1111-4111-8111-111111111111") ?? UUID()
 
     @Test func sampleFixtureDecodes() throws {
-        let fixture = try FakeFinanceDataSource.loadFixture(named: "sample")
+        let fixture = try FixtureFiles.load(named: "sample")
         #expect(fixture.accounts.count == 1)
         #expect(fixture.accounts.first?.inserted.count == 2)
         #expect(fixture.accountHistories.count == 2)
@@ -45,7 +46,7 @@ struct WalletFixtureDecodingTests {
     ])
     func rejectsUnknownKeys(level: String, json: String) {
         #expect(throws: DecodingError.self, "unknown key at \(level) level") {
-            try WalletFixture.decode(from: Data(json.utf8))
+            try FixtureFileCoder().decode(Data(json.utf8))
         }
     }
 
@@ -55,7 +56,7 @@ struct WalletFixtureDecodingTests {
     ])
     func rejectsMissingOrUnsupportedSchemaVersion(json: String) {
         #expect(throws: DecodingError.self) {
-            try WalletFixture.decode(from: Data(json.utf8))
+            try FixtureFileCoder().decode(Data(json.utf8))
         }
     }
 
@@ -67,7 +68,7 @@ struct WalletFixtureDecodingTests {
             { "schemaVersion": 1, "accounts": [{ "inserted": [{ "id": "11111111-1111-4111-8111-111111111111", "displayName": "Card", "institutionName": "Bank", "kind": "liability", "currencyCode": "USD", "creditLimit": \#(creditLimit) }] }], "accountHistories": [] }
             """#
         #expect(throws: DecodingError.self) {
-            try WalletFixture.decode(from: Data(json.utf8))
+            try FixtureFileCoder().decode(Data(json.utf8))
         }
     }
 }

@@ -1,3 +1,4 @@
+import Domain
 import Foundation
 
 // JSONDecoder ignores unknown keys, so a typo would silently drop a field. Re-encoding what was decoded

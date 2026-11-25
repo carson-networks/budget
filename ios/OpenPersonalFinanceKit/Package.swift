@@ -63,7 +63,7 @@ let package = Package(
         ),
         .target(
             name: "Fakes",
-            dependencies: ["Domain"],
+            dependencies: ["Domain", "Storage"],
             resources: [.copy("Fixtures")],
             swiftSettings: nonisolatedSwiftSettings
         ),

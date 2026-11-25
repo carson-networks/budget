@@ -6,7 +6,9 @@ import Testing
 
 struct DiagnosticsModelTests {
     @Test func summarisesEachAccountFromTheSample() async throws {
-        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
+        let model = DiagnosticsModel(
+            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample(),
+            fixtureEncoder: FixtureFiles.encoder)
         await model.load()
 
         #expect(model.failure == nil)
@@ -28,7 +30,7 @@ struct DiagnosticsModelTests {
     @Test func reportsMissingAccess() async {
         let model = DiagnosticsModel(
             source: FakeFinanceDataSource.sample(authorizationStatus: .denied),
-            history: FakeWalletHistoryReader.sample()
+            history: FakeWalletHistoryReader.sample(), fixtureEncoder: FixtureFiles.encoder
         )
         await model.load()
         #expect(model.authorization == .denied)
@@ -39,14 +41,16 @@ struct DiagnosticsModelTests {
     @Test func reportsLockedData() async {
         let source = FakeFinanceDataSource.sample()
         await source.setInjectedError(.dataUnavailable)
-        let model = DiagnosticsModel(source: source, history: FakeWalletHistoryReader.sample())
+        let model = DiagnosticsModel(
+            source: source, history: FakeWalletHistoryReader.sample(), fixtureEncoder: FixtureFiles.encoder)
         await model.load()
         #expect(model.failure == .dataUnavailable)
     }
 
     @Test func clearsFailureAfterASuccessfulRetry() async {
         let source = FakeFinanceDataSource.sample()
-        let model = DiagnosticsModel(source: source, history: FakeWalletHistoryReader.sample())
+        let model = DiagnosticsModel(
+            source: source, history: FakeWalletHistoryReader.sample(), fixtureEncoder: FixtureFiles.encoder)
 
         await source.setInjectedError(.invalidToken)
         await model.load()
@@ -59,7 +63,9 @@ struct DiagnosticsModelTests {
     }
 
     @Test func readsOnlyWhatChangedSinceTheFirstRead() async throws {
-        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
+        let model = DiagnosticsModel(
+            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample(),
+            fixtureEncoder: FixtureFiles.encoder)
         await model.load()
 
         await model.readAgainFromSavedTokens()
@@ -76,7 +82,9 @@ struct DiagnosticsModelTests {
     }
 
     @Test func resetTokensReadsFromTheStartAgain() async throws {
-        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
+        let model = DiagnosticsModel(
+            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample(),
+            fixtureEncoder: FixtureFiles.encoder)
         await model.load()
         await model.readAgainFromSavedTokens()
 
@@ -90,7 +98,8 @@ struct DiagnosticsModelTests {
 
     @Test func reportsARejectedSavedToken() async throws {
         let history = FakeWalletHistoryReader.sample()
-        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), history: history)
+        let model = DiagnosticsModel(
+            source: FakeFinanceDataSource.sample(), history: history, fixtureEncoder: FixtureFiles.encoder)
         await model.load()
         await history.setInjectedError(.invalidToken)
 
@@ -100,7 +109,9 @@ struct DiagnosticsModelTests {
     }
 
     @Test func keepsTokenReadsWhenTheScreenReappears() async {
-        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
+        let model = DiagnosticsModel(
+            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample(),
+            fixtureEncoder: FixtureFiles.encoder)
         await model.loadIfNeeded()
         await model.readAgainFromSavedTokens()
 
@@ -113,14 +124,16 @@ struct DiagnosticsModelTests {
 
     @Test(arguments: [false, true])
     func exportedFixtureLoadsBackIntoTheFake(redacted: Bool) async throws {
-        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
+        let model = DiagnosticsModel(
+            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample(),
+            fixtureEncoder: FixtureFiles.encoder)
         await model.load()
         await model.readAgainFromSavedTokens()
 
-        let fixture = try WalletFixture.decode(from: model.fixtureExport(redacted: redacted).data())
+        let fixture = try FixtureFiles.decode(model.fixtureExport(redacted: redacted).data())
         let reloaded = DiagnosticsModel(
             source: FakeFinanceDataSource(fixture: fixture),
-            history: FakeWalletHistoryReader(fixture: fixture)
+            history: FakeWalletHistoryReader(fixture: fixture), fixtureEncoder: FixtureFiles.encoder
         )
         await reloaded.load()
         #expect(reloaded.failure == nil)
@@ -135,14 +148,18 @@ struct DiagnosticsModelTests {
     }
 
     @Test func exportNeedsSomethingRead() async {
-        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
+        let model = DiagnosticsModel(
+            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample(),
+            fixtureEncoder: FixtureFiles.encoder)
         #expect(!model.canExport)
         await model.load()
         #expect(model.canExport)
     }
 
     @Test func overlappingReadsRecordOneStep() async throws {
-        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
+        let model = DiagnosticsModel(
+            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample(),
+            fixtureEncoder: FixtureFiles.encoder)
         await model.load()
 
         async let first: Void = model.readAgainFromSavedTokens()
@@ -150,7 +167,7 @@ struct DiagnosticsModelTests {
         _ = await (first, second)
         #expect(!model.isReadingTokens)
 
-        let fixture = try WalletFixture.decode(from: model.fixtureExport(redacted: false).data())
+        let fixture = try FixtureFiles.decode(model.fixtureExport(redacted: false).data())
         let card = try #require(fixture.accountHistories.first)
         #expect(card.transactions.count == 2)
     }

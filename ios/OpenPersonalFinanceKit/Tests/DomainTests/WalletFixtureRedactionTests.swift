@@ -93,12 +93,19 @@ struct WalletFixtureRedactionTests {
         return steps.flatMap { $0.inserted + $0.updated }
     }
 
-    @Test func noOriginalStringSurvives() throws {
-        let json = try #require(String(data: Self.fixture.redacted(amountFactor: 2).encoded(), encoding: .utf8))
+    // Every string field, as dump prints it, so nothing can hide outside the fields checked by name.
+    private static func text(of fixture: WalletFixture) -> String {
+        var text = ""
+        dump(fixture, to: &text)
+        return text
+    }
+
+    @Test func noOriginalStringSurvives() {
+        let text = Self.text(of: Self.fixture.redacted(amountFactor: 2))
         for original in Self.originals {
-            #expect(!json.localizedCaseInsensitiveContains(original), "\(original) survived redaction")
+            #expect(!text.localizedCaseInsensitiveContains(original), "\(original) survived redaction")
         }
-        #expect(json.contains("Apple Card"))
+        #expect(text.contains("Apple Card"))
     }
 
     @Test func samePlaceholderForTheSameTextAcrossFieldsAndSteps() {
@@ -115,10 +122,11 @@ struct WalletFixtureRedactionTests {
         #expect(Set(transactions.map(\.transactionDescription)).allSatisfy { $0.hasPrefix("Redacted ") })
     }
 
-    @Test func isDeterministicForTheSameFactor() throws {
-        let first = try Self.fixture.redacted(amountFactor: Decimal(string: "0.73") ?? 0).encoded()
-        let second = try Self.fixture.redacted(amountFactor: Decimal(string: "0.73") ?? 0).encoded()
-        #expect(first == second)
+    @Test func isDeterministicForTheSameFactor() {
+        let factor = Decimal(string: "0.73") ?? 0
+        #expect(
+            Self.text(of: Self.fixture.redacted(amountFactor: factor))
+                == Self.text(of: Self.fixture.redacted(amountFactor: factor)))
     }
 
     @Test func scalesEveryAmountAndRoundsToCents() throws {
@@ -148,15 +156,5 @@ struct WalletFixtureRedactionTests {
             #expect(factor != 1)
             #expect(factor > Decimal(string: "0.5") ?? 0 && factor < Decimal(string: "1.5") ?? 0)
         }
-    }
-
-    @Test func roundTripsThroughJSON() throws {
-        let decoded = try WalletFixture.decode(from: Self.fixture.encoded())
-        let transactions = decoded.accountHistories[0].transactions
-        #expect(transactions.map(\.inserted.count) == [2, 0])
-        #expect(transactions[0].inserted.map(\.amount) == [Decimal(string: "14.50"), Decimal(string: "11.89")])
-        #expect(transactions[0].inserted.first?.transactionDate == Self.date)
-        #expect(decoded.accounts.first?.inserted.first?.creditLimit == Decimal(string: "10000"))
-        #expect(transactions[1].deleted == Self.fixture.accountHistories[0].transactions[1].deleted)
     }
 }

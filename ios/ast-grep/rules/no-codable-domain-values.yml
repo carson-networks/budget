@@ -1,11 +1,9 @@
 id: no-codable-domain-values
 language: swift
 severity: error
-message: Domain values carry no serialization. Add a plain Codable struct for the file (Domain/FixtureFile, or private in a Storage store) and map it to the value.
+message: Domain values carry no serialization. Add a plain Codable struct for the format where it is read and written (Storage or BudgetClient) and map it to the value.
 files:
   - OpenPersonalFinanceKit/Sources/Domain/**
-ignores:
-  - OpenPersonalFinanceKit/Sources/Domain/FixtureFile/**
 rule:
   kind: type_identifier
   regex: "^(Codable|Encodable|Decodable)$"

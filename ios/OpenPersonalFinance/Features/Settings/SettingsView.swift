@@ -31,5 +31,7 @@ struct SettingsView: View {
 #Preview {
     SettingsView()
         .environment(
-            DiagnosticsModel(source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample()))
+            DiagnosticsModel(
+                source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample(),
+                fixtureEncoder: FixtureFiles.encoder))
 }

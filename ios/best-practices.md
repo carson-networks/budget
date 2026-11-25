@@ -27,14 +27,14 @@ Each rule in the working rules about who may import what is a target boundary, s
 
 | Target | Holds | Depends on |
 |---|---|---|
-| `Domain` | Value types (`WalletAccount`, `WalletBalance`, `WalletTransaction`, `ChangeSet`, `SyncTrigger`, `SyncFrequency`, `AppVersion`), values exchanged with the server, domain errors, protocols (`FinanceDataSource`, `WalletHistoryReading`, `BackgroundDeliveryControl`, `BudgetAPI`, `StaleNotifier`, `TokenStoring`, `SettingsStoring`, `LogStoring`, `SyncRunning`), the fixture format and its `Codable` file structs (`FixtureFile/`), and pure functions: chronological `ChangeSet` coalescing, wallet → request mapping, URL validation, redaction, schedule and throttle calculations. Foundation only. | nothing |
+| `Domain` | Value types (`WalletAccount`, `WalletBalance`, `WalletTransaction`, `ChangeSet`, `SyncTrigger`, `SyncFrequency`, `AppVersion`), values exchanged with the server, domain errors, protocols (`FinanceDataSource`, `WalletHistoryReading`, `BackgroundDeliveryControl`, `BudgetAPI`, `StaleNotifier`, `TokenStoring`, `SettingsStoring`, `LogStoring`, `SyncRunning`, `FixtureEncoding`), the fixture value (`WalletFixture`), and pure functions: chronological `ChangeSet` coalescing, wallet → request mapping, URL validation, redaction, schedule and throttle calculations. Foundation only. | nothing |
 | `FinanceKitSource` | `FinanceKitDataSource` and `FinanceKitBackgroundDelivery`, with the FinanceKit → wallet type mapping. The only target that imports FinanceKit. | `Domain` |
 | `BudgetClient` | `ConnectBudgetAPI`, `Domain` values ↔ generated message conversion, and `Gen/`. The only target that imports Connect or SwiftProtobuf. | `Domain`, `connect-swift`, `swift-protobuf` |
-| `Storage` | App Group file stores (tokens, outbox, run log, wake log), the file lock, `SettingsStore` (Keychain). Conforms to `Domain` storage protocols. | `Domain` |
+| `Storage` | App Group file stores (tokens, outbox, run log, wake log), the fixture file format (`FixtureFile/`), the file lock, `SettingsStore` (Keychain). Conforms to `Domain` storage protocols. | `Domain` |
 | `Sync` | `SyncEngine` actor, the background work around it (wake probe, live monitor and debounce, push registration), and the services screens use, such as `WalletHistoryReader`. Conforms to `SyncRunning` and reaches FinanceKit and the server only through `Domain` protocols. | `Domain`, `Storage` |
 | `Live` | `Dependencies` and `Dependencies.live(...)`: the one place real implementations are wired together, plus thin system adapters such as the UserNotifications `StaleNotifier`. | `Domain`, `Sync`, `Storage`, `FinanceKitSource`, `BudgetClient` |
 | `Features` | `@Observable` screen models. `MainActor` by default. Depends on `Domain` protocols only, never storage or `BudgetAPI`, keeping screen-model tests fully in-memory via `Fakes`. | `Domain` |
-| `Fakes` | `FakeFinanceDataSource`, `FakeBackgroundDelivery`, `FakeBudgetAPI`, in-memory fakes for `Domain` storage/sync protocols, and every JSON fixture (hand-written and phone exports) as resources. Used by tests, previews and the Simulator. | `Domain` |
+| `Fakes` | `FakeFinanceDataSource`, `FakeBackgroundDelivery`, `FakeBudgetAPI`, in-memory fakes for `Domain` storage/sync protocols, `FixtureFiles` (reads the bundled fixtures), and every JSON fixture (hand-written and phone exports) as resources. Used by tests, previews and the Simulator. | `Domain`, `Storage` |
 
 ```
 App target  ──► Features, Live, Fakes
@@ -42,7 +42,7 @@ Extension   ──► Live
 Features    ──► Domain
 Sync        ──► Storage ──► Domain
 Live        ──► Sync, Storage, FinanceKitSource, BudgetClient ──► Domain
-Fakes       ──► Domain
+Fakes       ──► Storage ──► Domain
 ```
 
 - Dependencies only point down this graph. Nothing depends on `Live` except the two entry points.

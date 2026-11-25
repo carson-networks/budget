@@ -1,3 +1,4 @@
+import Domain
 import Foundation
 
 struct FixtureTransaction: Codable {
