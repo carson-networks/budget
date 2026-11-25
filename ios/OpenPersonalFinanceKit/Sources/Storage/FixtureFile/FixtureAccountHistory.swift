@@ -6,12 +6,6 @@ struct FixtureAccountHistory: Codable {
     var balances: [FixtureChanges<FixtureBalance>]?
     var transactions: [FixtureChanges<FixtureTransaction>]?
 
-    init(_ history: WalletFixture.AccountHistory) {
-        accountID = history.accountID
-        balances = history.balances.map { FixtureChanges($0, item: FixtureBalance.init) }
-        transactions = history.transactions.map { FixtureChanges($0, item: FixtureTransaction.init) }
-    }
-
     func toDomain() throws -> WalletFixture.AccountHistory {
         WalletFixture.AccountHistory(
             accountID: accountID,

@@ -95,6 +95,5 @@ private struct BalanceRow: View {
     }
     .environment(
         DiagnosticsModel(
-            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample(),
-            fixtureEncoder: FixtureFiles.encoder))
+            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample()))
 }

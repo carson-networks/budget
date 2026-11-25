@@ -10,15 +10,6 @@ struct FixtureAccount: Codable {
     var currencyCode: String
     var creditLimit: String?
 
-    init(_ account: WalletAccount) {
-        id = account.id
-        displayName = account.displayName
-        institutionName = account.institutionName
-        kind = account.kind.rawValue
-        currencyCode = account.currencyCode
-        creditLimit = account.creditLimit?.description
-    }
-
     func toDomain() throws -> WalletAccount {
         WalletAccount(
             id: id,

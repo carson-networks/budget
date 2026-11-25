@@ -15,8 +15,7 @@ struct OpenPersonalFinanceApp: App {
         _onboarding = State(initialValue: OnboardingModel(source: dependencies.financeData))
         _diagnostics = State(
             initialValue: DiagnosticsModel(
-                source: dependencies.financeData, history: dependencies.history,
-                fixtureEncoder: dependencies.fixtureEncoder)
+                source: dependencies.financeData, history: dependencies.history)
         )
     }
 

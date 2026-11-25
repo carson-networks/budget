@@ -16,22 +16,6 @@ struct FixtureTransaction: Codable {
     var transactionDate: Date
     var postedDate: Date?
 
-    init(_ transaction: WalletTransaction) {
-        id = transaction.id
-        accountID = transaction.accountID
-        amount = transaction.amount.description
-        currencyCode = transaction.currencyCode
-        creditDebitIndicator = transaction.creditDebitIndicator.rawValue
-        transactionDescription = transaction.transactionDescription
-        originalTransactionDescription = transaction.originalTransactionDescription
-        merchantName = transaction.merchantName
-        merchantCategoryCode = transaction.merchantCategoryCode
-        transactionType = transaction.transactionType.rawValue
-        status = transaction.status.rawValue
-        transactionDate = transaction.transactionDate
-        postedDate = transaction.postedDate
-    }
-
     func toDomain() throws -> WalletTransaction {
         WalletTransaction(
             id: id,

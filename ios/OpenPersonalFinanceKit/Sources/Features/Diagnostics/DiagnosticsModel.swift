@@ -67,16 +67,10 @@ public final class DiagnosticsModel {
     private var tokenReadSteps = WalletFixture.empty
     private let source: any FinanceDataSource
     private let history: any WalletHistoryReading
-    private let fixtureEncoder: any FixtureEncoding
 
-    public init(
-        source: any FinanceDataSource,
-        history: any WalletHistoryReading,
-        fixtureEncoder: any FixtureEncoding
-    ) {
+    public init(source: any FinanceDataSource, history: any WalletHistoryReading) {
         self.source = source
         self.history = history
-        self.fixtureEncoder = fixtureEncoder
     }
 
     public var canExport: Bool {
@@ -159,7 +153,7 @@ public final class DiagnosticsModel {
     }
 
     public func fixtureExport(redacted: Bool) -> FixtureExport {
-        FixtureExport(fixture: fullRead.appending(tokenReadSteps), redacted: redacted, encoder: fixtureEncoder)
+        FixtureExport(fixture: fullRead.appending(tokenReadSteps), redacted: redacted)
     }
 
     private static func fixtureHistory(_ read: AccountHistoryRead) -> WalletFixture.AccountHistory {

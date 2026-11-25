@@ -50,8 +50,7 @@ private struct ChangeCountRow: View {
 
 #Preview {
     @Previewable @State var model = DiagnosticsModel(
-        source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample(),
-        fixtureEncoder: FixtureFiles.encoder)
+        source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
     List {
         DiagnosticsTokensSection()
     }

@@ -1,6 +1,6 @@
 import Foundation
 
-public struct WalletFixture: Sendable {
+package struct WalletFixture: Sendable {
     package static let empty = WalletFixture(accounts: [], accountHistories: [])
 
     package struct AccountHistory: Sendable {
