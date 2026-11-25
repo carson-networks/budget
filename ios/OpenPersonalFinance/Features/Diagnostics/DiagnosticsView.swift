@@ -101,6 +101,7 @@ private struct BalanceRow: View {
     }
     .environment(
         DiagnosticsModel(
-            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample()))
+            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
+    )
     .environment(WakeLogModel(activity: FakeActivityReader.sample()))
 }

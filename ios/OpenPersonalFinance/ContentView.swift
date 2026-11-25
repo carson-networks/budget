@@ -25,7 +25,8 @@ struct ContentView: View {
         .environment(OnboardingModel(source: source))
         .environment(
             DiagnosticsModel(
-                source: source, history: FakeWalletHistoryReader.sample()))
+                source: source, history: FakeWalletHistoryReader.sample())
+        )
         .environment(SyncFrequencyModel(schedule: FakeSyncSchedule()))
         .environment(WakeLogModel(activity: FakeActivityReader.sample()))
 }

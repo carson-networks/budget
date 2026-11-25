@@ -34,6 +34,7 @@ struct SettingsView: View {
         .environment(SyncFrequencyModel(schedule: FakeSyncSchedule(frequency: .daily)))
         .environment(
             DiagnosticsModel(
-                source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample()))
+                source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
+        )
         .environment(WakeLogModel(activity: FakeActivityReader.sample()))
 }
