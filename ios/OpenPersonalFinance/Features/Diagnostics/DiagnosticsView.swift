@@ -93,5 +93,5 @@ private struct BalanceRow: View {
     NavigationStack {
         DiagnosticsView()
     }
-    .environment(DiagnosticsModel(source: FakeFinanceDataSource.sample(), tokens: InMemoryTokenStore()))
+    .environment(DiagnosticsModel(source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample()))
 }

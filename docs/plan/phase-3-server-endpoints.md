@@ -64,14 +64,15 @@ Acceptance: `BudgetClientTests` checks the `GetStatus` request body against capt
 
 ### P3-A2 Endpoint and key settings, connection test
 
-- `SettingsStore` in `Storage` (conforming to `SettingsStoring` in `Domain`, backed by an in-memory fake in `Fakes`): endpoint URL and API key in the Keychain, shared with the extension by passing the App Group ID (`group.net.carsonnetworks.OpenPersonalFinance`) as `kSecAttrAccessGroup` (no extra `keychain-access-groups` entitlement or Team ID prefix needed), with `kSecAttrAccessibleAfterFirstUnlock` so background runs can read them while the phone is locked (intentionally not `ThisDeviceOnly` so encrypted device backups and phone upgrades carry the key across). The key is never written to `UserDefaults`, logs or the run log.
-- Settings screen, driven by `SettingsModel` in `Features`: endpoint URL field, API key field (secure entry, paste supported), **Test Connection**, and a clear indication of the last result.
+- `SettingsStore` in `Storage` (conforming to `SettingsStoring` in `Domain`, backed by an in-memory fake in `Fakes` for `SyncTests`): endpoint URL and API key in the Keychain, shared with the extension by passing the App Group ID (`group.net.carsonnetworks.OpenPersonalFinance`) as `kSecAttrAccessGroup` (no extra `keychain-access-groups` entitlement or Team ID prefix needed), with `kSecAttrAccessibleAfterFirstUnlock` so background runs can read them while the phone is locked (intentionally not `ThisDeviceOnly` so encrypted device backups and phone upgrades carry the key across). The key is never written to `UserDefaults`, logs or the run log.
+- `ServerConnecting` in `Domain`, implemented by `ServerConnection` in `Sync`: reads and saves the endpoint and key through `SettingsStoring`, and runs **Test Connection** through `BudgetAPI`. `FakeServerConnection` in `Fakes`.
+- Settings screen, driven by `SettingsModel` in `Features`, which depends on `ServerConnecting` and never sees `SettingsStoring`: endpoint URL field, API key field (secure entry, paste supported), **Test Connection**, and a clear indication of the last result.
 - URL validation as a pure function in `Domain`: must parse, must be `https` (or `http://localhost` in debug builds), trailing slash normalised, a missing `/api` suffix is not added silently but hinted at.
 - **Test Connection** calls `GetStatus`. For this phase, `Unimplemented` is shown as "Reached budget-server (not yet enabled)"; `.unreachable` shows the underlying reason (DNS, TLS, timeout).
 - First-run flow: endpoint and key, then the phase 1 authorization screen.
-- `Dependencies.live` gains the settings store and `ConnectBudgetAPI`; the Simulator still uses the fake finance data source with the real API.
+- `Dependencies.live` gains the settings store, `ConnectBudgetAPI` and `ServerConnection`; the Simulator still uses the fake finance data source with the real API.
 
-Acceptance: unit tests for URL validation and for `SettingsModel`'s connection test against `FakeBudgetAPI` across every error case; in the Simulator against `make start-local`, **Test Connection** reaches the stack at `http://localhost:8080/api`.
+Acceptance: unit tests for URL validation, for `ServerConnection` against `FakeBudgetAPI` and the in-memory settings store across every error case, and for `SettingsModel` against `FakeServerConnection`; in the Simulator against `make start-local`, **Test Connection** reaches the stack at `http://localhost:8080/api`.
 
 ## Exit check
 

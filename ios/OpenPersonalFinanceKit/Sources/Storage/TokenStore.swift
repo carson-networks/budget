@@ -8,7 +8,24 @@ package actor TokenStore: TokenStoring {
 
     private struct Envelope: Codable {
         let schemaVersion: Int
-        let accounts: [String: AccountTokens]
+        let accounts: [String: StoredTokens]
+    }
+
+    // The file's own shape, so renaming an AccountTokens field never changes what is on disk.
+    private struct StoredTokens: Codable {
+        let accountToken: Data?
+        let balanceToken: Data?
+        let transactionToken: Data?
+
+        init(_ tokens: AccountTokens) {
+            accountToken = tokens.accountToken
+            balanceToken = tokens.balanceToken
+            transactionToken = tokens.transactionToken
+        }
+
+        var tokens: AccountTokens {
+            AccountTokens(accountToken: accountToken, balanceToken: balanceToken, transactionToken: transactionToken)
+        }
     }
 
     private struct VersionProbe: Decodable {
@@ -22,12 +39,12 @@ package actor TokenStore: TokenStoring {
     }
 
     package func tokens(for accountID: UUID) throws -> AccountTokens {
-        try load()[accountID.uuidString] ?? .empty
+        try load()[accountID.uuidString]?.tokens ?? .empty
     }
 
     package func save(_ tokens: AccountTokens, for accountID: UUID) throws {
         var accounts = try load()
-        accounts[accountID.uuidString] = tokens
+        accounts[accountID.uuidString] = StoredTokens(tokens)
         try write(accounts)
     }
 
@@ -40,7 +57,7 @@ package actor TokenStore: TokenStoring {
     }
 
     // A read error throws rather than reading as empty, so a save never overwrites other accounts' tokens.
-    private func load() throws -> [String: AccountTokens] {
+    private func load() throws -> [String: StoredTokens] {
         let data: Data
         do {
             data = try Data(contentsOf: file)
@@ -66,7 +83,7 @@ package actor TokenStore: TokenStoring {
         try removeAll()
     }
 
-    private func write(_ accounts: [String: AccountTokens]) throws {
+    private func write(_ accounts: [String: StoredTokens]) throws {
         try FileManager.default.createDirectory(
             at: file.deletingLastPathComponent(),
             withIntermediateDirectories: true

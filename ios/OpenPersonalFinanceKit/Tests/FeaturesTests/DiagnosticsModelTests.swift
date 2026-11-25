@@ -6,7 +6,7 @@ import Testing
 
 struct DiagnosticsModelTests {
     @Test func summarisesEachAccountFromTheSample() async throws {
-        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), tokens: InMemoryTokenStore())
+        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
         await model.load()
 
         #expect(model.failure == nil)
@@ -28,7 +28,7 @@ struct DiagnosticsModelTests {
     @Test func reportsMissingAccess() async {
         let model = DiagnosticsModel(
             source: FakeFinanceDataSource.sample(authorizationStatus: .denied),
-            tokens: InMemoryTokenStore()
+            history: FakeWalletHistoryReader.sample()
         )
         await model.load()
         #expect(model.authorization == .denied)
@@ -39,14 +39,14 @@ struct DiagnosticsModelTests {
     @Test func reportsLockedData() async {
         let source = FakeFinanceDataSource.sample()
         await source.setInjectedError(.dataUnavailable)
-        let model = DiagnosticsModel(source: source, tokens: InMemoryTokenStore())
+        let model = DiagnosticsModel(source: source, history: FakeWalletHistoryReader.sample())
         await model.load()
         #expect(model.failure == .dataUnavailable)
     }
 
     @Test func clearsFailureAfterASuccessfulRetry() async {
         let source = FakeFinanceDataSource.sample()
-        let model = DiagnosticsModel(source: source, tokens: InMemoryTokenStore())
+        let model = DiagnosticsModel(source: source, history: FakeWalletHistoryReader.sample())
 
         await source.setInjectedError(.invalidToken)
         await model.load()
@@ -59,11 +59,8 @@ struct DiagnosticsModelTests {
     }
 
     @Test func readsOnlyWhatChangedSinceTheFirstRead() async throws {
-        let tokens = InMemoryTokenStore()
-        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), tokens: tokens)
+        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
         await model.load()
-        let cardID = try #require(model.accounts.first?.id)
-        #expect(await tokens.tokens(for: cardID).transactionToken != nil)
 
         await model.readAgainFromSavedTokens()
         #expect(model.tokenReads.map(\.fromSavedToken) == [true, true])
@@ -78,28 +75,13 @@ struct DiagnosticsModelTests {
             model.tokenReads.allSatisfy { counts($0.transactions) == [0, 0, 0] && counts($0.balances) == [0, 0, 0] })
     }
 
-    @Test func aFullReadKeepsExistingTokens() async throws {
-        let tokens = InMemoryTokenStore()
-        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), tokens: tokens)
-        await model.load()
-        await model.readAgainFromSavedTokens()
-        let cardID = try #require(model.accounts.first?.id)
-        let advanced = await tokens.tokens(for: cardID)
-
-        await model.load()
-        #expect(await tokens.tokens(for: cardID) == advanced)
-    }
-
     @Test func resetTokensReadsFromTheStartAgain() async throws {
-        let tokens = InMemoryTokenStore()
-        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), tokens: tokens)
+        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
         await model.load()
         await model.readAgainFromSavedTokens()
 
         await model.resetTokens()
         #expect(model.tokenReads.isEmpty)
-        let cardID = try #require(model.accounts.first?.id)
-        #expect(await tokens.tokens(for: cardID) == .empty)
 
         await model.readAgainFromSavedTokens()
         #expect(model.tokenReads.first?.fromSavedToken == false)
@@ -107,11 +89,10 @@ struct DiagnosticsModelTests {
     }
 
     @Test func reportsARejectedSavedToken() async throws {
-        let tokens = InMemoryTokenStore()
-        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), tokens: tokens)
+        let history = FakeWalletHistoryReader.sample()
+        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), history: history)
         await model.load()
-        let cardID = try #require(model.accounts.first?.id)
-        await tokens.save(AccountTokens(transactionToken: Data("corrupt".utf8)), for: cardID)
+        await history.setInjectedError(.invalidToken)
 
         await model.readAgainFromSavedTokens()
         #expect(model.failure == .invalidToken)
@@ -119,7 +100,7 @@ struct DiagnosticsModelTests {
     }
 
     @Test func keepsTokenReadsWhenTheScreenReappears() async {
-        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), tokens: InMemoryTokenStore())
+        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
         await model.loadIfNeeded()
         await model.readAgainFromSavedTokens()
 
@@ -132,12 +113,15 @@ struct DiagnosticsModelTests {
 
     @Test(arguments: [false, true])
     func exportedFixtureLoadsBackIntoTheFake(redacted: Bool) async throws {
-        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), tokens: InMemoryTokenStore())
+        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
         await model.load()
         await model.readAgainFromSavedTokens()
 
         let fixture = try WalletFixture.decode(from: model.fixtureExport(redacted: redacted).data())
-        let reloaded = DiagnosticsModel(source: FakeFinanceDataSource(fixture: fixture), tokens: InMemoryTokenStore())
+        let reloaded = DiagnosticsModel(
+            source: FakeFinanceDataSource(fixture: fixture),
+            history: FakeWalletHistoryReader(fixture: fixture)
+        )
         await reloaded.load()
         #expect(reloaded.failure == nil)
         #expect(reloaded.accounts.map(\.account.displayName) == ["Apple Card", "Savings"])
@@ -151,14 +135,14 @@ struct DiagnosticsModelTests {
     }
 
     @Test func exportNeedsSomethingRead() async {
-        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), tokens: InMemoryTokenStore())
+        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
         #expect(!model.canExport)
         await model.load()
         #expect(model.canExport)
     }
 
     @Test func overlappingReadsRecordOneStep() async throws {
-        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), tokens: InMemoryTokenStore())
+        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
         await model.load()
 
         async let first: Void = model.readAgainFromSavedTokens()

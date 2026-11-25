@@ -7,7 +7,7 @@ struct FakeHistoryToken: Codable {
     let position: Int
 
     static func read<Element>(
-        _ steps: [WalletFixtureStep<Element>],
+        _ steps: [WalletChanges<Element>],
         stream: String,
         since token: Data?
     ) throws -> ChangeSet<Element> {

@@ -17,7 +17,7 @@ public final class DiagnosticsModel {
         public let updated: Int
         public let deleted: Int
 
-        init<Element>(_ step: WalletFixtureStep<Element>) {
+        init<Element>(_ step: WalletChanges<Element>) {
             inserted = step.inserted.count
             updated = step.updated.count
             deleted = step.deleted.count
@@ -31,6 +31,14 @@ public final class DiagnosticsModel {
         public let balances: ChangeCount
         public let transactions: ChangeCount
         public var id: UUID { account.id }
+
+        init(account: WalletAccount, read: AccountHistoryRead) {
+            self.account = account
+            fromSavedToken = read.fromSavedToken
+            accounts = ChangeCount(read.account)
+            balances = ChangeCount(read.balances)
+            transactions = ChangeCount(read.transactions)
+        }
     }
 
     public struct StatusCount: Identifiable, Sendable {
@@ -58,11 +66,11 @@ public final class DiagnosticsModel {
     private var fullRead = WalletFixture.empty
     private var tokenReadSteps = WalletFixture.empty
     private let source: any FinanceDataSource
-    private let tokens: any TokenStoring
+    private let history: any WalletHistoryReading
 
-    public init(source: any FinanceDataSource, tokens: any TokenStoring) {
+    public init(source: any FinanceDataSource, history: any WalletHistoryReading) {
         self.source = source
-        self.tokens = tokens
+        self.history = history
     }
 
     public var canExport: Bool {
@@ -77,41 +85,21 @@ public final class DiagnosticsModel {
 
     public func load() async {
         do {
-            authorization = try await source.authorizationStatus()
-            let accountChanges = try await source.accountChanges(since: nil)
-            var summaries: [AccountSummary] = []
-            var histories: [WalletFixture.AccountHistory] = []
-            for account in accountChanges.inserted + accountChanges.updated {
-                let balances = try await source.balanceChanges(accountID: account.id, since: nil)
-                let transactions = try await source.transactionChanges(accountID: account.id, since: nil)
-                summaries.append(
-                    Self.summary(
-                        for: account,
-                        balances: balances.inserted + balances.updated,
-                        transactions: transactions.inserted + transactions.updated
-                    )
-                )
-                histories.append(
-                    WalletFixture.AccountHistory(
-                        accountID: account.id,
-                        balances: [WalletFixtureStep(balances)],
-                        transactions: [WalletFixtureStep(transactions)]
-                    )
-                )
-                // Never overwrites, so a change made since an earlier read still shows on the next read.
-                if try await tokens.tokens(for: account.id) == .empty {
-                    try await tokens.save(
-                        AccountTokens(
-                            accountToken: accountChanges.newToken,
-                            balanceToken: balances.newToken,
-                            transactionToken: transactions.newToken
-                        ),
-                        for: account.id
-                    )
-                }
+            let status = try await source.authorizationStatus()
+            authorization = status
+            guard status == .authorized else {
+                accounts = []
+                failure = .notAuthorized
+                return
             }
-            accounts = summaries
-            fullRead = WalletFixture(accounts: [WalletFixtureStep(accountChanges)], accountHistories: histories)
+            let read = try await history.readEverything()
+            accounts = (read.accounts.inserted + read.accounts.updated).map { account in
+                Self.summary(for: account, history: read.histories.first { $0.accountID == account.id })
+            }
+            fullRead = WalletFixture(
+                accounts: [read.accounts],
+                accountHistories: read.histories.map(Self.fixtureHistory)
+            )
             tokenReadSteps = .empty
             tokenReads = []
             hasLoaded = true
@@ -122,55 +110,16 @@ public final class DiagnosticsModel {
         }
     }
 
-    // Saves each account's new tokens as soon as it is read, so the next read shows only what changed since.
+    // Keeps each account read before a failure, since its new tokens are already saved.
     public func readAgainFromSavedTokens() async {
         // A second tap while reading would read from the same saved tokens and record the step twice.
         guard !isReadingTokens else { return }
         isReadingTokens = true
         defer { isReadingTokens = false }
-        var reads: [TokenRead] = []
-        var accountSteps: [WalletFixtureStep<WalletAccount>] = []
-        var histories: [WalletFixture.AccountHistory] = []
+        var reads: [AccountHistoryRead] = []
         do {
             for summary in accounts {
-                let account = summary.account
-                let saved = try await tokens.tokens(for: account.id)
-                let accountChanges = try await source.accountChanges(since: saved.accountToken)
-                let balances = try await source.balanceChanges(accountID: account.id, since: saved.balanceToken)
-                let transactions = try await source.transactionChanges(
-                    accountID: account.id,
-                    since: saved.transactionToken
-                )
-                try await tokens.save(
-                    AccountTokens(
-                        accountToken: accountChanges.newToken,
-                        balanceToken: balances.newToken,
-                        transactionToken: transactions.newToken
-                    ),
-                    for: account.id
-                )
-                // The account history is store-wide, so keep only this account's part of it.
-                let accountStep = WalletFixtureStep(
-                    inserted: accountChanges.inserted.filter { $0.id == account.id },
-                    updated: accountChanges.updated.filter { $0.id == account.id },
-                    deleted: accountChanges.deleted.filter { $0 == account.id }
-                )
-                let history = WalletFixture.AccountHistory(
-                    accountID: account.id,
-                    balances: [WalletFixtureStep(balances)],
-                    transactions: [WalletFixtureStep(transactions)]
-                )
-                accountSteps.append(accountStep)
-                histories.append(history)
-                reads.append(
-                    TokenRead(
-                        account: account,
-                        fromSavedToken: saved != .empty,
-                        accounts: ChangeCount(accountStep),
-                        balances: ChangeCount(history.balances[0]),
-                        transactions: ChangeCount(history.transactions[0])
-                    )
-                )
+                reads.append(try await history.readSinceSavedTokens(accountID: summary.account.id))
             }
             failure = nil
         } catch {
@@ -178,21 +127,23 @@ public final class DiagnosticsModel {
             failure = Self.failure(for: error)
         }
         Log.logger.info("Read \(reads.count, privacy: .public) accounts from saved tokens")
-        tokenReads = reads
+        tokenReads = reads.compactMap { read in
+            accounts.first { $0.id == read.accountID }.map { TokenRead(account: $0.account, read: read) }
+        }
         guard !reads.isEmpty else { return }
-        let accountStep = WalletFixtureStep(
-            inserted: accountSteps.flatMap(\.inserted),
-            updated: accountSteps.flatMap(\.updated),
-            deleted: accountSteps.flatMap(\.deleted)
+        let accountStep = WalletChanges(
+            inserted: reads.flatMap(\.account.inserted),
+            updated: reads.flatMap(\.account.updated),
+            deleted: reads.flatMap(\.account.deleted)
         )
         tokenReadSteps = tokenReadSteps.appending(
-            WalletFixture(accounts: [accountStep], accountHistories: histories)
+            WalletFixture(accounts: [accountStep], accountHistories: reads.map(Self.fixtureHistory))
         )
     }
 
     public func resetTokens() async {
         do {
-            try await tokens.removeAll()
+            try await history.resetTokens()
             tokenReads = []
             tokenReadSteps = .empty
         } catch {
@@ -205,11 +156,17 @@ public final class DiagnosticsModel {
         FixtureExport(fixture: fullRead.appending(tokenReadSteps), redacted: redacted)
     }
 
-    private static func summary(
-        for account: WalletAccount,
-        balances: [WalletBalance],
-        transactions: [WalletTransaction]
-    ) -> AccountSummary {
+    private static func fixtureHistory(_ read: AccountHistoryRead) -> WalletFixture.AccountHistory {
+        WalletFixture.AccountHistory(
+            accountID: read.accountID,
+            balances: [read.balances],
+            transactions: [read.transactions]
+        )
+    }
+
+    private static func summary(for account: WalletAccount, history: AccountHistoryRead?) -> AccountSummary {
+        let balances = (history?.balances.inserted ?? []) + (history?.balances.updated ?? [])
+        let transactions = (history?.transactions.inserted ?? []) + (history?.transactions.updated ?? [])
         let dates = transactions.map(\.transactionDate)
         let counts = Dictionary(grouping: transactions, by: \.status)
         return AccountSummary(

@@ -14,7 +14,7 @@ struct OpenPersonalFinanceApp: App {
         let dependencies = Dependencies.live(financeData: Self.fakeFinanceData())
         _onboarding = State(initialValue: OnboardingModel(source: dependencies.financeData))
         _diagnostics = State(
-            initialValue: DiagnosticsModel(source: dependencies.financeData, tokens: dependencies.tokens)
+            initialValue: DiagnosticsModel(source: dependencies.financeData, history: dependencies.history)
         )
     }
 

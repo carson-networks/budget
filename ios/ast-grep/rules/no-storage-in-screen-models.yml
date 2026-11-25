@@ -1,0 +1,10 @@
+id: no-storage-in-screen-models
+language: swift
+severity: error
+message: Screen models never see storage. Depend on a behaviour protocol implemented in Sync, such as WalletHistoryReading.
+files:
+  - OpenPersonalFinanceKit/Sources/Features/**
+  - OpenPersonalFinance/**
+rule:
+  kind: type_identifier
+  regex: "Storing$"

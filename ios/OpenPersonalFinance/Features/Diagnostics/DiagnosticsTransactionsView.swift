@@ -42,7 +42,7 @@ struct DiagnosticsTransactionsView: View {
 
 #Preview {
     @Previewable @State var model = DiagnosticsModel(
-        source: FakeFinanceDataSource.sample(), tokens: InMemoryTokenStore())
+        source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
     NavigationStack {
         DiagnosticsTransactionsView(transactions: model.accounts.first?.transactions ?? [])
     }

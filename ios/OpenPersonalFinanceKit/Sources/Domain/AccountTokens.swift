@@ -1,7 +1,7 @@
 import Foundation
 
 // One FinanceKit history token per stream; `accountToken` is the store-wide account history read for this account.
-public struct AccountTokens: Codable, Equatable, Sendable {
+public struct AccountTokens: Equatable, Sendable {
     public static let empty = AccountTokens()
 
     public let accountToken: Data?

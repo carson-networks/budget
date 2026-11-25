@@ -1,0 +1,15 @@
+id: no-codable-domain-values
+language: swift
+severity: error
+message: Domain values carry no serialization. Put the JSON layout in a JSONShape (*JSON.swift) or a private shape in Storage.
+files:
+  - OpenPersonalFinanceKit/Sources/Domain/**
+ignores:
+  - OpenPersonalFinanceKit/Sources/Domain/*JSON.swift
+  - OpenPersonalFinanceKit/Sources/Domain/JSONShape.swift
+rule:
+  kind: type_identifier
+  regex: "^(Codable|Encodable|Decodable)$"
+  inside:
+    kind: inheritance_specifier
+    stopBy: end

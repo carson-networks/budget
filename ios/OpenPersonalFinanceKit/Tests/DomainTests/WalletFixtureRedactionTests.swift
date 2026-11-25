@@ -37,7 +37,7 @@ struct WalletFixtureRedactionTests {
 
     private static let fixture = WalletFixture(
         accounts: [
-            WalletFixtureStep(inserted: [
+            WalletChanges(inserted: [
                 WalletAccount(
                     id: accountID,
                     displayName: "Apple Card",
@@ -52,7 +52,7 @@ struct WalletFixtureRedactionTests {
             WalletFixture.AccountHistory(
                 accountID: accountID,
                 balances: [
-                    WalletFixtureStep(inserted: [
+                    WalletChanges(inserted: [
                         WalletBalance(
                             id: UUID(),
                             accountID: accountID,
@@ -63,7 +63,7 @@ struct WalletFixtureRedactionTests {
                     ])
                 ],
                 transactions: [
-                    WalletFixtureStep(inserted: [
+                    WalletChanges(inserted: [
                         transaction(
                             "Blue Bottle Coffee",
                             original: "SQ *BLUE BOTTLE COFFEE",
@@ -72,7 +72,7 @@ struct WalletFixtureRedactionTests {
                         ),
                         transaction("Corner Cafe", original: "TEMP AUTH *CORNER CAFE", merchant: nil, amount: "11.89"),
                     ]),
-                    WalletFixtureStep(
+                    WalletChanges(
                         updated: [
                             transaction(
                                 "Corner Cafe",

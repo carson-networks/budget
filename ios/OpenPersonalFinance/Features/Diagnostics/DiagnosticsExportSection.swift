@@ -27,7 +27,7 @@ struct DiagnosticsExportSection: View {
 
 #Preview {
     @Previewable @State var model = DiagnosticsModel(
-        source: FakeFinanceDataSource.sample(), tokens: InMemoryTokenStore())
+        source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
     List {
         DiagnosticsExportSection()
     }
