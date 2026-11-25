@@ -8,7 +8,37 @@ public final class DiagnosticsModel {
     public enum Failure: Equatable, Sendable {
         case notAuthorized
         case dataUnavailable
+        case invalidToken
         case other
+    }
+
+    public struct ChangeCount: Equatable, Sendable {
+        public let inserted: Int
+        public let updated: Int
+        public let deleted: Int
+
+        init<Element>(_ step: WalletChanges<Element>) {
+            inserted = step.inserted.count
+            updated = step.updated.count
+            deleted = step.deleted.count
+        }
+    }
+
+    public struct TokenRead: Identifiable, Sendable {
+        public let account: WalletAccount
+        public let fromSavedToken: Bool
+        public let accounts: ChangeCount
+        public let balances: ChangeCount
+        public let transactions: ChangeCount
+        public var id: UUID { account.id }
+
+        init(account: WalletAccount, read: AccountHistoryRead) {
+            self.account = account
+            fromSavedToken = read.fromSavedToken
+            accounts = ChangeCount(read.account)
+            balances = ChangeCount(read.balances)
+            transactions = ChangeCount(read.transactions)
+        }
     }
 
     public struct StatusCount: Identifiable, Sendable {
@@ -29,29 +59,50 @@ public final class DiagnosticsModel {
     public private(set) var authorization: WalletAuthorization?
     public private(set) var accounts: [AccountSummary] = []
     public private(set) var failure: Failure?
+    public private(set) var tokenReads: [TokenRead] = []
+    public private(set) var isReadingTokens = false
+    private var hasLoaded = false
+    // What was read, kept so it can be exported: the full read, then each read from saved tokens.
+    private var fullRead = WalletFixture.empty
+    private var tokenReadSteps = WalletFixture.empty
     private let source: any FinanceDataSource
+    private let history: any WalletHistoryReading
 
-    public init(source: any FinanceDataSource) {
+    public init(source: any FinanceDataSource, history: any WalletHistoryReading) {
         self.source = source
+        self.history = history
+    }
+
+    public var canExport: Bool {
+        !accounts.isEmpty
+    }
+
+    // Keeps reads from saved tokens when the screen reappears; pull to refresh starts over.
+    public func loadIfNeeded() async {
+        guard !hasLoaded else { return }
+        await load()
     }
 
     public func load() async {
         do {
-            authorization = try await source.authorizationStatus()
-            let accountChanges = try await source.accountChanges(since: nil)
-            var summaries: [AccountSummary] = []
-            for account in accountChanges.inserted + accountChanges.updated {
-                let balances = try await source.balanceChanges(accountID: account.id, since: nil)
-                let transactions = try await source.transactionChanges(accountID: account.id, since: nil)
-                summaries.append(
-                    Self.summary(
-                        for: account,
-                        balances: balances.inserted + balances.updated,
-                        transactions: transactions.inserted + transactions.updated
-                    )
-                )
+            let status = try await source.authorizationStatus()
+            authorization = status
+            guard status == .authorized else {
+                accounts = []
+                failure = .notAuthorized
+                return
             }
-            accounts = summaries
+            let read = try await history.readEverything()
+            accounts = (read.accounts.inserted + read.accounts.updated).map { account in
+                Self.summary(for: account, history: read.histories.first { $0.accountID == account.id })
+            }
+            fullRead = WalletFixture(
+                accounts: [read.accounts],
+                accountHistories: read.histories.map(Self.fixtureHistory)
+            )
+            tokenReadSteps = .empty
+            tokenReads = []
+            hasLoaded = true
             failure = nil
         } catch {
             Log.logger.error("Diagnostics read failed: \(String(describing: error), privacy: .public)")
@@ -59,11 +110,63 @@ public final class DiagnosticsModel {
         }
     }
 
-    private static func summary(
-        for account: WalletAccount,
-        balances: [WalletBalance],
-        transactions: [WalletTransaction]
-    ) -> AccountSummary {
+    // Keeps each account read before a failure, since its new tokens are already saved.
+    public func readAgainFromSavedTokens() async {
+        // A second tap while reading would read from the same saved tokens and record the step twice.
+        guard !isReadingTokens else { return }
+        isReadingTokens = true
+        defer { isReadingTokens = false }
+        var reads: [AccountHistoryRead] = []
+        do {
+            for summary in accounts {
+                reads.append(try await history.readSinceSavedTokens(accountID: summary.account.id))
+            }
+            failure = nil
+        } catch {
+            Log.logger.error("Read from saved tokens failed: \(String(describing: error), privacy: .public)")
+            failure = Self.failure(for: error)
+        }
+        Log.logger.info("Read \(reads.count, privacy: .public) accounts from saved tokens")
+        tokenReads = reads.compactMap { read in
+            accounts.first { $0.id == read.accountID }.map { TokenRead(account: $0.account, read: read) }
+        }
+        guard !reads.isEmpty else { return }
+        let accountStep = WalletChanges(
+            inserted: reads.flatMap(\.account.inserted),
+            updated: reads.flatMap(\.account.updated),
+            deleted: reads.flatMap(\.account.deleted)
+        )
+        tokenReadSteps = tokenReadSteps.appending(
+            WalletFixture(accounts: [accountStep], accountHistories: reads.map(Self.fixtureHistory))
+        )
+    }
+
+    public func resetTokens() async {
+        do {
+            try await history.resetTokens()
+            tokenReads = []
+            tokenReadSteps = .empty
+        } catch {
+            Log.logger.error("Resetting tokens failed: \(String(describing: error), privacy: .public)")
+            failure = .other
+        }
+    }
+
+    public func fixtureExport(redacted: Bool) -> FixtureExport {
+        FixtureExport(fixture: fullRead.appending(tokenReadSteps), redacted: redacted)
+    }
+
+    private static func fixtureHistory(_ read: AccountHistoryRead) -> WalletFixture.AccountHistory {
+        WalletFixture.AccountHistory(
+            accountID: read.accountID,
+            balances: [read.balances],
+            transactions: [read.transactions]
+        )
+    }
+
+    private static func summary(for account: WalletAccount, history: AccountHistoryRead?) -> AccountSummary {
+        let balances = (history?.balances.inserted ?? []) + (history?.balances.updated ?? [])
+        let transactions = (history?.transactions.inserted ?? []) + (history?.transactions.updated ?? [])
         let dates = transactions.map(\.transactionDate)
         let counts = Dictionary(grouping: transactions, by: \.status)
         return AccountSummary(
@@ -85,7 +188,8 @@ public final class DiagnosticsModel {
         switch error as? FinanceDataError {
         case .notAuthorized: .notAuthorized
         case .dataUnavailable: .dataUnavailable
-        case .invalidToken, nil: .other
+        case .invalidToken: .invalidToken
+        case nil: .other
         }
     }
 }

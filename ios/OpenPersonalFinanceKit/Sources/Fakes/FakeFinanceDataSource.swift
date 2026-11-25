@@ -41,7 +41,7 @@ public actor FakeFinanceDataSource: FinanceDataSource {
     ) -> FakeFinanceDataSource {
         let fixture: WalletFixture
         do {
-            fixture = try loadFixture(named: "sample")
+            fixture = try FixtureFiles.load(named: "sample")
         } catch {
             Log.logger.error("Failed to load the sample fixture: \(String(describing: error), privacy: .private)")
             fixture = .empty
@@ -52,13 +52,6 @@ public actor FakeFinanceDataSource: FinanceDataSource {
             authorizationStatus: authorizationStatus,
             authorizationOnRequest: authorizationOnRequest
         )
-    }
-
-    package static func loadFixture(named name: String) throws -> WalletFixture {
-        guard let url = Bundle.module.url(forResource: name, withExtension: "json", subdirectory: "Fixtures") else {
-            throw CocoaError(.fileNoSuchFile)
-        }
-        return try WalletFixture.decode(from: Data(contentsOf: url))
     }
 
     public nonisolated func isDataAvailable() -> Bool {
@@ -82,20 +75,22 @@ public actor FakeFinanceDataSource: FinanceDataSource {
         return authorization
     }
 
-    // The fixture has a single state, so every read returns all of it and the token is ignored.
+    // Serves one fixture step per token, like a FinanceKit history read that only moves past what changed since.
     public func accountChanges(since token: Data?) async throws -> ChangeSet<WalletAccount> {
         try verifyReadable()
-        return ChangeSet(inserted: fixture.accounts, newToken: Data())
+        return try FakeHistoryToken.read(fixture.accounts, stream: "accounts", since: token)
     }
 
     public func balanceChanges(accountID: UUID, since token: Data?) async throws -> ChangeSet<WalletBalance> {
         try verifyReadable()
-        return ChangeSet(inserted: fixture.balances.filter { $0.accountID == accountID }, newToken: Data())
+        let steps = fixture.history(for: accountID)?.balances ?? []
+        return try FakeHistoryToken.read(steps, stream: "balances/\(accountID.uuidString)", since: token)
     }
 
     public func transactionChanges(accountID: UUID, since token: Data?) async throws -> ChangeSet<WalletTransaction> {
         try verifyReadable()
-        return ChangeSet(inserted: fixture.transactions.filter { $0.accountID == accountID }, newToken: Data())
+        let steps = fixture.history(for: accountID)?.transactions ?? []
+        return try FakeHistoryToken.read(steps, stream: "transactions/\(accountID.uuidString)", since: token)
     }
 
     package func setInjectedError(_ error: FinanceDataError?) {

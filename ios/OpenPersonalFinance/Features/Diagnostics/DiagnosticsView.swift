@@ -15,6 +15,8 @@ struct DiagnosticsView: View {
                         .foregroundStyle(.red)
                 }
             }
+            DiagnosticsTokensSection()
+            DiagnosticsExportSection()
             ForEach(model.accounts) { summary in
                 AccountSection(summary: summary)
             }
@@ -26,13 +28,14 @@ struct DiagnosticsView: View {
             )
         }
         .refreshable { await model.load() }
-        .task { await model.load() }
+        .task { await model.loadIfNeeded() }
     }
 
     private static func message(for failure: DiagnosticsModel.Failure) -> String {
         switch failure {
         case .notAuthorized: "Wallet access is off."
         case .dataUnavailable: "Wallet data is locked. Unlock your iPhone and pull to refresh."
+        case .invalidToken: "A saved token was rejected. Reset tokens and read again."
         case .other: "Reading Wallet data failed. Pull to refresh."
         }
     }
@@ -90,5 +93,7 @@ private struct BalanceRow: View {
     NavigationStack {
         DiagnosticsView()
     }
-    .environment(DiagnosticsModel(source: FakeFinanceDataSource.sample()))
+    .environment(
+        DiagnosticsModel(
+            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample()))
 }

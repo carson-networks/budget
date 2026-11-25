@@ -23,5 +23,7 @@ struct ContentView: View {
     let source = FakeFinanceDataSource.sample(authorizationStatus: .notDetermined)
     ContentView()
         .environment(OnboardingModel(source: source))
-        .environment(DiagnosticsModel(source: source))
+        .environment(
+            DiagnosticsModel(
+                source: source, history: FakeWalletHistoryReader.sample()))
 }

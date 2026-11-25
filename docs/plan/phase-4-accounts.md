@@ -60,9 +60,9 @@ Acceptance:
 - When the server already has an unowned-by-me FinanceKit account that plausibly is the same one (same institution and type), the sheet offers **Link to Existing** as well, which calls `LinkAccount` with `existing_account_id` and `take_over`.
 - **Take Over** on a "Synced by" row, behind a confirmation that explains the other phone will stop syncing it.
 - **Stop Syncing** (swipe action): `UnlinkAccount`, clears that account's tokens. Says plainly that the account and its transactions stay in budget and can be deleted from the web app.
-- The join and state derivation are one pure function in `Domain` with unit tests. `AccountsModel` in `Features` runs the actions against `Domain` protocols (`FinanceDataSource`, `BudgetAPI`, `TokenStoring`) and is tested against in-memory fakes from `Fakes`. Clearing tokens goes through `TokenStoring` (implemented by `Storage`'s `TokenStore`).
-- `BudgetAPI` (`Domain`), `ConnectBudgetAPI` (`BudgetClient`) and `FakeBudgetAPI` (`Fakes`) gain `listAccounts`, `linkAccount` and `unlinkAccount` with their request and response values, and `BudgetAPIError` gains `.failedPrecondition`. `BudgetClientTests` covers the new request bodies.
-- Settings shows the key name returned by `GetStatus`.
+- The join and state derivation are one pure function in `Domain` with unit tests. `AccountsModel` in `Features` reads Wallet accounts through `FinanceDataSource` and everything from the server through `AccountLinking` in `Domain`, which also runs every action; it is tested against fakes from `Fakes` and never sees `BudgetAPI` or tokens. `AccountLinker` in `Sync` implements `AccountLinking`: it calls `BudgetAPI`, and for **Stop Syncing** clears the account's tokens through `TokenStoring`. `AccountLinker` is tested in `SyncTests` against `FakeBudgetAPI` and `InMemoryTokenStore`.
+- `BudgetAPI` (`Domain`), `ConnectBudgetAPI` (`BudgetClient`) and `FakeBudgetAPI` (`Fakes`) gain `listAccounts`, `linkAccount` and `unlinkAccount`, exchanging `Domain` values named for what they mean (`BudgetAccount`, `AccountLink`, ...), and `BudgetAPIError` gains `.failedPrecondition`. `BudgetClientTests` covers the new request bodies.
+- Settings shows the key name from `ServerStatus`, through `ServerConnecting`.
 
 Acceptance: unit tests for every row state and each action's success and failure; in the Simulator against `make start-local`, adding the fixture's two accounts creates them in budget-server and they appear in the web app.
 

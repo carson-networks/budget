@@ -27,14 +27,14 @@ Each rule in the working rules about who may import what is a target boundary, s
 
 | Target | Holds | Depends on |
 |---|---|---|
-| `Domain` | Value types (`WalletAccount`, `WalletBalance`, `WalletTransaction`, `ChangeSet`, `SyncTrigger`, `SyncFrequency`, `AppVersion`), request and response values for the server, domain errors, protocols (`FinanceDataSource`, `BackgroundDeliveryControl`, `BudgetAPI`, `StaleNotifier`, `TokenStoring`, `SettingsStoring`, `LogReading`, `SyncRunning`), the fixture format, and pure functions: chronological `ChangeSet` coalescing, wallet → request mapping, URL validation, redaction, schedule and throttle calculations. Foundation only. | nothing |
+| `Domain` | Value types (`WalletAccount`, `WalletBalance`, `WalletTransaction`, `ChangeSet`, `SyncTrigger`, `SyncFrequency`, `AppVersion`), values exchanged with the server, domain errors, protocols (`FinanceDataSource`, `WalletHistoryReading`, `BackgroundDeliveryControl`, `BudgetAPI`, `StaleNotifier`, `TokenStoring`, `SettingsStoring`, `LogStoring`, `SyncRunning`), the fixture value (`WalletFixture`), and pure functions: chronological `ChangeSet` coalescing, wallet → request mapping, URL validation, redaction, schedule and throttle calculations. Foundation only. | nothing |
 | `FinanceKitSource` | `FinanceKitDataSource` and `FinanceKitBackgroundDelivery`, with the FinanceKit → wallet type mapping. The only target that imports FinanceKit. | `Domain` |
-| `BudgetClient` | `ConnectBudgetAPI`, request values ↔ generated message conversion, and `Gen/`. The only target that imports Connect or SwiftProtobuf. | `Domain`, `connect-swift`, `swift-protobuf` |
-| `Storage` | App Group file stores (tokens, outbox, run log, wake log), the file lock, `SettingsStore` (Keychain). Conforms to `Domain` storage protocols. | `Domain` |
-| `Sync` | `SyncEngine` actor and the background work around it (wake probe, live monitor and debounce, push registration). Conforms to `SyncRunning` and reaches FinanceKit and the server only through `Domain` protocols. | `Domain`, `Storage` |
+| `BudgetClient` | `ConnectBudgetAPI`, `Domain` values ↔ generated message conversion, and `Gen/`. The only target that imports Connect or SwiftProtobuf. | `Domain`, `connect-swift`, `swift-protobuf` |
+| `Storage` | App Group file stores (tokens, outbox, run log, wake log), the fixture file reader (`FixtureFile/`), the file lock, `SettingsStore` (Keychain). Conforms to `Domain` storage protocols. | `Domain` |
+| `Sync` | `SyncEngine` actor, the background work around it (wake probe, live monitor and debounce, push registration), and the services screens use, such as `WalletHistoryReader`. Conforms to `SyncRunning` and reaches FinanceKit and the server only through `Domain` protocols. | `Domain`, `Storage` |
 | `Live` | `Dependencies` and `Dependencies.live(...)`: the one place real implementations are wired together, plus thin system adapters such as the UserNotifications `StaleNotifier`. | `Domain`, `Sync`, `Storage`, `FinanceKitSource`, `BudgetClient` |
-| `Features` | `@Observable` screen models. `MainActor` by default. Depends on `Domain` protocols only, keeping screen-model tests fully in-memory via `Fakes`. | `Domain` |
-| `Fakes` | `FakeFinanceDataSource`, `FakeBackgroundDelivery`, `FakeBudgetAPI`, in-memory fakes for `Domain` storage/sync protocols, and every JSON fixture (hand-written and phone exports) as resources. Used by tests, previews and the Simulator. | `Domain` |
+| `Features` | `@Observable` screen models, and the diagnostics export's own `Encodable` file structs. `MainActor` by default. Depends on `Domain` protocols only, never storage or `BudgetAPI`, keeping screen-model tests fully in-memory via `Fakes`. | `Domain` |
+| `Fakes` | `FakeFinanceDataSource`, `FakeBackgroundDelivery`, `FakeBudgetAPI`, in-memory fakes for `Domain` storage/sync protocols, `FixtureFiles` (reads the bundled fixtures), and every JSON fixture (hand-written and phone exports) as resources. Used by tests, previews and the Simulator. | `Domain`, `Storage` |
 
 ```
 App target  ──► Features, Live, Fakes
@@ -42,7 +42,7 @@ Extension   ──► Live
 Features    ──► Domain
 Sync        ──► Storage ──► Domain
 Live        ──► Sync, Storage, FinanceKitSource, BudgetClient ──► Domain
-Fakes       ──► Domain
+Fakes       ──► Storage ──► Domain
 ```
 
 - Dependencies only point down this graph. Nothing depends on `Live` except the two entry points.
@@ -64,7 +64,7 @@ Fakes       ──► Domain
 
 - The entry points are the composition roots. `OpenPersonalFinanceApp` calls `Dependencies.live(...)`—selecting `FakeFinanceDataSource` only under `#if DEBUG || targetEnvironment(simulator)` so Release builds on a device always use FinanceKit—then builds the long-lived screen models once in `@State` and injects them with `.environment(_:)`. The extension calls `Dependencies.live()`, tracks active run task(s) (coalescing or serializing overlapping `didReceiveData(for:)` calls so a second wake never overwrites an in-flight handle), and in `willTerminate()` cancels active work and awaits its graceful completion (bounded by a short grace timeout) before returning so lock release and log writes finish cleanly.
 - The app target also owns system registrations that need an app: `.backgroundTask(.appRefresh(...))` (scheduling with `BGTaskScheduler.shared.submit`), remote notifications (using the `async` delegate overload `application(_:didReceiveRemoteNotification:) async -> UIBackgroundFetchResult`), and scene phase. Each handler is a one-line call into package code.
-- Below the roots, dependencies arrive through `init` parameters typed as protocols (`any FinanceDataSource`, `any BudgetAPI`, `any TokenStoring`, `any SyncRunning`).
+- Below the roots, dependencies arrive through `init` parameters typed as protocols (`any FinanceDataSource`, `any WalletHistoryReading`, `any SyncRunning`).
 - No singletons, `static let shared`, service locators or DI frameworks.
 
 ## Views and screen models
@@ -110,26 +110,46 @@ struct AccountsView: View {
 }
 ```
 
+## Storage and network boundaries
+
+`make lint` checks these.
+
+- **Screen models never see storage or the network.** They depend on behaviour protocols such as `WalletHistoryReading`, never on a `*Storing` protocol or `BudgetAPI`. The `Sync` service behind the protocol decides when to read, save or call the server.
+- **Domain values are never `Codable`.** Each file or network format gets plain `Codable` structs that match it, plus a mapping to and from the `Domain` value. Server values are named for what they mean (`ChangeBatch`), not after RPC messages.
+- **Generated code stays in `BudgetClient`.** Only it imports Connect and SwiftProtobuf.
+
+```swift
+// A plain Codable struct that matches the file, mapped to and from the Domain value
+struct FixtureTransaction: Codable {
+    var amount: String   // as written in the file
+    var status: String
+
+    init(_ transaction: WalletTransaction) { ... }
+    func toDomain() throws -> WalletTransaction { ... }
+}
+```
+
 ## Mapping
 
-Data crosses three pure, unit-tested mapping steps, each in the one target that can see both sides:
+Data crosses these pure, unit-tested mapping steps, each in the one target that can see both sides:
 
 | Step | Target |
 |---|---|
 | FinanceKit values → wallet types | `FinanceKitSource` |
-| Chronological `ChangeSet` coalescing (deduplicating multi-chunk inserts/updates/deletes by ID) and wallet types → request values (the sync contract's mapping table: sign, name fallback, status, decimal strings) | `Domain` |
-| Request and response values ↔ generated messages | `BudgetClient` |
+| Chronological `ChangeSet` coalescing (deduplicating multi-chunk inserts/updates/deletes by ID) and wallet types → server values (the sync contract's mapping table: sign, name fallback, status) | `Domain` |
+| `Codable` file structs ↔ `Domain` values | the target that owns the file |
+| Server values ↔ generated messages (including decimal strings) | `BudgetClient` |
 
 ## Networking
 
-- `BudgetAPI` takes and returns `Domain` types. `ConnectBudgetAPI` converts to and from generated messages inside `BudgetClient`.
+- `BudgetAPI` takes and returns `Domain` types. `ConnectBudgetAPI` converts to and from generated messages inside `BudgetClient`. Only `Sync` services call it.
 - Errors are mapped at that boundary into `BudgetAPIError` (`unauthorized`, `unreachable`, `server(code:)`, ...). Nothing outside `BudgetClient` sees a `ConnectError`.
 - The endpoint is `https`, except `localhost` in debug builds. The key goes in the `Authorization: Bearer` header and nowhere else.
 - `BudgetClientTests` checks request bodies against captured JSON so drift from the web client shows up as a test failure.
 
 ## Storage
 
-- One `actor` per file. Files are `Codable`, wrapped in a versioned envelope (`schemaVersion: Int`), and written with `Data.write(to:options: .atomic)`. Define corrupt or incompatible recovery per store: `RunLog` and `WakeLog` wipe and recreate cleanly with a warning; `TokenStore` clears affected tokens so the next sync recovers via full resync; an undecodable `Outbox` file is quarantined alongside poison batches.
+- One `actor` per file. Each file is a private `Codable` struct mapped to and from `Domain` values, wrapped in a versioned envelope (`schemaVersion: Int`), and written with `Data.write(to:options: .atomic)`. Define corrupt or incompatible recovery per store: `RunLog` and `WakeLog` wipe and recreate cleanly with a warning; `TokenStore` clears affected tokens so the next sync recovers via full resync; an undecodable `Outbox` file is quarantined alongside poison batches.
 - All paths come from one `AppGroupDirectory` value so tests point it at a temporary directory.
 - The cross-process `FileLock` uses an atomic lease file (`O_CREAT | O_EXCL` with a timestamp and stale-lock timeout), never a kernel `flock`/`fcntl` lock held across `await` calls—holding a kernel lock in an App Group container on suspension triggers iOS `0xdead10cc` termination, and blocking locks stall Swift's cooperative thread pool. `FileLock` supports `renew()` to extend its expiry between batches during long foreground runs (such as a full resync) while keeping the stale-lock TTL short (~45 s) after a crash, and is released inside `async defer` + `withTaskCancellationShield`. `SyncEngine` takes the lock non-blocking and exits if held; short shared-file appends such as `WakeLog` retry briefly with `Task.sleep` rather than dropping entries.
 - The extension runs while the phone is locked. Keychain items use `kSecAttrAccessibleAfterFirstUnlock` (never the `WhenUnlocked` default, and intentionally not `ThisDeviceOnly` so encrypted device backups and phone upgrades carry the key over), and App Group files never use `.completeFileProtection`. A "locked" failure from FinanceKit means retry later, not an error.

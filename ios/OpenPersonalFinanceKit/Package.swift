@@ -63,7 +63,7 @@ let package = Package(
         ),
         .target(
             name: "Fakes",
-            dependencies: ["Domain"],
+            dependencies: ["Domain", "Storage"],
             resources: [.copy("Fixtures")],
             swiftSettings: nonisolatedSwiftSettings
         ),
@@ -75,6 +75,16 @@ let package = Package(
         .testTarget(
             name: "FakesTests",
             dependencies: ["Domain", "Fakes"],
+            swiftSettings: nonisolatedSwiftSettings
+        ),
+        .testTarget(
+            name: "StorageTests",
+            dependencies: ["Domain", "Storage", "Fakes"],
+            swiftSettings: nonisolatedSwiftSettings
+        ),
+        .testTarget(
+            name: "SyncTests",
+            dependencies: ["Domain", "Sync", "Fakes"],
             swiftSettings: nonisolatedSwiftSettings
         ),
         .testTarget(

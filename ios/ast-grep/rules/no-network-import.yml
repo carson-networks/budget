@@ -1,0 +1,13 @@
+id: no-network-import
+language: swift
+severity: error
+message: Connect and SwiftProtobuf may only be imported in BudgetClient and its tests; convert to Domain values there.
+ignores:
+  - OpenPersonalFinanceKit/Sources/BudgetClient/**
+  - OpenPersonalFinanceKit/Tests/BudgetClientTests/**
+  - "**/.build/**"
+rule:
+  kind: import_declaration
+  has:
+    kind: identifier
+    regex: "^(Connect|ConnectNIO|SwiftProtobuf)(\\.|$)"

@@ -1,35 +1,50 @@
 import Foundation
 
-package struct WalletFixture: Decodable, Sendable {
-    package static let empty = WalletFixture(accounts: [], balances: [], transactions: [])
+package struct WalletFixture: Sendable {
+    package static let empty = WalletFixture(accounts: [], accountHistories: [])
 
-    package let accounts: [WalletAccount]
-    package let balances: [WalletBalance]
-    package let transactions: [WalletTransaction]
+    package struct AccountHistory: Sendable {
+        package let accountID: UUID
+        package let balances: [WalletChanges<WalletBalance>]
+        package let transactions: [WalletChanges<WalletTransaction>]
 
-    package init(accounts: [WalletAccount], balances: [WalletBalance], transactions: [WalletTransaction]) {
+        package init(
+            accountID: UUID,
+            balances: [WalletChanges<WalletBalance>],
+            transactions: [WalletChanges<WalletTransaction>]
+        ) {
+            self.accountID = accountID
+            self.balances = balances
+            self.transactions = transactions
+        }
+    }
+
+    package let accounts: [WalletChanges<WalletAccount>]
+    package let accountHistories: [AccountHistory]
+
+    package init(accounts: [WalletChanges<WalletAccount>], accountHistories: [AccountHistory]) {
         self.accounts = accounts
-        self.balances = balances
-        self.transactions = transactions
+        self.accountHistories = accountHistories
     }
 
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-        case accounts
-        case balances
-        case transactions
+    package func history(for accountID: UUID) -> AccountHistory? {
+        accountHistories.first { $0.accountID == accountID }
     }
 
-    package init(from decoder: any Decoder) throws {
-        try decoder.rejectUnknownKeys(allowed: CodingKeys.self)
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        accounts = try container.decode([WalletAccount].self, forKey: .accounts)
-        balances = try container.decode([WalletBalance].self, forKey: .balances)
-        transactions = try container.decode([WalletTransaction].self, forKey: .transactions)
-    }
-
-    package static func decode(from data: Data) throws -> WalletFixture {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return try decoder.decode(WalletFixture.self, from: data)
+    // Each stream keeps its own steps, so an account first seen in `next` starts at its own step 0.
+    package func appending(_ next: WalletFixture) -> WalletFixture {
+        var histories = accountHistories
+        for history in next.accountHistories {
+            if let index = histories.firstIndex(where: { $0.accountID == history.accountID }) {
+                histories[index] = AccountHistory(
+                    accountID: history.accountID,
+                    balances: histories[index].balances + history.balances,
+                    transactions: histories[index].transactions + history.transactions
+                )
+            } else {
+                histories.append(history)
+            }
+        }
+        return WalletFixture(accounts: accounts + next.accounts, accountHistories: histories)
     }
 }

@@ -13,7 +13,10 @@ struct OpenPersonalFinanceApp: App {
     init() {
         let dependencies = Dependencies.live(financeData: Self.fakeFinanceData())
         _onboarding = State(initialValue: OnboardingModel(source: dependencies.financeData))
-        _diagnostics = State(initialValue: DiagnosticsModel(source: dependencies.financeData))
+        _diagnostics = State(
+            initialValue: DiagnosticsModel(
+                source: dependencies.financeData, history: dependencies.history)
+        )
     }
 
     var body: some Scene {
