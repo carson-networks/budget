@@ -27,7 +27,7 @@ Each rule in the working rules about who may import what is a target boundary, s
 
 | Target | Holds | Depends on |
 |---|---|---|
-| `Domain` | Value types (`WalletAccount`, `WalletBalance`, `WalletTransaction`, `ChangeSet`, `WalletChanges`, `WalletRead`, `SyncTrigger`, `SyncFrequency`, `AppVersion`), values exchanged with the server, named for what they mean rather than mirroring RPC messages (`ServerStatus`, `BudgetAccount`, `ChangeBatch`, ...), domain errors, behaviour protocols that screen models use (`FinanceDataSource`, `WalletHistoryReading`, `SyncScheduling`, `ActivityReading`, `ServerConnecting`, `AccountLinking`, `SyncRunning`), protocols only `Sync`, `BudgetClient` and `Live` use (`BudgetAPI`, `BackgroundDeliveryControl`, `StaleNotifier`, and the storage protocols `TokenStoring`, `SettingsStoring`, `ScheduleStoring`, `LogStoring`), the fixture format (`WalletFixture` and its JSON shapes), and pure functions: chronological `ChangeSet` coalescing, wallet → request mapping, URL validation, redaction, schedule and throttle calculations. Foundation only. Values are never `Codable` and never mirror a wire message (see [Storage and network boundaries](#storage-and-network-boundaries)). | nothing |
+| `Domain` | Value types (`WalletAccount`, `WalletBalance`, `WalletTransaction`, `ChangeSet`, `WalletChanges`, `WalletRead`, `SyncTrigger`, `SyncFrequency`, `AppVersion`), values exchanged with the server, named for what they mean rather than mirroring RPC messages (`ServerStatus`, `BudgetAccount`, `ChangeBatch`, ...), domain errors, behaviour protocols that screen models use (`FinanceDataSource`, `WalletHistoryReading`, `SyncScheduling`, `ActivityReading`, `ServerConnecting`, `AccountLinking`, `SyncRunning`), protocols only `Sync`, `BudgetClient` and `Live` use (`BudgetAPI`, `BackgroundDeliveryControl`, `StaleNotifier`, and the storage protocols `TokenStoring`, `SettingsStoring`, `ScheduleStoring`, `LogStoring`), the fixture format (`WalletFixture`, and the plain `Codable` structs for its file in `FixtureFile/`), and pure functions: chronological `ChangeSet` coalescing, wallet → request mapping, URL validation, redaction, schedule and throttle calculations. Foundation only. Values are never `Codable` and never mirror a wire message (see [Storage and network boundaries](#storage-and-network-boundaries)). | nothing |
 | `FinanceKitSource` | `FinanceKitDataSource` and `FinanceKitBackgroundDelivery`, with the FinanceKit → wallet type mapping. The only target that imports FinanceKit. | `Domain` |
 | `BudgetClient` | `ConnectBudgetAPI`, `Domain` values ↔ generated message conversion (every wire detail: field names, proto enums, decimal strings), Connect error mapping, and `Gen/`. The only target that imports Connect or SwiftProtobuf, and the only place a generated type exists. | `Domain`, `connect-swift`, `swift-protobuf` |
 | `Storage` | App Group file stores (tokens, outbox, run log, wake log, schedule), the file lock, `SettingsStore` (Keychain). Conforms to `Domain` storage protocols; each store owns its file layout as private `Codable` shapes. | `Domain` |
@@ -115,7 +115,7 @@ struct AccountsView: View {
 Files and the server are both outside the app, so the same two rules cover them: screens never reach either one, and neither one's format leaks into the app's values. `make lint` checks all of them.
 
 - **Screen models never see storage or the network.** A model in `Features` depends only on behaviour protocols, such as `WalletHistoryReading`, `SyncScheduling`, `ActivityReading`, `ServerConnecting`, `AccountLinking`, `SyncRunning` and `FinanceDataSource`, never on a `*Storing` protocol or `BudgetAPI`. The `Sync` service behind each protocol decides when stored state is read, saved, cleared or re-applied and when the server is called; `Storage` only reads and writes files, and `BudgetClient` only talks to the server. Rules: `no-storage-in-screen-models`, `no-network-in-screen-models`.
-- **Domain values carry no serialization and mirror no wire message.** No `Domain` value type is `Codable`. Every file or exchange format is a set of shapes owned by the code that reads and writes it: the fixture's `JSONShape` types beside `WalletFixture` in `Domain`, a private shape inside each `Storage` store, and the generated messages in `BudgetClient`. Values the app exchanges with the server are named for what they mean (`ServerStatus`, `ChangeBatch`), not after an RPC's request or response, and hold plain Swift types (`Decimal`, enums, `Date`); field names, proto enums, decimal strings and timestamps are written only in `BudgetClient`. Renaming a property on a value never changes a file or a request, and each format can change without touching the values. Rule: `no-codable-domain-values`.
+- **Domain values carry no serialization and mirror no wire message.** No `Domain` value type is `Codable`. Each file or exchange format gets its own plain `Codable` structs that look exactly like the format, with no hand-written `init(from:)` or `encode(to:)`, and money and enums kept as the strings the file holds. Each struct has a mapping in both directions: `init(_ value:)` from the `Domain` value and `toDomain()` back to it, which checks the strings and throws on bad ones. The structs belong to the code that reads and writes the format: `Domain/FixtureFile/` for fixtures, a `private` struct inside each `Storage` store, and the generated messages in `BudgetClient` (mapped there). Values the app exchanges with the server are named for what they mean (`ServerStatus`, `ChangeBatch`), not after an RPC's request or response; field names, proto enums, decimal strings and timestamps are written only in `BudgetClient`. Renaming a property on a value never changes a file or a request, and each format can change without touching the values. Rule: `no-codable-domain-values`.
 - **Generated code stays in `BudgetClient`.** Connect and SwiftProtobuf are imported only there; generated messages and clients are `internal` (`Visibility=Internal`), and `ConnectError` is mapped to `BudgetAPIError` before anything leaves. Rule: `no-network-import`.
 
 ```swift
@@ -129,9 +129,23 @@ package struct WalletHistoryReader: WalletHistoryReading {
     init(source: any FinanceDataSource, tokens: any TokenStoring) { ... }
 }
 
-// Storage: the file layout is private to the store
+// Storage: a plain Codable struct for the file, mapped to and from the Domain value
 package actor TokenStore: TokenStoring {
-    private struct StoredTokens: Codable { ... }
+    private struct StoredTokens: Codable {
+        let accountToken: Data?
+        ...
+        init(_ tokens: AccountTokens) { ... }
+        var tokens: AccountTokens { ... }
+    }
+}
+
+// Domain/FixtureFile: the same pattern for the fixture file
+struct FixtureTransaction: Codable {
+    var amount: String   // as written in the file
+    var status: String
+    ...
+    init(_ transaction: WalletTransaction) { ... }
+    func toDomain() throws -> WalletTransaction { ... }
 }
 
 // BudgetClient: the wire layout is private to the client
@@ -151,7 +165,7 @@ Data crosses these pure, unit-tested mapping steps, each in the one target that 
 |---|---|
 | FinanceKit values → wallet types | `FinanceKitSource` |
 | Chronological `ChangeSet` coalescing (deduplicating multi-chunk inserts/updates/deletes by ID) and wallet types → server values such as `ChangeBatch` (the sync contract's mapping rules: sign, name fallback, status) | `Domain` |
-| Wallet types ↔ fixture JSON shapes | `Domain` |
+| Wallet types ↔ fixture file structs (`FixtureFile/`) | `Domain` |
 | Domain values ↔ each store's file shapes | `Storage` |
 | Server values ↔ generated messages (field names, proto enums, decimal strings, timestamps) | `BudgetClient` |
 
