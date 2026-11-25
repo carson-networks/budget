@@ -13,6 +13,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                SyncFrequencySection()
                 Section {
                     NavigationLink("Diagnostics", value: Destination.diagnostics)
                 }
@@ -30,7 +31,9 @@ struct SettingsView: View {
 
 #Preview {
     SettingsView()
+        .environment(SyncFrequencyModel(schedule: FakeSyncSchedule(frequency: .daily)))
         .environment(
             DiagnosticsModel(
                 source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample()))
+        .environment(WakeLogModel(activity: FakeActivityReader.sample()))
 }

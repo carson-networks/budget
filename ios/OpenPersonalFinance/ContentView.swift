@@ -26,4 +26,6 @@ struct ContentView: View {
         .environment(
             DiagnosticsModel(
                 source: source, history: FakeWalletHistoryReader.sample()))
+        .environment(SyncFrequencyModel(schedule: FakeSyncSchedule()))
+        .environment(WakeLogModel(activity: FakeActivityReader.sample()))
 }
