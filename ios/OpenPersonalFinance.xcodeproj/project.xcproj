@@ -11,7 +11,21 @@
     ],
   },
   "files": [
-    { "kind": "folder", "path": "OpenPersonalFinance", "target-membership": [ "OpenPersonalFinance" ] },
+    {
+      "kind": "folder",
+      "path": "OpenPersonalFinance",
+      "target-membership": [
+        "OpenPersonalFinance",
+      ],
+      "membership-exceptions": [
+        {
+          "target": "OpenPersonalFinance",
+          "exclusions": [
+            "Info.plist",
+          ],
+        },
+      ],
+    },
     {
       "kind": "folder",
       "path": "OpenPersonalFinanceDelivery",
@@ -70,6 +84,7 @@
         "DEVELOPMENT_TEAM": "5GKY3485R6",
         "ENABLE_PREVIEWS": "YES",
         "GENERATE_INFOPLIST_FILE": "YES",
+        "INFOPLIST_FILE": "OpenPersonalFinance/Info.plist",
         "INFOPLIST_KEY_LSApplicationCategoryType": "public.app-category.finance",
         "INFOPLIST_KEY_NSFinancialDataUsageDescription": "OpenPersonalFinance reads the Wallet accounts you choose and sends them to your own budget server.",
         "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
