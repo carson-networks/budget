@@ -7,11 +7,11 @@ nonisolated enum BackgroundRefresh {
 
     private static let logger = Logger(subsystem: "net.carsonnetworks.OpenPersonalFinance", category: "App")
 
-    static func schedule() {
+    static func schedule() async {
         let request = BGAppRefreshTaskRequest(identifier: identifier)
         request.earliestBeginDate = .now.addingTimeInterval(60 * 60)
         do {
-            try BGTaskScheduler.shared.submit(request)
+            try await BGTaskScheduler.shared.submitTaskRequest(request)
         } catch {
             logger.error("Scheduling background refresh failed: \(String(describing: error), privacy: .public)")
         }

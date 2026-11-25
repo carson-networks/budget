@@ -34,11 +34,11 @@ struct OpenPersonalFinanceApp: App {
                 .environment(syncFrequency)
                 .environment(wakeLog)
                 .task { await syncFrequency.applySavedFrequency() }
-                .task { BackgroundRefresh.schedule() }
+                .task { await BackgroundRefresh.schedule() }
         }
         .backgroundTask(.appRefresh(BackgroundRefresh.identifier)) {
             // Scheduled first, so the next refresh is requested even if this one runs out of time.
-            BackgroundRefresh.schedule()
+            await BackgroundRefresh.schedule()
             await wakes.backgroundRefresh()
         }
     }
