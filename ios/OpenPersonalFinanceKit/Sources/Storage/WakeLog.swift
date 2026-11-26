@@ -1,41 +1,27 @@
 import Domain
 import Foundation
+import GRDB
 import os
 
-// Shared by the app and the extension, so every append is a locked read-modify-write of the file.
+// Shared by the app and the extension via SQLite transactions, eliminating lock files and sleep retries.
 package actor WakeLog: LogStoring {
     package static let capacity = 500
-    private static let lockAttempts = 40
-    private static let lockRetryDelay = Duration.milliseconds(25)
 
-    private struct Envelope: VersionedEnvelope {
-        static let currentVersion = 1
-        let schemaVersion: Int
-        let entries: [StoredEntry]
-    }
-
-    // The file's own shape; exactly one of `changeCount` and `failure` is set.
-    private struct StoredEntry: Codable {
-        let startedAt: Date
+    private struct WakeLogRow: FetchableRecord, Sendable {
+        let startedAt: Double
         let durationMilliseconds: Int
         let trigger: String
-        let dataTypes: [String]
+        let dataTypesJSON: String
         let changeCount: Int?
         let failure: String?
 
-        init(_ entry: WakeLogEntry) {
-            startedAt = entry.startedAt
-            durationMilliseconds = Int((entry.duration / .milliseconds(1)).rounded())
-            trigger = entry.trigger.rawValue
-            dataTypes = entry.dataTypes.map(\.rawValue)
-            switch entry.outcome {
-            case .succeeded(let count):
-                changeCount = count
-                failure = nil
-            case .failed(let reason):
-                changeCount = nil
-                failure = reason.rawValue
-            }
+        init(row: Row) {
+            startedAt = row["started_at"]
+            durationMilliseconds = row["duration_ms"]
+            trigger = row["trigger"]
+            dataTypesJSON = row["data_types_json"]
+            changeCount = row["change_count"]
+            failure = row["failure"]
         }
 
         func toDomain() throws -> WakeLogEntry {
@@ -43,81 +29,92 @@ package actor WakeLog: LogStoring {
             switch (changeCount, failure) {
             case (let count?, nil):
                 outcome = .succeeded(changeCount: count)
-            case (nil, let failure?):
-                outcome = .failed(try Self.value(failure))
+            case (nil, let reason?):
+                outcome = .failed(try Self.enumValue(reason))
             default:
-                throw Self.invalid("Outcome needs exactly one of changeCount and failure")
+                throw StorageError.invalidStoredValue("Outcome needs exactly one of changeCount and failure")
             }
+            let rawTypes = try JSONDecoder().decode([String].self, from: Data(dataTypesJSON.utf8))
             return WakeLogEntry(
-                startedAt: startedAt,
+                startedAt: Date(timeIntervalSince1970: startedAt),
                 duration: .milliseconds(durationMilliseconds),
-                trigger: try Self.value(trigger),
-                dataTypes: try dataTypes.map { try Self.value($0) },
+                trigger: try Self.enumValue(trigger),
+                dataTypes: try rawTypes.map { try Self.enumValue($0) },
                 outcome: outcome
             )
         }
 
-        private static func value<Value: RawRepresentable<String>>(_ raw: String) throws -> Value {
+        private static func enumValue<Value: RawRepresentable<String>>(_ raw: String) throws -> Value {
             guard let value = Value(rawValue: raw) else {
-                throw invalid("Unknown \(Value.self) \(raw)")
+                throw StorageError.invalidStoredValue("Unknown \(Value.self): \(raw)")
             }
             return value
         }
-
-        private static func invalid(_ description: String) -> DecodingError {
-            DecodingError.dataCorrupted(DecodingError.Context(codingPath: [], debugDescription: description))
-        }
     }
 
-    private let file: VersionedFile<Envelope>
-    private let lock: FileLock
+    private let database: StorageDatabase
+
+    package init(database: StorageDatabase) {
+        self.database = database
+    }
 
     package init(directory: AppGroupDirectory) {
-        file = VersionedFile(url: directory.wakeLogFile)
-        lock = FileLock(url: directory.wakeLogLockFile)
+        self.init(database: StorageDatabase(directory: directory))
     }
 
-    // Waits briefly for the other process rather than dropping the entry.
     package func append(_ entry: WakeLogEntry) async throws {
-        let lease = try await acquireLock()
-        defer {
-            do {
-                try lock.release(lease)
-            } catch {
-                Log.logger.error("Releasing the wake log lock failed: \(String(describing: error), privacy: .public)")
-            }
+        let startedAt = entry.startedAt.timeIntervalSince1970
+        let durationMilliseconds = Int((entry.duration / .milliseconds(1)).rounded())
+        let trigger = entry.trigger.rawValue
+        let dataTypesData = try JSONEncoder().encode(entry.dataTypes.map(\.rawValue))
+        guard let dataTypesJSON = String(data: dataTypesData, encoding: .utf8) else {
+            throw StorageError.invalidStoredValue("Failed to encode data types as UTF-8")
         }
-        let entries = try load() + [entry]
-        try file.write(
-            Envelope(
-                schemaVersion: Envelope.currentVersion,
-                entries: entries.suffix(Self.capacity).map(StoredEntry.init)
+        let (changeCount, failure): (Int?, String?) =
+            switch entry.outcome {
+            case .succeeded(let count): (count, nil)
+            case .failed(let reason): (nil, reason.rawValue)
+            }
+
+        try await database.writeAsync(reason: "WakeLog.append") { db in
+            try db.execute(
+                sql: """
+                    INSERT INTO wake_log (started_at, duration_ms, trigger, data_types_json, change_count, failure)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                arguments: [startedAt, durationMilliseconds, trigger, dataTypesJSON, changeCount, failure]
             )
-        )
+            try db.execute(
+                sql: """
+                    DELETE FROM wake_log
+                    WHERE id NOT IN (
+                        SELECT id FROM wake_log ORDER BY id DESC LIMIT ?
+                    )
+                    """,
+                arguments: [Self.capacity]
+            )
+        }
     }
 
-    package func entries() throws -> [WakeLogEntry] {
-        try load()
-    }
-
-    private func load() throws -> [WakeLogEntry] {
-        guard let envelope = try file.read() else { return [] }
+    package func entries() async throws -> [WakeLogEntry] {
+        let rows = try database.read { db in
+            try WakeLogRow.fetchAll(
+                db,
+                sql: """
+                    SELECT started_at, duration_ms, trigger, data_types_json, change_count, failure
+                    FROM wake_log
+                    ORDER BY id ASC
+                    """
+            )
+        }
         do {
-            return try envelope.entries.map { try $0.toDomain() }
-        } catch let error as DecodingError {
+            return try rows.map { try $0.toDomain() }
+        } catch {
             Log.logger.warning("Clearing an unreadable wake log: \(String(describing: error), privacy: .public)")
-            try file.remove()
+            try await database.writeAsync(reason: "WakeLog.wipeCorrupt") { db in
+                try db.execute(sql: "DELETE FROM wake_log")
+            }
             return []
         }
-    }
-
-    private func acquireLock() async throws -> FileLock.Lease {
-        for _ in 0..<Self.lockAttempts {
-            if let lease = try lock.tryAcquire() {
-                return lease
-            }
-            try await Task.sleep(for: Self.lockRetryDelay)
-        }
-        throw StorageError.lockBusy
     }
 }

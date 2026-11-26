@@ -14,15 +14,15 @@ public struct Dependencies: Sendable {
         financeData: (any FinanceDataSource)? = nil,
         backgroundDelivery: (any BackgroundDeliveryControl)? = nil
     ) -> Dependencies {
-        let directory = AppGroupDirectory.live()
+        let database = StorageDatabase(directory: AppGroupDirectory.live())
         let financeData = financeData ?? FinanceKitDataSource()
-        let tokens = TokenStore(directory: directory)
-        let wakeLog = WakeLog(directory: directory)
+        let tokens = TokenStore(database: database)
+        let wakeLog = WakeLog(database: database)
         return Dependencies(
             financeData: financeData,
             history: WalletHistoryReader(source: financeData, tokens: tokens),
             schedule: SyncSchedule(
-                store: ScheduleStore(directory: directory),
+                store: ScheduleStore(database: database),
                 delivery: backgroundDelivery ?? FinanceKitBackgroundDelivery()
             ),
             activity: ActivityReader(wakes: wakeLog),

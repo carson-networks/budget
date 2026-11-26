@@ -57,7 +57,7 @@ package struct WalletHistoryReader: WalletHistoryReading {
         )
         return AccountHistoryRead(
             accountID: accountID,
-            fromSavedToken: saved != .empty,
+            fromSavedToken: saved.hasSavedTokens,
             account: WalletChanges(accountChanges).filtered(to: accountID),
             balances: WalletChanges(balances),
             transactions: WalletChanges(transactions)

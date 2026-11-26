@@ -1,53 +1,110 @@
 import Domain
 import Foundation
+import GRDB
 
-// Reads the file on every call so the app and the extension never act on a stale copy.
+// Per-account row storage so concurrent saves to different accounts never clobber each other.
 package actor TokenStore: TokenStoring {
-    private struct Envelope: VersionedEnvelope {
-        static let currentVersion = 1
-        let schemaVersion: Int
-        let accounts: [String: StoredTokens]
-    }
-
-    // The file's own shape, so renaming an AccountTokens field never changes what is on disk.
-    private struct StoredTokens: Codable {
+    private struct TokenRow: FetchableRecord, Sendable {
+        let accountID: String
         let accountToken: Data?
         let balanceToken: Data?
         let transactionToken: Data?
+        let pendingFullResync: Bool
 
-        init(_ tokens: AccountTokens) {
-            accountToken = tokens.accountToken
-            balanceToken = tokens.balanceToken
-            transactionToken = tokens.transactionToken
+        init(row: Row) throws {
+            accountID = row["account_id"]
+            accountToken = row["account_token"]
+            balanceToken = row["balance_token"]
+            transactionToken = row["transaction_token"]
+            pendingFullResync = row["pending_full_resync"]
         }
 
         var tokens: AccountTokens {
-            AccountTokens(accountToken: accountToken, balanceToken: balanceToken, transactionToken: transactionToken)
+            AccountTokens(
+                accountToken: accountToken,
+                balanceToken: balanceToken,
+                transactionToken: transactionToken,
+                pendingFullResync: pendingFullResync
+            )
         }
     }
 
-    // A cleared file makes the next read start from nothing, which recovers everything.
-    private let file: VersionedFile<Envelope>
+    private let database: StorageDatabase
+
+    package init(database: StorageDatabase) {
+        self.database = database
+    }
 
     package init(directory: AppGroupDirectory) {
-        file = VersionedFile(url: directory.tokensFile)
+        self.init(database: StorageDatabase(directory: directory))
     }
 
     package func tokens(for accountID: UUID) throws -> AccountTokens {
-        try load()[accountID.uuidString]?.tokens ?? .empty
+        try database.read { db in
+            try TokenRow.fetchOne(
+                db,
+                sql: """
+                    SELECT account_id, account_token, balance_token, transaction_token, pending_full_resync
+                    FROM account_tokens
+                    WHERE account_id = ?
+                    """,
+                arguments: [accountID.uuidString]
+            )?.tokens ?? .empty
+        }
     }
 
-    package func save(_ tokens: AccountTokens, for accountID: UUID) throws {
-        var accounts = try load()
-        accounts[accountID.uuidString] = StoredTokens(tokens)
-        try file.write(Envelope(schemaVersion: Envelope.currentVersion, accounts: accounts))
+    package func save(_ tokens: AccountTokens, for accountID: UUID) async throws {
+        let updatedAt = Date().timeIntervalSince1970
+        try await database.writeAsync(reason: "TokenStore.save") { db in
+            try db.execute(
+                sql: """
+                    INSERT INTO account_tokens (
+                        account_id, account_token, balance_token, transaction_token, pending_full_resync, updated_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(account_id) DO UPDATE SET
+                        account_token = excluded.account_token,
+                        balance_token = excluded.balance_token,
+                        transaction_token = excluded.transaction_token,
+                        pending_full_resync = excluded.pending_full_resync,
+                        updated_at = excluded.updated_at
+                    """,
+                arguments: [
+                    accountID.uuidString,
+                    tokens.accountToken,
+                    tokens.balanceToken,
+                    tokens.transactionToken,
+                    tokens.pendingFullResync,
+                    updatedAt,
+                ]
+            )
+        }
     }
 
-    package func removeAll() throws {
-        try file.remove()
+    package func markPendingFullResync(for accountID: UUID) async throws {
+        let updatedAt = Date().timeIntervalSince1970
+        try await database.writeAsync(reason: "TokenStore.markPendingFullResync") { db in
+            try db.execute(
+                sql: """
+                    INSERT INTO account_tokens (
+                        account_id, account_token, balance_token, transaction_token, pending_full_resync, updated_at
+                    )
+                    VALUES (?, NULL, NULL, NULL, 1, ?)
+                    ON CONFLICT(account_id) DO UPDATE SET
+                        account_token = NULL,
+                        balance_token = NULL,
+                        transaction_token = NULL,
+                        pending_full_resync = 1,
+                        updated_at = excluded.updated_at
+                    """,
+                arguments: [accountID.uuidString, updatedAt]
+            )
+        }
     }
 
-    private func load() throws -> [String: StoredTokens] {
-        try file.read()?.accounts ?? [:]
+    package func removeAll() async throws {
+        try await database.writeAsync(reason: "TokenStore.removeAll") { db in
+            try db.execute(sql: "DELETE FROM account_tokens")
+        }
     }
 }
