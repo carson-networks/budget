@@ -120,6 +120,25 @@ package enum FinanceKitMapping {
         }
     }
 
+    // nil for `.off`, which disables delivery rather than choosing a frequency.
+    package static func updateFrequency(_ frequency: SyncFrequency) -> FinanceStore.UpdateFrequency? {
+        switch frequency {
+        case .hourly: .hourly
+        case .daily: .daily
+        case .weekly: .weekly
+        case .off: nil
+        }
+    }
+
+    package static func dataType(_ type: FinanceStore.BackgroundDataType) -> WalletDataType? {
+        switch type {
+        case .accounts: .accounts
+        case .accountBalances: .balances
+        case .transactions: .transactions
+        @unknown default: nil
+        }
+    }
+
     package static func dataError(for error: any Error) -> FinanceDataError? {
         guard let error = error as? FinanceError else { return nil }
         switch error {

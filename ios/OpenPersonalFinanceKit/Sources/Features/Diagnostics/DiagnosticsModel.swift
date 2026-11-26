@@ -61,16 +61,20 @@ public final class DiagnosticsModel {
     public private(set) var failure: Failure?
     public private(set) var tokenReads: [TokenRead] = []
     public private(set) var isReadingTokens = false
+    public private(set) var wakes: [WakeLogEntry] = []
+    public private(set) var wakeLogFailed = false
     private var hasLoaded = false
     // What was read, kept so it can be exported: the full read, then each read from saved tokens.
     private var fullRead = WalletFixture.empty
     private var tokenReadSteps = WalletFixture.empty
     private let source: any FinanceDataSource
     private let history: any WalletHistoryReading
+    private let activity: any ActivityReading
 
-    public init(source: any FinanceDataSource, history: any WalletHistoryReading) {
+    public init(source: any FinanceDataSource, history: any WalletHistoryReading, activity: any ActivityReading) {
         self.source = source
         self.history = history
+        self.activity = activity
     }
 
     public var canExport: Bool {
@@ -84,6 +88,7 @@ public final class DiagnosticsModel {
     }
 
     public func load() async {
+        await loadWakes()
         do {
             let status = try await source.authorizationStatus()
             authorization = status
@@ -139,6 +144,17 @@ public final class DiagnosticsModel {
         tokenReadSteps = tokenReadSteps.appending(
             WalletFixture(accounts: [accountStep], accountHistories: reads.map(Self.fixtureHistory))
         )
+    }
+
+    // Wakes are written by the extension while the screen is open, so the log view reads them again when shown.
+    public func loadWakes() async {
+        do {
+            wakes = try await activity.recentWakes()
+            wakeLogFailed = false
+        } catch {
+            Log.logger.error("Reading the wake log failed: \(String(describing: error), privacy: .public)")
+            wakeLogFailed = true
+        }
     }
 
     public func resetTokens() async {

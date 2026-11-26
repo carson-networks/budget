@@ -7,7 +7,8 @@ import Testing
 struct DiagnosticsModelTests {
     @Test func summarisesEachAccountFromTheSample() async throws {
         let model = DiagnosticsModel(
-            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
+            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample(),
+            activity: FakeActivityReader.sample())
         await model.load()
 
         #expect(model.failure == nil)
@@ -29,7 +30,7 @@ struct DiagnosticsModelTests {
     @Test func reportsMissingAccess() async {
         let model = DiagnosticsModel(
             source: FakeFinanceDataSource.sample(authorizationStatus: .denied),
-            history: FakeWalletHistoryReader.sample()
+            history: FakeWalletHistoryReader.sample(), activity: FakeActivityReader.sample()
         )
         await model.load()
         #expect(model.authorization == .denied)
@@ -41,7 +42,7 @@ struct DiagnosticsModelTests {
         let source = FakeFinanceDataSource.sample()
         await source.setInjectedError(.dataUnavailable)
         let model = DiagnosticsModel(
-            source: source, history: FakeWalletHistoryReader.sample())
+            source: source, history: FakeWalletHistoryReader.sample(), activity: FakeActivityReader.sample())
         await model.load()
         #expect(model.failure == .dataUnavailable)
     }
@@ -49,7 +50,7 @@ struct DiagnosticsModelTests {
     @Test func clearsFailureAfterASuccessfulRetry() async {
         let source = FakeFinanceDataSource.sample()
         let model = DiagnosticsModel(
-            source: source, history: FakeWalletHistoryReader.sample())
+            source: source, history: FakeWalletHistoryReader.sample(), activity: FakeActivityReader.sample())
 
         await source.setInjectedError(.invalidToken)
         await model.load()
@@ -63,7 +64,8 @@ struct DiagnosticsModelTests {
 
     @Test func readsOnlyWhatChangedSinceTheFirstRead() async throws {
         let model = DiagnosticsModel(
-            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
+            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample(),
+            activity: FakeActivityReader.sample())
         await model.load()
 
         await model.readAgainFromSavedTokens()
@@ -81,7 +83,8 @@ struct DiagnosticsModelTests {
 
     @Test func resetTokensReadsFromTheStartAgain() async throws {
         let model = DiagnosticsModel(
-            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
+            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample(),
+            activity: FakeActivityReader.sample())
         await model.load()
         await model.readAgainFromSavedTokens()
 
@@ -96,7 +99,7 @@ struct DiagnosticsModelTests {
     @Test func reportsARejectedSavedToken() async throws {
         let history = FakeWalletHistoryReader.sample()
         let model = DiagnosticsModel(
-            source: FakeFinanceDataSource.sample(), history: history)
+            source: FakeFinanceDataSource.sample(), history: history, activity: FakeActivityReader.sample())
         await model.load()
         await history.setInjectedError(.invalidToken)
 
@@ -107,7 +110,8 @@ struct DiagnosticsModelTests {
 
     @Test func keepsTokenReadsWhenTheScreenReappears() async {
         let model = DiagnosticsModel(
-            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
+            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample(),
+            activity: FakeActivityReader.sample())
         await model.loadIfNeeded()
         await model.readAgainFromSavedTokens()
 
@@ -121,14 +125,15 @@ struct DiagnosticsModelTests {
     @Test(arguments: [false, true])
     func exportedFixtureLoadsBackIntoTheFake(redacted: Bool) async throws {
         let model = DiagnosticsModel(
-            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
+            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample(),
+            activity: FakeActivityReader.sample())
         await model.load()
         await model.readAgainFromSavedTokens()
 
         let fixture = try FixtureFiles.decode(model.fixtureExport(redacted: redacted).data())
         let reloaded = DiagnosticsModel(
             source: FakeFinanceDataSource(fixture: fixture),
-            history: FakeWalletHistoryReader(fixture: fixture)
+            history: FakeWalletHistoryReader(fixture: fixture), activity: FakeActivityReader.sample()
         )
         await reloaded.load()
         #expect(reloaded.failure == nil)
@@ -143,7 +148,9 @@ struct DiagnosticsModelTests {
     }
 
     @Test func exportWritesMoneyAndEnumsAsStringsAndLeavesOutEmptyLists() async throws {
-        let model = DiagnosticsModel(source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
+        let model = DiagnosticsModel(
+            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample(),
+            activity: FakeActivityReader.sample())
         await model.load()
 
         let json = try #require(String(data: model.fixtureExport(redacted: false).data(), encoding: .utf8))
@@ -157,7 +164,8 @@ struct DiagnosticsModelTests {
 
     @Test func exportNeedsSomethingRead() async {
         let model = DiagnosticsModel(
-            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
+            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample(),
+            activity: FakeActivityReader.sample())
         #expect(!model.canExport)
         await model.load()
         #expect(model.canExport)
@@ -165,7 +173,8 @@ struct DiagnosticsModelTests {
 
     @Test func overlappingReadsRecordOneStep() async throws {
         let model = DiagnosticsModel(
-            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
+            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample(),
+            activity: FakeActivityReader.sample())
         await model.load()
 
         async let first: Void = model.readAgainFromSavedTokens()
@@ -176,6 +185,19 @@ struct DiagnosticsModelTests {
         let fixture = try FixtureFiles.decode(model.fixtureExport(redacted: false).data())
         let card = try #require(fixture.accountHistories.first)
         #expect(card.transactions.count == 2)
+    }
+
+    @Test func showsTheWakeLogEvenWithoutWalletAccess() async {
+        let model = DiagnosticsModel(
+            source: FakeFinanceDataSource.sample(authorizationStatus: .denied),
+            history: FakeWalletHistoryReader.sample(),
+            activity: FakeActivityReader.sample()
+        )
+        await model.load()
+
+        #expect(model.failure == .notAuthorized)
+        #expect(model.wakes.map(\.trigger) == [.backgroundDelivery, .backgroundRefresh])
+        #expect(!model.wakeLogFailed)
     }
 
     private func counts(_ count: DiagnosticsModel.ChangeCount) -> [Int] {

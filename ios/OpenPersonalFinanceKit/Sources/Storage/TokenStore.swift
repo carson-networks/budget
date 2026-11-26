@@ -1,12 +1,10 @@
 import Domain
 import Foundation
-import os
 
 // Reads the file on every call so the app and the extension never act on a stale copy.
 package actor TokenStore: TokenStoring {
-    private static let schemaVersion = 1
-
-    private struct Envelope: Codable {
+    private struct Envelope: VersionedEnvelope {
+        static let currentVersion = 1
         let schemaVersion: Int
         let accounts: [String: StoredTokens]
     }
@@ -28,14 +26,11 @@ package actor TokenStore: TokenStoring {
         }
     }
 
-    private struct VersionProbe: Decodable {
-        let schemaVersion: Int
-    }
-
-    private let file: URL
+    // A cleared file makes the next read start from nothing, which recovers everything.
+    private let file: VersionedFile<Envelope>
 
     package init(directory: AppGroupDirectory) {
-        file = directory.tokensFile
+        file = VersionedFile(url: directory.tokensFile)
     }
 
     package func tokens(for accountID: UUID) throws -> AccountTokens {
@@ -45,50 +40,14 @@ package actor TokenStore: TokenStoring {
     package func save(_ tokens: AccountTokens, for accountID: UUID) throws {
         var accounts = try load()
         accounts[accountID.uuidString] = StoredTokens(tokens)
-        try write(accounts)
+        try file.write(Envelope(schemaVersion: Envelope.currentVersion, accounts: accounts))
     }
 
     package func removeAll() throws {
-        do {
-            try FileManager.default.removeItem(at: file)
-        } catch CocoaError.fileNoSuchFile {
-            return
-        }
+        try file.remove()
     }
 
-    // A read error throws rather than reading as empty, so a save never overwrites other accounts' tokens.
     private func load() throws -> [String: StoredTokens] {
-        let data: Data
-        do {
-            data = try Data(contentsOf: file)
-        } catch CocoaError.fileReadNoSuchFile {
-            return [:]
-        }
-        do {
-            let version = try JSONDecoder().decode(VersionProbe.self, from: data).schemaVersion
-            guard version == Self.schemaVersion else {
-                try clear(reason: "schemaVersion \(version)")
-                return [:]
-            }
-            return try JSONDecoder().decode(Envelope.self, from: data).accounts
-        } catch let error as DecodingError {
-            try clear(reason: String(describing: error))
-            return [:]
-        }
-    }
-
-    // Cleared tokens make the next read start from nothing, which recovers everything.
-    private func clear(reason: String) throws {
-        Log.logger.warning("Clearing incompatible token file: \(reason, privacy: .public)")
-        try removeAll()
-    }
-
-    private func write(_ accounts: [String: StoredTokens]) throws {
-        try FileManager.default.createDirectory(
-            at: file.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
-        let data = try JSONEncoder().encode(Envelope(schemaVersion: Self.schemaVersion, accounts: accounts))
-        try data.write(to: file, options: .atomic)
+        try file.read()?.accounts ?? [:]
     }
 }

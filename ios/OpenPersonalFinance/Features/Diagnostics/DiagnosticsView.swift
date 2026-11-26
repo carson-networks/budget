@@ -15,6 +15,9 @@ struct DiagnosticsView: View {
                         .foregroundStyle(.red)
                 }
             }
+            Section("Background Wakes") {
+                NavigationLink("Wake Log (\(model.wakes.count))", value: DiagnosticsWakeLogView.Destination())
+            }
             DiagnosticsTokensSection()
             DiagnosticsExportSection()
             ForEach(model.accounts) { summary in
@@ -26,6 +29,9 @@ struct DiagnosticsView: View {
             DiagnosticsTransactionsView(
                 transactions: model.accounts.first { $0.id == destination.accountID }?.transactions ?? []
             )
+        }
+        .navigationDestination(for: DiagnosticsWakeLogView.Destination.self) { _ in
+            DiagnosticsWakeLogView()
         }
         .refreshable { await model.load() }
         .task { await model.loadIfNeeded() }
@@ -95,5 +101,6 @@ private struct BalanceRow: View {
     }
     .environment(
         DiagnosticsModel(
-            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample()))
+            source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample(),
+            activity: FakeActivityReader.sample()))
 }

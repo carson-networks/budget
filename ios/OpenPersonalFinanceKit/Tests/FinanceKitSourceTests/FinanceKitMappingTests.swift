@@ -78,3 +78,24 @@ struct FinanceKitMappingTests {
         }
     }
 }
+
+struct FinanceKitBackgroundMappingTests {
+    @Test(arguments: [
+        (SyncFrequency.hourly, FinanceStore.UpdateFrequency?.some(.hourly)),
+        (.daily, .daily),
+        (.weekly, .weekly),
+        (.off, nil),
+    ])
+    func mapsFrequencyAndTurnsOffForOff(frequency: SyncFrequency, expected: FinanceStore.UpdateFrequency?) {
+        #expect(FinanceKitMapping.updateFrequency(frequency) == expected)
+    }
+
+    @Test(arguments: [
+        (FinanceStore.BackgroundDataType.accounts, WalletDataType.accounts),
+        (.accountBalances, .balances),
+        (.transactions, .transactions),
+    ])
+    func mapsBackgroundDataTypes(type: FinanceStore.BackgroundDataType, expected: WalletDataType) {
+        #expect(WalletDataType(type) == expected)
+    }
+}

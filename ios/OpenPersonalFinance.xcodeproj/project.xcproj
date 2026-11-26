@@ -10,8 +10,28 @@
       "Base",
     ],
   },
+  "packages": [
+    {
+      "kind": "local",
+      "path": "OpenPersonalFinanceKit",
+    },
+  ],
   "files": [
-    { "kind": "folder", "path": "OpenPersonalFinance", "target-membership": [ "OpenPersonalFinance" ] },
+    {
+      "kind": "folder",
+      "path": "OpenPersonalFinance",
+      "target-membership": [
+        "OpenPersonalFinance",
+      ],
+      "membership-exceptions": [
+        {
+          "target": "OpenPersonalFinance",
+          "exclusions": [
+            "Info.plist",
+          ],
+        },
+      ],
+    },
     {
       "kind": "folder",
       "path": "OpenPersonalFinanceDelivery",
@@ -35,20 +55,12 @@
       ],
     },
   ],
-  "packages": [
-    { "kind": "local", "path": "OpenPersonalFinanceKit" },
-  ],
   "targets": [
     {
       "name": "OpenPersonalFinance",
       "id": "000000000000000100000000",
       "product": "Products/OpenPersonalFinance.app",
       "product-type": "application",
-      "package-product-members": [
-        { "product-name": "Features", "build-phase": { "build-phase": "frameworks" } },
-        { "product-name": "Live", "build-phase": { "build-phase": "frameworks" } },
-        { "product-name": "Fakes", "build-phase": { "build-phase": "frameworks" } },
-      ],
       "dependencies": [
         "OpenPersonalFinanceDelivery",
       ],
@@ -63,17 +75,30 @@
           "relative-path": "$(EXTENSIONS_FOLDER_PATH)",
         },
       ],
+      "package-product-members": [
+        {
+          "product-name": "Fakes",
+          "build-phase": { "build-phase": "frameworks" },
+        }, {
+          "product-name": "Features",
+          "build-phase": { "build-phase": "frameworks" },
+        }, {
+          "product-name": "Live",
+          "build-phase": { "build-phase": "frameworks" },
+        },
+      ],
       "build-settings": {
+        "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+        "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "AccentColor",
         "CODE_SIGN_ENTITLEMENTS": "OpenPersonalFinance/OpenPersonalFinance.entitlements",
         "CODE_SIGN_STYLE": "Automatic",
         "CURRENT_PROJECT_VERSION": "1",
         "DEVELOPMENT_TEAM": "5GKY3485R6",
         "ENABLE_PREVIEWS": "YES",
         "GENERATE_INFOPLIST_FILE": "YES",
+        "INFOPLIST_FILE": "OpenPersonalFinance/Info.plist",
         "INFOPLIST_KEY_LSApplicationCategoryType": "public.app-category.finance",
         "INFOPLIST_KEY_NSFinancialDataUsageDescription": "OpenPersonalFinance reads the Wallet accounts you choose and sends them to your own budget server.",
-        "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
-        "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "AccentColor",
         "INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]": "YES",
         "INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]": "YES",
         "INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]": "YES",
@@ -94,8 +119,8 @@
         "SUPPORTED_PLATFORMS": "iphoneos iphonesimulator",
         "SWIFT_APPROACHABLE_CONCURRENCY": "YES",
         "SWIFT_DEFAULT_ACTOR_ISOLATION": "MainActor",
-        "SWIFT_STRICT_CONCURRENCY": "complete",
         "SWIFT_EMIT_LOC_STRINGS": "YES",
+        "SWIFT_STRICT_CONCURRENCY": "complete",
         "SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY": "YES",
         "SWIFT_VERSION": "6.0",
         "TARGETED_DEVICE_FAMILY": "1",
@@ -105,13 +130,16 @@
       "id": "9D5DB37630A836FC00A54464",
       "product": "Products/OpenPersonalFinanceDelivery.appex",
       "product-type": "extensionkit-extension",
-      "package-product-members": [
-        { "product-name": "Live", "build-phase": { "build-phase": "frameworks" } },
-      ],
       "build-phases": [
         "compile-sources",
         "frameworks",
         "resources",
+      ],
+      "package-product-members": [
+        {
+          "product-name": "Live",
+          "build-phase": { "build-phase": "frameworks" },
+        },
       ],
       "build-settings": {
         "CODE_SIGN_ENTITLEMENTS": "OpenPersonalFinanceDelivery/OpenPersonalFinanceDelivery.entitlements",
@@ -121,7 +149,6 @@
         "GENERATE_INFOPLIST_FILE": "YES",
         "INFOPLIST_FILE": "OpenPersonalFinanceDelivery/Info.plist",
         "INFOPLIST_KEY_CFBundleDisplayName": "OpenPersonalFinanceDelivery",
-        "SWIFT_STRICT_CONCURRENCY": "complete",
         "INFOPLIST_KEY_NSHumanReadableCopyright": "",
         "LD_RUNPATH_SEARCH_PATHS": [
           "$(inherited)",
@@ -137,6 +164,7 @@
         "SWIFT_APPROACHABLE_CONCURRENCY": "YES",
         "SWIFT_DEFAULT_ACTOR_ISOLATION": "nonisolated",
         "SWIFT_EMIT_LOC_STRINGS": "YES",
+        "SWIFT_STRICT_CONCURRENCY": "complete",
         "SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY": "YES",
         "SWIFT_VERSION": "6.0",
         "TARGETED_DEVICE_FAMILY": "1",

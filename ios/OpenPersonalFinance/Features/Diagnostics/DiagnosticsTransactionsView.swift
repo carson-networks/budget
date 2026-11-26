@@ -42,7 +42,8 @@ struct DiagnosticsTransactionsView: View {
 
 #Preview {
     @Previewable @State var model = DiagnosticsModel(
-        source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample())
+        source: FakeFinanceDataSource.sample(), history: FakeWalletHistoryReader.sample(),
+        activity: FakeActivityReader.sample())
     NavigationStack {
         DiagnosticsTransactionsView(transactions: model.accounts.first?.transactions ?? [])
     }
