@@ -26,7 +26,7 @@ No server changes. Every trigger runs the same `SyncEngine.run`; this phase only
 | Trigger | When | Role |
 |---|---|---|
 | FinanceKit background delivery | Wallet data changed, within the chosen `hourly` / `daily` / `weekly` window | Primary |
-| `BGAppRefreshTask` | When iOS grants it; requested at the chosen interval | Backup, and the only one that retries an outbox left by a failed push |
+| `BGAppRefreshTask` | When iOS grants it; requested at the chosen interval | Backup when background delivery is delayed, and retries changes still behind a saved token after an offline or timed-out wake |
 | App becomes active | Every open, throttled to five minutes | Guaranteed |
 | Live monitoring | While the app is open | Keeps the screen current |
 | **Sync Now** | On demand | Manual |
@@ -36,13 +36,13 @@ No server changes. Every trigger runs the same `SyncEngine.run`; this phase only
 
 ### P7-A1 Sync from the delivery extension
 
-- `didReceiveData(for:)` builds `Dependencies.live()` and runs `SyncEngine.run(trigger: .backgroundDelivery)` inside a `Task` tracked by a `Mutex` or actor (coalescing or serializing overlapping `didReceiveData(for:)` calls so a second wake never overwrites an in-flight handle), replacing the phase 1 `WakeProbe` call. It shares settings, tokens, outbox and lock with the app through the App Group (`group.net.carsonnetworks.OpenPersonalFinance`, also used as `kSecAttrAccessGroup`).
+- `didReceiveData(for:)` builds `Dependencies.live()` and runs `SyncEngine.run(trigger: .backgroundDelivery)` inside a `Task` tracked by a `Mutex` or actor (coalescing or serializing overlapping `didReceiveData(for:)` calls so a second wake never overwrites an in-flight handle), replacing the phase 1 `WakeProbe` call. It shares settings, tokens, logs and lock with the app through the App Group (`group.net.carsonnetworks.OpenPersonalFinance`, also used as `kSecAttrAccessGroup`).
 - `willTerminate()` cancels active work **and awaits its graceful completion** (bounded by a short grace timeout) before returning so `FileLock` release and run/wake log writes (executed inside Swift 6.4 `async defer` + `withTaskCancellationShield`) finish cleanly before the extension exits. The engine checks for cancellation between batches and between accounts, so it always stops on a committed boundary.
 - A run budget: stop starting new batches after a fixed time (start at 20 seconds, tune from the phase 2 wake log) and leave the rest for the next trigger.
 - Locked phone: `.dataUnavailable` ends the run as "will retry" without marking anything as failed.
 - The wake log from phase 1 stays, now written by the engine with the run's outcome.
 
-Acceptance: engine tests for cancellation at each boundary (confirming `FileLock` is released and logs flush cleanly) and for the time budget, each leaving tokens and outbox consistent; a test for overlapping extension wakes and `willTerminate()` awaiting cleanup; a test that an extension-style run and an app-style run against the same directory serialise through the lock; the extension still links only the `Live` product and its entry point holds no logic.
+Acceptance: engine tests for cancellation at each boundary (confirming `FileLock` is released and logs flush cleanly) and for the time budget, each leaving saved tokens consistent; a test for overlapping extension wakes and `willTerminate()` awaiting cleanup; a test that an extension-style run and an app-style run against the same directory serialise through the lock; the extension still links only the `Live` product and its entry point holds no logic.
 
 ### P7-A2 Background refresh and live monitoring
 

@@ -15,7 +15,7 @@ Change `[ ]` to `[x]` when a task's PR is merged, or for human tasks when the st
 | Done | Task | What | Repo | Who |
 |---|---|---|---|---|
 | [ ] | P5-S1 | Idempotent insert through `PushChanges` | budget-server | Agent |
-| [ ] | P5-A1 | `SyncEngine`, outbox and tokens | budget | Agent |
+| [ ] | P5-A1 | `SyncEngine` and chunked token commits | budget | Agent |
 | [ ] | P5-A2 | Sync now, status and run log | budget | Agent |
 | [ ] | — | Exit check passed | — | Human |
 
@@ -33,14 +33,14 @@ Change `[ ]` to `[x]` when a task's PR is merged, or for human tasks when the st
 
 Acceptance: tests for a repeated batch (second call: all `unchanged`, no row changed), a mixed batch, ownership and scoping (unlinked, other key's account), sign for both indicators, and a 500-item batch finishing well inside the 30 s write timeout.
 
-### P5-A1 `SyncEngine`, outbox and tokens
+### P5-A1 `SyncEngine` and chunked token commits
 
-The engine in `Sync`, the outbox in `Storage`, following the "Sync run" steps in the contract.
+The engine in `Sync`, following the "Sync run" steps in the contract (no local outbox: `FinanceStore` retains unsent changes behind each account's saved tokens).
 
-- `Outbox` actor: versioned (`schemaVersion`) files in the App Group, one per batch, each holding the request and any tokens committed when that batch succeeds, in the outbox's own private shapes. The `Domain` batch values and `AccountTokens` are not `Codable`; the outbox converts them with pure functions, round-trip tested in `StorageTests`. Ordered, survives a kill, capped (oldest-first send; if it exceeds a size limit the engine stops reading new changes until it drains). An undecodable/incompatible outbox file is moved aside (quarantined) and reported in the run log rather than stalling the queue.
-- `SyncEngine` actor (conforming to `SyncRunning` in `Domain`) with `run(trigger:)`, built by `Dependencies.live` and given `FinanceDataSource` and `BudgetAPI` through its `init`: acquire `FileLock` (releasing it and flushing the run log in Swift 6.4 `async defer` + `withTaskCancellationShield`), drain the outbox (stopping immediately on `.unauthenticated` or `.unreachable`), `GetStatus`, `ListAccounts`, then per owned account **skip any account that still has undrained outbox entries**; otherwise read changes, map, batch at 500, enqueue with the new history tokens attached **only to the final batch** of the split change set, push (renewing `FileLock` between batches), and commit any attached tokens only after acknowledgement.
-- After the server acknowledges a batch, save any tokens attached to that batch and then remove the outbox entry; each file write is atomic. Because intermediate batches carry no token, deleting each acknowledged batch from the outbox prevents resending it on retry while tokens only advance once the full split change set is acknowledged; because `PushChanges` is idempotent, a crash between push, token save and outbox removal replays safely.
-- Error handling per the contract: `.unauthenticated` stops the run and marks settings as needing attention; `.notFound` marks that account "Deleted on Server" and clears its tokens; `.dataUnavailable` and `.unreachable` end the run quietly as "will retry"; `.invalidToken` clears that account's tokens and restarts it from nothing.
+- `FinanceDataSource` gains chunk-by-chunk transaction history streaming (`transactionChangeChunks(accountID:since:)`) so `SyncEngine` processes one `FinanceStore.Changes` chunk at a time (keeping one lookahead chunk in memory to identify the final chunk without draining full account history into memory). `FakeFinanceDataSource` yields its fixture steps one chunk at a time.
+- `SyncEngine` actor (conforming to `SyncRunning` in `Domain`) with `run(trigger:)`, built by `Dependencies.live` and given `FinanceDataSource` and `BudgetAPI` through its `init`: acquire `FileLock` (releasing it and flushing the run log in Swift 6.4 `async defer` + `withTaskCancellationShield`), `GetStatus` (stopping immediately on `.unauthenticated` or `.unreachable`), `ListAccounts`, then per owned account stream transaction chunks since its saved `transactionToken`, map, split any >500-item chunk into batches of at most 500, call `PushChanges` per batch (renewing `FileLock` between batches), and save that chunk's `newToken` only after **all** sub-batches of that chunk are acknowledged.
+- Because a chunk's `transactionToken` advances only once every sub-batch of that chunk succeeds, a crash or failure mid-chunk leaves the token at the previous chunk boundary; on the next run `FinanceStore` yields the chunk again and any already-pushed sub-batches replay safely as `unchanged` via `PushChanges` idempotency. Meanwhile, completed earlier chunks are never re-read or re-sent.
+- Error handling per the contract: `.unauthenticated` stops the run and marks settings as needing attention; `.notFound` marks that account "Deleted on Server" and clears its tokens; `.dataUnavailable` and `.unreachable` end the run quietly as "will retry" without advancing unsent tokens; `.invalidToken` clears that account's tokens and restarts it from nothing.
 - Cross-process lease-file lock in the App Group (the phase 1 `FileLock`), which gains `renew()` here to extend the lease between batches, keeping the short stale-lock timeout (~45 s) and no kernel `flock` held across network calls.
 - `BudgetAPI`, `ConnectBudgetAPI` and `FakeBudgetAPI` gain `pushChanges`, and `BudgetAPIError` gains `.notFound` and `.invalidArgument`. `pushChanges` takes a `ChangeBatch` (a `Domain` value, converted to `PushChangesRequest` only in `BudgetClient`) carrying what this phase sends: transactions and deleted IDs.
 - Pure mapping functions in `Domain` from `WalletTransaction` to `ChangeBatch` items, following the contract's mapping table: sign, name fallback, status. Decimal strings, proto enums and field names are written by `BudgetClient`.
@@ -51,9 +51,9 @@ Acceptance, all against the fakes:
 - `FileLock` lease renewal keeps a lock past its original expiry; a lease that is not renewed expires.
 - A run against the hand-written fixture produces the expected requests.
 - Running twice sends nothing the second time.
-- Kill points: after enqueue, after push but before commit, mid-account. Each resumes with no loss and the server-side fake sees only duplicates of what it already had.
-- 1,200 transactions become three batches in order; only the third batch carries the new token; a failure on the second deletes only the first from the outbox, leaves the token unadvanced, skips re-reading that account on the next run while its outbox is non-empty, and resumes cleanly from the second batch.
-- An undecodable outbox entry is quarantined without blocking remaining accounts.
+- Multi-chunk progression: when chunk 1 succeeds and chunk 2 fails, chunk 1's token is saved so the next run starts directly at chunk 2 without resending chunk 1.
+- Single 1,200-transaction chunk split into three batches of <=500: the token advances only after the third batch succeeds; a failure on the second batch leaves the token unadvanced, and the next run replays batch 1 idempotently (`unchanged` on the server fake) and completes batches 2 and 3 with no duplicates or missing items.
+- Offline `GetStatus` or mid-account failure leaves unsent tokens untouched and recovers cleanly on the next run.
 - Two engines sharing one directory never run at once; a long multi-batch run renews its lease and is not stolen by a second engine.
 
 ### P5-A2 Sync now, status and run log

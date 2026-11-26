@@ -34,23 +34,25 @@ Rules that hold everywhere:
 
 ## Sync run
 
-Every trigger runs the same steps in `SyncEngine`:
+Every trigger runs the same steps in `SyncEngine` (there is no local outbox—`FinanceStore` retains all unacknowledged history behind each account's saved tokens, and `PushChanges` is idempotent):
 
 1. Take the cross-process lease lock; if it is held, exit. Release it inside `async defer` + `withTaskCancellationShield`, and renew the lease between batches so long foreground runs (like a full resync) never expire mid-run.
-2. Send any batches left in the outbox, oldest first. Stop the run immediately on `.unauthenticated` or `.unreachable` so no further batches are enqueued while offline or unauthenticated.
-3. `GetStatus`: stop with a clear state if the key is refused.
-4. `ListAccounts`: learn which FinanceKit accounts are linked and owned by this key.
-5. For each owned account: **skip the account if it still has undrained batches in the outbox** (otherwise reading from an unadvanced token would re-enqueue duplicates). Otherwise read account, balance and transaction changes since that account's saved tokens (storing a separate `accountHistory` token per linked account and filtering to that `accountID`, since `accountHistory(since:)` is store-wide); coalesce multi-chunk changes chronologically by ID; map; split into batches of at most 500 transactions; write each batch to the outbox, **attaching the new history tokens only to the final batch** of that split (never intermediate batches).
-6. `PushChanges` per batch, renewing the lease between batches. On success, commit any tokens attached to that batch and delete the outbox entry; intermediate batches carry no token, so deleting each acknowledged batch from the outbox prevents resending it on retry while tokens advance only once the full split change set is acknowledged. On failure, leave the batch in the outbox for the next run.
-7. Append a line to the run log (flushed inside `async defer` + `withTaskCancellationShield`): trigger, duration, counts, outcome.
+2. `GetStatus`: stop immediately with a clear state if the key is refused (`.unauthenticated`), or quietly as "will retry" on `.unreachable`.
+3. `ListAccounts`: learn which FinanceKit accounts are linked and owned by this key.
+4. For each owned account (skipping any account paused after repeated `InvalidArgument` rejections):
+   - Read account and balance changes since that account's saved tokens (storing a separate `accountHistory` token per linked account and filtering to that `accountID`, since `accountHistory(since:)` is store-wide).
+   - Stream `transactionHistory(forAccountID:since:)` chunk by chunk (holding one chunk of lookahead so the engine knows which chunk is final without draining the whole history into memory). Each `FinanceStore.Changes` chunk carries its own `newToken`: map transactions (skipping `memo`), split any >500-item chunk into batches of at most 500 transactions, and call `PushChanges` per batch (renewing the lease between batches).
+   - When an intermediate chunk's batches are all acknowledged, immediately save that chunk's `transactionToken` so a cancelled or time-budgeted background run keeps its progress; if a multi-batch chunk fails mid-way, its token stays unadvanced and already-acknowledged sub-batches replay idempotently as `unchanged` on the next run.
+   - Attach the latest balance, credit limit, and (when `pendingFullResync` is set) `resync_complete = true` to the final batch of the final transaction chunk—or send one metadata-only `PushChanges` when there were no transaction chunks but balance, credit limit, or `pendingFullResync` needs sending. On acknowledgement, commit `(accountToken, balanceToken, transactionToken)` and clear `pendingFullResync`.
+5. Append a line to the run log (flushed inside `async defer` + `withTaskCancellationShield`): trigger, duration, counts, outcome.
 
 Triggers: **Sync Now**, app becoming active, live monitoring, FinanceKit background delivery and background refresh (phase 7), and a silent push requested by the server (phase 10).
 
-A full resync clears the tokens for an account and sends everything again, usually over several batches:
+A full resync clears the saved tokens for an account, sets `pendingFullResync = true` on that account's sync state, and sends everything again, usually over several batches:
 
-- Every batch has `full_resync = true`. On the first one the server stamps `resync_started_at` on the account link (a batch arriving with the flag when no resync is open starts one).
+- Every batch while `pendingFullResync` is set has `full_resync = true`, so an interrupted resync resumes as a full resync on the next run rather than downgrading to a normal sync. On the first flagged batch the server stamps `resync_started_at` on the account link (a batch arriving with the flag when no resync is open starts one).
 - Every upsert, changed or not, stamps `seen_at` on its transaction link.
-- The last batch also has `resync_complete = true`. The server then deletes that account's linked transactions whose `seen_at` is older than `resync_started_at`, and clears the stamp.
+- The last batch also has `resync_complete = true`. When acknowledged, the server deletes that account's linked transactions whose `seen_at` is older than `resync_started_at` and clears `resync_started_at`, and the app clears `pendingFullResync`.
 - A resync that never completes deletes nothing.
 
 ## Proto
