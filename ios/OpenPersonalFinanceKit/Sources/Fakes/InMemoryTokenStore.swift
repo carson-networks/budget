@@ -14,6 +14,10 @@ public actor InMemoryTokenStore: TokenStoring {
         tokensByAccount[accountID] = tokens
     }
 
+    public func markPendingFullResync(for accountID: UUID) {
+        tokensByAccount[accountID] = AccountTokens(pendingFullResync: true)
+    }
+
     public func removeAll() {
         tokensByAccount = [:]
     }

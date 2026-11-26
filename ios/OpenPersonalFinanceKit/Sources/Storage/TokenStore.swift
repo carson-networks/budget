@@ -1,53 +1,96 @@
 import Domain
 import Foundation
+import SwiftData
 
-// Reads the file on every call so the app and the extension never act on a stale copy.
+// Per-account @Model rows so concurrent saves to different accounts never clobber each other.
 package actor TokenStore: TokenStoring {
-    private struct Envelope: VersionedEnvelope {
-        static let currentVersion = 1
-        let schemaVersion: Int
-        let accounts: [String: StoredTokens]
+    private let container: StorageContainer
+
+    package init(container: StorageContainer) {
+        self.container = container
     }
-
-    // The file's own shape, so renaming an AccountTokens field never changes what is on disk.
-    private struct StoredTokens: Codable {
-        let accountToken: Data?
-        let balanceToken: Data?
-        let transactionToken: Data?
-
-        init(_ tokens: AccountTokens) {
-            accountToken = tokens.accountToken
-            balanceToken = tokens.balanceToken
-            transactionToken = tokens.transactionToken
-        }
-
-        var tokens: AccountTokens {
-            AccountTokens(accountToken: accountToken, balanceToken: balanceToken, transactionToken: transactionToken)
-        }
-    }
-
-    // A cleared file makes the next read start from nothing, which recovers everything.
-    private let file: VersionedFile<Envelope>
 
     package init(directory: AppGroupDirectory) {
-        file = VersionedFile(url: directory.tokensFile)
+        self.init(container: StorageContainer(directory: directory))
     }
 
-    package func tokens(for accountID: UUID) throws -> AccountTokens {
-        try load()[accountID.uuidString]?.tokens ?? .empty
+    package func tokens(for accountID: UUID) async throws -> AccountTokens {
+        let targetID = accountID
+        return try await container.read { context in
+            var descriptor = FetchDescriptor<StoredToken>(predicate: #Predicate { $0.accountID == targetID })
+            descriptor.fetchLimit = 1
+            guard let stored = try context.fetch(descriptor).first else {
+                return .empty
+            }
+            return AccountTokens(
+                accountToken: stored.accountToken,
+                balanceToken: stored.balanceToken,
+                transactionToken: stored.transactionToken,
+                pendingFullResync: stored.pendingFullResync
+            )
+        }
     }
 
-    package func save(_ tokens: AccountTokens, for accountID: UUID) throws {
-        var accounts = try load()
-        accounts[accountID.uuidString] = StoredTokens(tokens)
-        try file.write(Envelope(schemaVersion: Envelope.currentVersion, accounts: accounts))
+    package func save(_ tokens: AccountTokens, for accountID: UUID) async throws {
+        let targetID = accountID
+        let updatedAt = Date()
+        try await container.writeAsync(reason: "TokenStore.save") { context in
+            var descriptor = FetchDescriptor<StoredToken>(predicate: #Predicate { $0.accountID == targetID })
+            descriptor.fetchLimit = 1
+            if let existing = try context.fetch(descriptor).first {
+                existing.accountToken = tokens.accountToken
+                existing.balanceToken = tokens.balanceToken
+                existing.transactionToken = tokens.transactionToken
+                existing.pendingFullResync = tokens.pendingFullResync
+                existing.updatedAt = updatedAt
+            } else {
+                context.insert(
+                    StoredToken(
+                        accountID: targetID,
+                        accountToken: tokens.accountToken,
+                        balanceToken: tokens.balanceToken,
+                        transactionToken: tokens.transactionToken,
+                        pendingFullResync: tokens.pendingFullResync,
+                        updatedAt: updatedAt
+                    )
+                )
+            }
+            try context.save()
+        }
     }
 
-    package func removeAll() throws {
-        try file.remove()
+    package func markPendingFullResync(for accountID: UUID) async throws {
+        let targetID = accountID
+        let updatedAt = Date()
+        try await container.writeAsync(reason: "TokenStore.markPendingFullResync") { context in
+            var descriptor = FetchDescriptor<StoredToken>(predicate: #Predicate { $0.accountID == targetID })
+            descriptor.fetchLimit = 1
+            if let existing = try context.fetch(descriptor).first {
+                existing.accountToken = nil
+                existing.balanceToken = nil
+                existing.transactionToken = nil
+                existing.pendingFullResync = true
+                existing.updatedAt = updatedAt
+            } else {
+                context.insert(
+                    StoredToken(
+                        accountID: targetID,
+                        accountToken: nil,
+                        balanceToken: nil,
+                        transactionToken: nil,
+                        pendingFullResync: true,
+                        updatedAt: updatedAt
+                    )
+                )
+            }
+            try context.save()
+        }
     }
 
-    private func load() throws -> [String: StoredTokens] {
-        try file.read()?.accounts ?? [:]
+    package func removeAll() async throws {
+        try await container.writeAsync(reason: "TokenStore.removeAll") { context in
+            try context.delete(model: StoredToken.self)
+            try context.save()
+        }
     }
 }

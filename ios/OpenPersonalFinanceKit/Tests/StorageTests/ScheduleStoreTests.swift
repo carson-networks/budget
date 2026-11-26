@@ -5,7 +5,6 @@ import Testing
 
 struct ScheduleStoreTests {
     private let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
-    private var file: URL { directory.appending(path: "schedule.json") }
 
     private func store() -> ScheduleStore {
         ScheduleStore(directory: AppGroupDirectory(url: directory))
@@ -21,16 +20,24 @@ struct ScheduleStoreTests {
         #expect(try await store().frequency() == frequency)
     }
 
-    @Test(arguments: [
-        "not json",
-        #"{ "schemaVersion": 2, "frequency": "hourly" }"#,
-        #"{ "schemaVersion": 1, "frequency": "fortnightly" }"#,
-    ])
-    func clearsACorruptOrUnknownChoice(contents: String) async throws {
-        try await store().save(.daily)
-        try Data(contents.utf8).write(to: file)
+    @Test func clearsAnUnknownStoredFrequency() async throws {
+        let appGroup = AppGroupDirectory(url: directory)
+        let container = StorageContainer(directory: appGroup)
+        let schedule = ScheduleStore(container: container)
+        try await schedule.save(.daily)
 
-        #expect(try await store().frequency() == nil)
-        #expect(!FileManager.default.fileExists(atPath: file.path))
+        try await container.corruptScheduleForTesting()
+
+        #expect(try await schedule.frequency() == nil)
+        #expect(try container.scheduleRowCountForTesting() == 0)
+    }
+
+    @Test func persistsAcrossTwoInstancesSharingDirectory() async throws {
+        let appGroup = AppGroupDirectory(url: directory)
+        let writer = ScheduleStore(container: StorageContainer(directory: appGroup))
+        let reader = ScheduleStore(container: StorageContainer(directory: appGroup))
+
+        try await writer.save(.weekly)
+        #expect(try await reader.frequency() == .weekly)
     }
 }
