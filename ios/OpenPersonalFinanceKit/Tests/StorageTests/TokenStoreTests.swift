@@ -19,7 +19,7 @@ struct TokenStoreTests {
         store = TokenStore(directory: AppGroupDirectory(url: directory))
     }
 
-    private var file: URL { directory.appending(path: "tokens.json") }
+    private var file: URL { directory.appending(path: "storage.sqlite") }
 
     @Test func startsEmpty() async throws {
         #expect(try await store.tokens(for: card) == .empty)
@@ -40,6 +40,23 @@ struct TokenStoreTests {
         #expect(try await store.tokens(for: card) == AccountTokens(accountToken: Data("a2".utf8)))
     }
 
+    @Test func markPendingFullResyncClearsTokensAndSavingNewTokensClearsFlag() async throws {
+        try await store.save(tokens, for: card)
+        try await store.save(tokens, for: savings)
+
+        try await store.markPendingFullResync(for: card)
+        let marked = try await store.tokens(for: card)
+        #expect(marked == AccountTokens(pendingFullResync: true))
+        #expect(!marked.hasSavedTokens)
+        #expect(try await store.tokens(for: savings) == tokens)
+
+        let replacement = AccountTokens(transactionToken: Data("fresh".utf8))
+        try await store.save(replacement, for: card)
+        let saved = try await store.tokens(for: card)
+        #expect(saved == replacement)
+        #expect(!saved.pendingFullResync)
+    }
+
     @Test func removeAllClearsEveryAccount() async throws {
         try await store.save(tokens, for: card)
         try await store.save(tokens, for: savings)
@@ -50,32 +67,78 @@ struct TokenStoreTests {
         #expect(try await store.tokens(for: savings) == .empty)
     }
 
-    @Test(arguments: [
-        "not json",
-        #"{ "schemaVersion": 99, "accounts": {} }"#,
-        #"{ "accounts": {} }"#,
-        #"{ "schemaVersion": 1, "accounts": [1, 2] }"#,
-    ])
-    func clearsACorruptOrIncompatibleFile(contents: String) async throws {
-        try await store.save(tokens, for: card)
-        try Data(contents.utf8).write(to: file)
+    @Test func concurrentSavesAcrossTwoInstancesDoNotClobberOtherAccounts() async throws {
+        let appGroup = AppGroupDirectory(url: directory)
+        let appStore = TokenStore(container: StorageContainer(directory: appGroup))
+        let deliveryStore = TokenStore(container: StorageContainer(directory: appGroup))
+        let accountA = card
+        let accountB = savings
 
-        #expect(try await store.tokens(for: card) == .empty)
-        #expect(!FileManager.default.fileExists(atPath: file.path))
+        try await withThrowingTaskGroup { group in
+            group.addTask {
+                for iteration in 0..<25 {
+                    try await appStore.save(
+                        AccountTokens(transactionToken: Data("A-\(iteration)".utf8)),
+                        for: accountA
+                    )
+                }
+            }
+            group.addTask {
+                for iteration in 0..<25 {
+                    try await deliveryStore.save(
+                        AccountTokens(transactionToken: Data("B-\(iteration)".utf8)),
+                        for: accountB
+                    )
+                }
+            }
+            try await group.waitForAll()
+        }
 
-        try await store.save(tokens, for: savings)
-        #expect(try await store.tokens(for: savings) == tokens)
-        #expect(try await store.tokens(for: card) == .empty)
+        let reader = TokenStore(directory: appGroup)
+        #expect(try await reader.tokens(for: accountA).transactionToken == Data("A-24".utf8))
+        #expect(try await reader.tokens(for: accountB).transactionToken == Data("B-24".utf8))
     }
 
-    @Test func writesAVersionedEnvelope() async throws {
-        try await store.save(tokens, for: card)
-        let object = try JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any]
-        #expect(object?["schemaVersion"] as? Int == 1)
-        #expect((object?["accounts"] as? [String: Any])?.keys.first == card.uuidString)
+    @Test func persistentHistoryAndRemoteChangeNotifyAcrossTwoContainers() async throws {
+        let appGroup = AppGroupDirectory(url: directory)
+        let readerContainer = StorageContainer(directory: appGroup)
+        let writerContainer = StorageContainer(directory: appGroup)
+        try readerContainer.prepareStore()
+
+        let changes = readerContainer.remoteChanges()
+        let waiter = Task {
+            for await _ in changes {
+                return true
+            }
+            return false
+        }
+        let timeout = Task {
+            try? await Task.sleep(for: .seconds(2))
+            waiter.cancel()
+        }
+        try await Task.sleep(for: .milliseconds(20))
+
+        let writerTokens = TokenStore(container: writerContainer)
+        try await writerTokens.save(tokens, for: card)
+
+        let notified = await waiter.value
+        timeout.cancel()
+        #expect(notified)
+        #expect(try readerContainer.persistentHistoryTransactionCount() >= 1)
     }
 
-    @Test func anUnreadableFileThrowsAndIsKept() async throws {
+    @Test func recoversFromCorruptDatabaseFile() async throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try Data("not a sqlite database".utf8).write(to: file)
+
+        let freshStore = TokenStore(directory: AppGroupDirectory(url: directory))
+        #expect(try await freshStore.tokens(for: card) == .empty)
+
+        try await freshStore.save(tokens, for: savings)
+        #expect(try await freshStore.tokens(for: savings) == tokens)
+    }
+
+    @Test func anUnreadableDirectoryAtStorePathThrowsAndIsKept() async throws {
         try FileManager.default.createDirectory(at: file, withIntermediateDirectories: true)
 
         await #expect(throws: (any Error).self) { try await store.tokens(for: card) }

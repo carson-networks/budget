@@ -73,4 +73,19 @@ struct WalletHistoryReaderTests {
         #expect(await tokens.tokens(for: Self.card) == .empty)
         #expect(await tokens.tokens(for: Self.savings) == .empty)
     }
+
+    @Test func pendingFullResyncReadsFromStartAndClearsWhenSaved() async throws {
+        _ = try await reader.readEverything()
+        await tokens.markPendingFullResync(for: Self.card)
+        let marked = await tokens.tokens(for: Self.card)
+        #expect(marked.pendingFullResync)
+        #expect(!marked.hasSavedTokens)
+
+        let read = try await reader.readSinceSavedTokens(accountID: Self.card)
+        #expect(!read.fromSavedToken)
+        #expect(read.transactions.inserted.count == 5)
+        let saved = await tokens.tokens(for: Self.card)
+        #expect(!saved.pendingFullResync)
+        #expect(saved.hasSavedTokens)
+    }
 }

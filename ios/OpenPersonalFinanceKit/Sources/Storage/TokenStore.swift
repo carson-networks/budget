@@ -1,53 +1,95 @@
+import CoreData
 import Domain
 import Foundation
 
-// Reads the file on every call so the app and the extension never act on a stale copy.
+// Per-account Core Data entities so concurrent saves to different accounts never clobber each other.
 package actor TokenStore: TokenStoring {
-    private struct Envelope: VersionedEnvelope {
-        static let currentVersion = 1
-        let schemaVersion: Int
-        let accounts: [String: StoredTokens]
+    private let container: StorageContainer
+
+    package init(container: StorageContainer) {
+        self.container = container
     }
-
-    // The file's own shape, so renaming an AccountTokens field never changes what is on disk.
-    private struct StoredTokens: Codable {
-        let accountToken: Data?
-        let balanceToken: Data?
-        let transactionToken: Data?
-
-        init(_ tokens: AccountTokens) {
-            accountToken = tokens.accountToken
-            balanceToken = tokens.balanceToken
-            transactionToken = tokens.transactionToken
-        }
-
-        var tokens: AccountTokens {
-            AccountTokens(accountToken: accountToken, balanceToken: balanceToken, transactionToken: transactionToken)
-        }
-    }
-
-    // A cleared file makes the next read start from nothing, which recovers everything.
-    private let file: VersionedFile<Envelope>
 
     package init(directory: AppGroupDirectory) {
-        file = VersionedFile(url: directory.tokensFile)
+        self.init(container: StorageContainer(directory: directory))
     }
 
     package func tokens(for accountID: UUID) throws -> AccountTokens {
-        try load()[accountID.uuidString]?.tokens ?? .empty
+        try container.read { context in
+            guard let record = try Self.fetchTokenRecord(for: accountID, in: context) else {
+                return .empty
+            }
+            return AccountTokens(
+                accountToken: record.value(forKey: "accountToken") as? Data,
+                balanceToken: record.value(forKey: "balanceToken") as? Data,
+                transactionToken: record.value(forKey: "transactionToken") as? Data,
+                pendingFullResync: record.value(forKey: "pendingFullResync") as? Bool ?? false
+            )
+        }
     }
 
-    package func save(_ tokens: AccountTokens, for accountID: UUID) throws {
-        var accounts = try load()
-        accounts[accountID.uuidString] = StoredTokens(tokens)
-        try file.write(Envelope(schemaVersion: Envelope.currentVersion, accounts: accounts))
+    package func save(_ tokens: AccountTokens, for accountID: UUID) async throws {
+        let updatedAt = Date()
+        try await container.writeAsync(reason: "TokenStore.save", mergePolicy: .mergeByPropertyObjectTrump) { context in
+            let record =
+                try Self.fetchTokenRecord(for: accountID, in: context)
+                ?? Self.insertTokenRecord(for: accountID, in: context)
+            record.setValue(tokens.accountToken, forKey: "accountToken")
+            record.setValue(tokens.balanceToken, forKey: "balanceToken")
+            record.setValue(tokens.transactionToken, forKey: "transactionToken")
+            record.setValue(tokens.pendingFullResync, forKey: "pendingFullResync")
+            record.setValue(updatedAt, forKey: "updatedAt")
+            try context.save()
+        }
     }
 
-    package func removeAll() throws {
-        try file.remove()
+    package func markPendingFullResync(for accountID: UUID) async throws {
+        let updatedAt = Date()
+        try await container.writeAsync(
+            reason: "TokenStore.markPendingFullResync",
+            mergePolicy: .mergeByPropertyObjectTrump
+        ) { context in
+            let record =
+                try Self.fetchTokenRecord(for: accountID, in: context)
+                ?? Self.insertTokenRecord(for: accountID, in: context)
+            record.setValue(nil, forKey: "accountToken")
+            record.setValue(nil, forKey: "balanceToken")
+            record.setValue(nil, forKey: "transactionToken")
+            record.setValue(true, forKey: "pendingFullResync")
+            record.setValue(updatedAt, forKey: "updatedAt")
+            try context.save()
+        }
     }
 
-    private func load() throws -> [String: StoredTokens] {
-        try file.read()?.accounts ?? [:]
+    package func removeAll() async throws {
+        try await container.writeAsync(reason: "TokenStore.removeAll", mergePolicy: .mergeByPropertyObjectTrump) {
+            context in
+            let request = NSFetchRequest<NSManagedObject>(entityName: StorageModel.tokenEntity)
+            let records = try context.fetch(request)
+            records.forEach { context.delete($0) }
+            if context.hasChanges {
+                try context.save()
+            }
+        }
+    }
+
+    private static func fetchTokenRecord(
+        for accountID: UUID,
+        in context: NSManagedObjectContext
+    ) throws -> NSManagedObject? {
+        let request = NSFetchRequest<NSManagedObject>(entityName: StorageModel.tokenEntity)
+        request.predicate = NSPredicate(format: "accountID == %@", accountID as CVarArg)
+        request.fetchLimit = 1
+        request.shouldRefreshRefetchedObjects = true
+        return try context.fetch(request).first
+    }
+
+    private static func insertTokenRecord(
+        for accountID: UUID,
+        in context: NSManagedObjectContext
+    ) -> NSManagedObject {
+        let record = NSEntityDescription.insertNewObject(forEntityName: StorageModel.tokenEntity, into: context)
+        record.setValue(accountID, forKey: "accountID")
+        return record
     }
 }
