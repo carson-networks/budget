@@ -166,6 +166,22 @@ package final class StorageDatabase: Sendable {
                 table.column("updated_at", .double).notNull()
             }
         }
+        migrator.registerMigration("v2_wake_log_and_schedule") { db in
+            try db.create(table: "schedule") { table in
+                table.column("id", .integer).primaryKey().check(sql: "id = 1")
+                table.column("frequency", .text).notNull()
+                table.column("updated_at", .double).notNull()
+            }
+            try db.create(table: "wake_log") { table in
+                table.autoIncrementedPrimaryKey("id")
+                table.column("started_at", .double).notNull()
+                table.column("trigger", .text).notNull()
+                table.column("data_types_json", .text).notNull()
+                table.column("outcome", .text).notNull()
+                table.column("account_count", .integer).notNull()
+                table.column("change_count", .integer).notNull()
+            }
+        }
         return migrator
     }
 

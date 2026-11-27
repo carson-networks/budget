@@ -46,7 +46,7 @@ Acceptance: engine tests for cancellation at each boundary (confirming `SyncLeas
 
 ### P7-A2 Background refresh and live monitoring
 
-- `BGAppRefreshTask`: handled via `.backgroundTask(.appRefresh(...))` on the app's scene (replacing the phase 1 `WakeProbe` call; SwiftUI cancels the task automatically on expiration) and rescheduled with `BGTaskScheduler.shared.submit` after every run and after every app backgrounding, with `earliestBeginDate` from the chosen interval. Its handler runs the engine with trigger `.backgroundRefresh` and the same budget and cancellation handling as the extension.
+- `BGAppRefreshTask`: handled via `.backgroundTask(.appRefresh(...))` on the app's scene (replacing the phase 1 `WakeProbe` call; SwiftUI cancels the task automatically on expiration) and rescheduled with `BGTaskScheduler.shared.submitTaskRequest(_:)` after every run and after every app backgrounding, with `earliestBeginDate` from the chosen interval. Its handler runs the engine with trigger `.backgroundRefresh` and the same budget and cancellation handling as the extension.
 - Live monitoring while the app is active: a monitoring history sequence per owned account that triggers a debounced engine run when it yields. Stopped when the app leaves the foreground. The monitor and its debounce live in `Sync`; the app target only starts and stops it on scene phase changes.
 - `FinanceDataSource` gains a `changesStream` for this, implemented in `FinanceKitSource`; the fake can emit on demand.
 

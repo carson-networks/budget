@@ -39,6 +39,15 @@ struct TokenStoreTests {
         #expect(try await reopened.tokens(for: savings) == AccountTokens(transactionToken: Data("s".utf8)))
     }
 
+    @Test func listsAccountsWithSavedTokens() async throws {
+        #expect(try await store.accountIDs().isEmpty)
+        try await store.save(tokens, for: card)
+        try await store.save(tokens, for: savings)
+        try await store.save(tokens, for: card)
+
+        #expect(try await store.accountIDs() == [card, savings].sorted { $0.uuidString < $1.uuidString })
+    }
+
     @Test func overwritesAnAccountsTokens() async throws {
         try await store.save(tokens, for: card)
         try await store.save(AccountTokens(accountToken: Data("a2".utf8)), for: card)
