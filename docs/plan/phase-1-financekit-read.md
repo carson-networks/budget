@@ -18,8 +18,8 @@ Change `[ ]` to `[x]` when a task's PR is merged, or for human tasks when the st
 | [x] | P1-A1 | Wallet authorization and onboarding | budget | Agent |
 | [x] | P1-A2 | Read Wallet data and show it | budget | Agent |
 | [x] | P1-A3 | Saved tokens and fixture export | budget | Agent |
-| [ ] | P1-A4 | Background delivery wake log | budget | Agent |
-| [ ] | — | Exit check passed | — | Human |
+| [x] | P1-A4 | Background delivery wake log | budget | Agent |
+| [x] | — | Exit check passed | — | Human |
 
 This phase exists so phase 2 can answer the device-only questions before any server work is done.
 

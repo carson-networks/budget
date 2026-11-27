@@ -85,7 +85,7 @@ Phases are numbered in the order they are checked, not the order work must start
 | Done | # | Phase | Outcome |
 |---|---|---|---|
 | [x] | 0 | [Setup](phase-0-setup.md) | An empty app builds, tests and reaches TestFlight from CI; the stack runs local builds |
-| [ ] | 1 | [FinanceKit read side](phase-1-financekit-read.md) | The app reads Wallet data behind a protocol and shows it on a diagnostics screen; nothing is sent |
+| [x] | 1 | [FinanceKit read side](phase-1-financekit-read.md) | The app reads Wallet data behind a protocol and shows it on a diagnostics screen; nothing is sent |
 | [ ] | 2 | [Phone test](phase-2-phone-test.md) | Device-only questions answered on real phones; contract corrected. Go/no-go on shared accounts |
 | [ ] | 3 | [Server endpoints, wired to the app](phase-3-server-endpoints.md) | `FinanceKitService` and every new field exist, unimplemented; the app has a generated client and an endpoint setting |
 | [ ] | 4 | [Accounts and auth](phase-4-accounts.md) | A key is required; a Wallet account added in the app exists in budget-server |
