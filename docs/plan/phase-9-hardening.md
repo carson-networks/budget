@@ -32,9 +32,9 @@ Do the branch the contract's "Ownership" section names, and delete the other fro
 ### P9-A1 App edge cases
 
 - Wallet access revoked, or one account removed from sharing: detected at the next run, shown as a state on the row and a banner, with a link to Settings → Privacy → Wallet. No server call is made for an account that is no longer readable.
-- Endpoint or key changed in Settings: outbox and tokens are kept if `GetStatus` returns the same server and key name, otherwise the person is asked whether to start over. Starting over goes through `ServerConnecting`, whose `Sync` service clears the outbox, tokens and run log; `SettingsModel` never touches them.
+- Endpoint or key changed in Settings: tokens and sync state are kept if `GetStatus` returns the same server and key name, otherwise the person is asked whether to start over. Starting over goes through `ServerConnecting`, whose `Sync` service clears tokens, sync state and the run log; `SettingsModel` never touches them.
 - A key revoked on the server: every trigger stops after `GetStatus`; one notification, not one per wake.
-- Outbox poison: a batch refused with `InvalidArgument` three times is moved aside, reported in the run log and on the account row, and the account is queued for a full resync.
+- Repeated `InvalidArgument`: an account whose `PushChanges` batch is refused with `InvalidArgument` on three consecutive runs records that failure on the account's sync state, reports it in the run log and on the account row, and pauses automatic pushes for that account until **Sync Now**, **Full Resync**, or an app update clears it, without blocking remaining accounts.
 - Clock and time zone: transaction dates are sent as instants; add a test that a purchase near midnight lands in the same month the web UI shows for it.
 - Accessibility, privacy and iOS 27 layout pass on every screen: Dynamic Type, VoiceOver labels on status rows, dark mode, resizable window widths (iPad multitasking / iPhone Mirroring), `.appearsActive` / toolbar visibility priority, and `.privacySensitive()` redaction in the App Switcher snapshot.
 

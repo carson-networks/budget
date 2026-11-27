@@ -1,10 +1,14 @@
+import Dispatch
 import Domain
 import Foundation
-import Storage
+import Synchronization
 import Testing
+
+@testable import Storage
 
 struct TokenStoreTests {
     private let directory: URL
+    private let database: StorageDatabase
     private let store: TokenStore
     private let card = UUID()
     private let savings = UUID()
@@ -16,10 +20,11 @@ struct TokenStoreTests {
 
     init() {
         directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
-        store = TokenStore(directory: AppGroupDirectory(url: directory))
+        database = StorageDatabase(directory: AppGroupDirectory(url: directory))
+        store = TokenStore(database: database)
     }
 
-    private var file: URL { directory.appending(path: "tokens.json") }
+    private var file: URL { directory.appending(path: "storage.sqlite") }
 
     @Test func startsEmpty() async throws {
         #expect(try await store.tokens(for: card) == .empty)
@@ -50,36 +55,114 @@ struct TokenStoreTests {
         #expect(try await store.tokens(for: savings) == .empty)
     }
 
-    @Test(arguments: [
-        "not json",
-        #"{ "schemaVersion": 99, "accounts": {} }"#,
-        #"{ "accounts": {} }"#,
-        #"{ "schemaVersion": 1, "accounts": [1, 2] }"#,
-    ])
-    func clearsACorruptOrIncompatibleFile(contents: String) async throws {
+    @Test func concurrentSavesAcrossTwoInstancesDoNotClobberOtherAccounts() async throws {
+        let storeA = TokenStore(directory: AppGroupDirectory(url: directory))
+        let storeB = TokenStore(directory: AppGroupDirectory(url: directory))
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for iteration in 0..<25 {
+                group.addTask {
+                    try await storeA.save(
+                        AccountTokens(transactionToken: Data("card-\(iteration)".utf8)),
+                        for: card
+                    )
+                }
+                group.addTask {
+                    try await storeB.save(
+                        AccountTokens(transactionToken: Data("savings-\(iteration)".utf8)),
+                        for: savings
+                    )
+                }
+            }
+            try await group.waitForAll()
+        }
+
+        let reopened = TokenStore(directory: AppGroupDirectory(url: directory))
+        let cardToken = try await reopened.tokens(for: card).transactionToken
+        let savingsToken = try await reopened.tokens(for: savings).transactionToken
+        #expect(cardToken != nil)
+        #expect(savingsToken != nil)
+    }
+
+    @Test func usesDeleteJournalModeWithoutLeftoverWalFiles() async throws {
         try await store.save(tokens, for: card)
-        try Data(contents.utf8).write(to: file)
+
+        #expect(try database.journalMode()?.lowercased() == "delete")
+        #expect(!FileManager.default.fileExists(atPath: "\(file.path)-wal"))
+        #expect(!FileManager.default.fileExists(atPath: "\(file.path)-shm"))
+    }
+
+    @Test func recoversFromCorruptDatabaseOnColdOpen() async throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try Data("not a sqlite database".utf8).write(to: file)
 
         #expect(try await store.tokens(for: card) == .empty)
-        #expect(!FileManager.default.fileExists(atPath: file.path))
 
         try await store.save(tokens, for: savings)
         #expect(try await store.tokens(for: savings) == tokens)
         #expect(try await store.tokens(for: card) == .empty)
     }
 
-    @Test func writesAVersionedEnvelope() async throws {
+    @Test func recoversFromCorruptDatabaseOnOpenStore() async throws {
         try await store.save(tokens, for: card)
-        let object = try JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any]
-        #expect(object?["schemaVersion"] as? Int == 1)
-        #expect((object?["accounts"] as? [String: Any])?.keys.first == card.uuidString)
+        try Data("not a sqlite database".utf8).write(to: file)
+
+        #expect(try await store.tokens(for: card) == .empty)
+
+        try await store.save(tokens, for: savings)
+        #expect(try await store.tokens(for: savings) == tokens)
+        #expect(try await store.tokens(for: card) == .empty)
     }
 
-    @Test func anUnreadableFileThrowsAndIsKept() async throws {
+    @Test func anUnreadableDirectoryAtStorePathThrowsAndIsKept() async throws {
         try FileManager.default.createDirectory(at: file, withIntermediateDirectories: true)
 
         await #expect(throws: (any Error).self) { try await store.tokens(for: card) }
         await #expect(throws: (any Error).self) { try await store.save(tokens, for: card) }
         #expect(FileManager.default.fileExists(atPath: file.path))
+    }
+
+    @Test func expiringActivityStillRunsWhenAssertionIsInitiallyExpired() async throws {
+        let expirationNotified = Mutex(false)
+
+        let value = try await ExpiringActivity.perform(
+            reason: "test.initiallyExpired",
+            onExpire: { expirationNotified.withLock { $0 = true } },
+            runner: { _, block in block(true) }
+        ) {
+            "completed"
+        }
+
+        #expect(value == "completed")
+        #expect(!expirationNotified.withLock { $0 })
+    }
+
+    @Test func expiringActivityNotifiesOnMidOperationExpiration() async throws {
+        let started = DispatchSemaphore(value: 0)
+        let allowFinish = DispatchSemaphore(value: 0)
+        let expirationCount = Mutex(0)
+
+        let value = try await ExpiringActivity.perform(
+            reason: "test.midOperationExpiration",
+            onExpire: {
+                expirationCount.withLock { $0 += 1 }
+                allowFinish.signal()
+            },
+            runner: { _, block in
+                DispatchQueue.global().async { block(false) }
+                DispatchQueue.global().async {
+                    started.wait()
+                    block(true)
+                    block(true)
+                }
+            }
+        ) {
+            started.signal()
+            allowFinish.wait()
+            return "interrupted-cleanly"
+        }
+
+        #expect(value == "interrupted-cleanly")
+        #expect(expirationCount.withLock { $0 } == 1)
     }
 }

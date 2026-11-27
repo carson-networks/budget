@@ -1,26 +1,18 @@
 import Domain
 import Foundation
-import os
+import GRDB
 
-// Reads the file on every call so the app and the extension never act on a stale copy.
+// Per-account row storage so concurrent saves to different accounts never clobber each other.
 package actor TokenStore: TokenStoring {
-    private static let schemaVersion = 1
-
-    private struct Envelope: Codable {
-        let schemaVersion: Int
-        let accounts: [String: StoredTokens]
-    }
-
-    // The file's own shape, so renaming an AccountTokens field never changes what is on disk.
-    private struct StoredTokens: Codable {
+    private struct TokenRow: FetchableRecord, Sendable {
         let accountToken: Data?
         let balanceToken: Data?
         let transactionToken: Data?
 
-        init(_ tokens: AccountTokens) {
-            accountToken = tokens.accountToken
-            balanceToken = tokens.balanceToken
-            transactionToken = tokens.transactionToken
+        init(row: Row) {
+            accountToken = row["account_token"]
+            balanceToken = row["balance_token"]
+            transactionToken = row["transaction_token"]
         }
 
         var tokens: AccountTokens {
@@ -28,67 +20,59 @@ package actor TokenStore: TokenStoring {
         }
     }
 
-    private struct VersionProbe: Decodable {
-        let schemaVersion: Int
+    private let database: StorageDatabase
+
+    package init(database: StorageDatabase) {
+        self.database = database
     }
 
-    private let file: URL
-
     package init(directory: AppGroupDirectory) {
-        file = directory.tokensFile
+        self.init(database: StorageDatabase(directory: directory))
     }
 
     package func tokens(for accountID: UUID) throws -> AccountTokens {
-        try load()[accountID.uuidString]?.tokens ?? .empty
-    }
-
-    package func save(_ tokens: AccountTokens, for accountID: UUID) throws {
-        var accounts = try load()
-        accounts[accountID.uuidString] = StoredTokens(tokens)
-        try write(accounts)
-    }
-
-    package func removeAll() throws {
-        do {
-            try FileManager.default.removeItem(at: file)
-        } catch CocoaError.fileNoSuchFile {
-            return
+        try database.read { db in
+            try TokenRow.fetchOne(
+                db,
+                sql: """
+                    SELECT account_token, balance_token, transaction_token
+                    FROM account_tokens
+                    WHERE account_id = ?
+                    """,
+                arguments: [accountID.uuidString]
+            )?.tokens ?? .empty
         }
     }
 
-    // A read error throws rather than reading as empty, so a save never overwrites other accounts' tokens.
-    private func load() throws -> [String: StoredTokens] {
-        let data: Data
-        do {
-            data = try Data(contentsOf: file)
-        } catch CocoaError.fileReadNoSuchFile {
-            return [:]
-        }
-        do {
-            let version = try JSONDecoder().decode(VersionProbe.self, from: data).schemaVersion
-            guard version == Self.schemaVersion else {
-                try clear(reason: "schemaVersion \(version)")
-                return [:]
-            }
-            return try JSONDecoder().decode(Envelope.self, from: data).accounts
-        } catch let error as DecodingError {
-            try clear(reason: String(describing: error))
-            return [:]
+    package func save(_ tokens: AccountTokens, for accountID: UUID) async throws {
+        let updatedAt = Date().timeIntervalSince1970
+        try await database.write(reason: "TokenStore.save") { db in
+            try db.execute(
+                sql: """
+                    INSERT INTO account_tokens (
+                        account_id, account_token, balance_token, transaction_token, updated_at
+                    )
+                    VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT(account_id) DO UPDATE SET
+                        account_token = excluded.account_token,
+                        balance_token = excluded.balance_token,
+                        transaction_token = excluded.transaction_token,
+                        updated_at = excluded.updated_at
+                    """,
+                arguments: [
+                    accountID.uuidString,
+                    tokens.accountToken,
+                    tokens.balanceToken,
+                    tokens.transactionToken,
+                    updatedAt,
+                ]
+            )
         }
     }
 
-    // Cleared tokens make the next read start from nothing, which recovers everything.
-    private func clear(reason: String) throws {
-        Log.logger.warning("Clearing incompatible token file: \(reason, privacy: .public)")
-        try removeAll()
-    }
-
-    private func write(_ accounts: [String: StoredTokens]) throws {
-        try FileManager.default.createDirectory(
-            at: file.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
-        let data = try JSONEncoder().encode(Envelope(schemaVersion: Self.schemaVersion, accounts: accounts))
-        try data.write(to: file, options: .atomic)
+    package func removeAll() async throws {
+        try await database.write(reason: "TokenStore.removeAll") { db in
+            try db.execute(sql: "DELETE FROM account_tokens")
+        }
     }
 }

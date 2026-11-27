@@ -31,7 +31,7 @@ Data only flows phone → server. FinanceKit background delivery and iOS decide 
 
 | Piece | Repo | Role |
 |---|---|---|
-| `OpenPersonalFinance` app, `OpenPersonalFinanceDelivery` extension, `OpenPersonalFinanceKit` package | `budget`, under `ios/` | Reads FinanceKit, pushes changes, owns history tokens and the outbox |
+| `OpenPersonalFinance` app, `OpenPersonalFinanceDelivery` extension, `OpenPersonalFinanceKit` package | `budget`, under `ios/` | Reads FinanceKit, pushes changes, owns history tokens and sync state |
 | `FinanceKitService` | budget-server | New ConnectRPC service, bearer-key protected. New sync type whose provider is a no-op until phase 10, then sends the silent push. Link tables, pending flag, credit limit, last-synced |
 | Web UI | `budget`, under `src/` | Call-out in Add account, "Apple Wallet" label, last-synced, pending badge, credit limit, and a Sync button (phase 10) |
 | Local stack, production compose | budget-stack, infra-prod | Local builds, version bumps |
@@ -49,12 +49,12 @@ Numbered so tasks can refer to them.
 7. **Bearer API key, created by a command in the budget-server image**, printed once and stored hashed. One named key per phone. Only `FinanceKitService` checks it; the web RPCs stay as they are.
 8. **Accounts are created only from the app.** There is no web or generic RPC path that produces a FinanceKit-type account.
 9. **Link tables on the server, as Plaid does it.** `financekit_account_links` and `financekit_transaction_links` map FinanceKit UUIDs to budget IDs. Writes are upserts keyed on the FinanceKit ID, so a replayed batch changes nothing.
-10. **A history token is saved only after the server acknowledges the batch it covers.** A killed run replays from the last saved token.
+10. **A history token is saved only after the server acknowledges the batch(es) it covers; there is no local outbox.** `FinanceStore` retains all unacknowledged changes on device behind the saved token, each `FinanceStore.Changes` chunk carries its own `HistoryToken` committed as chunks succeed, and a killed or offline run replays from the last saved token (with `PushChanges` idempotency covering any replayed sub-batch).
 11. **One syncing phone per account until the device test says otherwise.** Several phones may see the same Wallet account (Apple Card Family). Each link records which key owns it; a second phone sees the account as "synced by <key name>" and can take it over. Phase 2 tests whether FinanceKit IDs match across phones; if they do, the restriction is lifted in phase 9.
 12. **Background sync is the FinanceKit background delivery extension** at a user-picked `hourly` / `daily` / `weekly` frequency, with `BGAppRefreshTask` and sync-on-open as backups. No APNs until phase 10, which adds a server-requested sync on top.
 13. **iOS 27 minimum, iPhone only, Swift 6.4 (Swift 6 language mode), SwiftUI, a committed Xcode 27 project.** The app is `OpenPersonalFinance`, bundle ID `net.carsonnetworks.OpenPersonalFinance`; the extension is `net.carsonnetworks.OpenPersonalFinance.Delivery`. It lives in `ios/` in the budget repo, with its own CI job. It shares the web app's `vX.Y.Z` release tags; the iOS release workflow runs on each tag but only builds when `ios/` changed since the previous one. No project generator: the `.xcodeproj` is committed in Xcode 27's project format (`project.xcproj`) and uses folder-synchronized groups.
 14. **Credit limit only.** Due date, minimum payment and overdue amount are available from FinanceKit but left to phase 11.
-15. **Local state is versioned Codable files in the App Group container** (tokens, outbox, run log), shared by the app and the extension. No SwiftData. Each store owns its file layout as private shapes, so `Domain` values are never `Codable`, and screens reach stored state only through `Sync` services, never through storage protocols.
+15. **Local state lives in a shared SQLite database in the App Group container via `GRDB.swift`** (`StorageDatabase`: tokens, schedule, wake log, run log and `SyncLease`), shared by the app and the extension with `PRAGMA journal_mode = DELETE`, `completeUntilFirstUserAuthentication` file protection and `ProcessInfo.performExpiringActivity` write guards. No SwiftData or Core Data. Each store maps `Domain` values to private SQLite row shapes inside `Storage`, so `Domain` values are never `Codable`, and screens reach stored state only through `Sync` services, never through storage protocols.
 16. **FinanceKit is granted per bundle ID.** The app and the extension each needed their own approval; both have it, and both App IDs carry FinanceKit and the App Group. App Store Connect rejects a build whose background delivery extension lacks FinanceKit (ITMS-91154), so the release workflow requires it on both profiles.
 17. **CI runs on GitHub's `xcode-27` runner with Xcode 27.2 selected**, matching local development. The default `macos-26` runner's Xcode 26 cannot open the project. `xcode-27` is a public preview; move to the GA label when there is one.
 18. **Wire types stay in `BudgetClient`.** Generated Connect and protobuf code is internal to `BudgetClient`, which converts it to and from `Domain` values named for what they mean. Only `Sync` services call the server, so screens never see `BudgetAPI` and no value outside `BudgetClient` changes when a message does.
@@ -148,7 +148,7 @@ Supporting files:
 
 | Risk | Mitigation |
 |---|---|
-| Phone can't reach the server away from home | Sync is retried on every trigger and the outbox keeps unsent batches. On-demand VPN is a human setup step in phase 2. |
+| Phone can't reach the server away from home | Sync is retried on every trigger; unacknowledged changes stay in `FinanceStore` behind the saved history token and are re-read on the next run. On-demand VPN is a human setup step in phase 2. |
 | Background delivery fires less often than its frequency suggests | `BGAppRefreshTask` and sync-on-open as backups; the stale warning in the web UI shows when it stops. |
 | FinanceKit reads fail while the phone is locked | Treated as "retry later", not an error. |
 | Shared accounts have different IDs on each phone | One owner per account (decision 11); phase 2 decides whether more is possible. |

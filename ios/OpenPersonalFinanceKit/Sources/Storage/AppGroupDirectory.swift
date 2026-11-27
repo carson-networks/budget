@@ -19,7 +19,7 @@ package struct AppGroupDirectory: Sendable {
         return AppGroupDirectory(url: .applicationSupportDirectory)
     }
 
-    var tokensFile: URL {
-        url.appending(path: "tokens.json")
+    var databaseFile: URL {
+        url.appending(path: "storage.sqlite")
     }
 }
