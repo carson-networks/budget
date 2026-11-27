@@ -36,7 +36,7 @@ Rules that hold everywhere:
 
 Every trigger runs the same steps in `SyncEngine` (there is no local outbox—`FinanceStore` retains all unacknowledged history behind each account's saved tokens, and `PushChanges` is idempotent):
 
-1. Take the cross-process lease lock; if it is held, exit. Release it inside `async defer` + `withTaskCancellationShield`, and renew the lease between batches so long foreground runs (like a full resync) never expire mid-run.
+1. Take the cross-process `SyncLease` in `StorageDatabase`; if it is held, exit. Release it inside `async defer` + `withTaskCancellationShield`, and renew the lease between batches so long foreground runs (like a full resync) never expire mid-run.
 2. `GetStatus`: stop immediately with a clear state if the key is refused (`.unauthenticated`), or quietly as "will retry" on `.unreachable`.
 3. `ListAccounts`: learn which FinanceKit accounts are linked and owned by this key.
 4. For each owned account (skipping any account paused after repeated `InvalidArgument` rejections):

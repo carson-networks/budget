@@ -30,7 +30,7 @@ Each rule in the working rules about who may import what is a target boundary, s
 | `Domain` | Value types (`WalletAccount`, `WalletBalance`, `WalletTransaction`, `ChangeSet`, `SyncTrigger`, `SyncFrequency`, `AppVersion`), values exchanged with the server, domain errors, protocols (`FinanceDataSource`, `WalletHistoryReading`, `BackgroundDeliveryControl`, `BudgetAPI`, `StaleNotifier`, `TokenStoring`, `SettingsStoring`, `LogStoring`, `SyncRunning`), the fixture value (`WalletFixture`), and pure functions: chronological `ChangeSet` coalescing, wallet → request mapping, URL validation, redaction, schedule and throttle calculations. Foundation only. | nothing |
 | `FinanceKitSource` | `FinanceKitDataSource` and `FinanceKitBackgroundDelivery`, with the FinanceKit → wallet type mapping. The only target that imports FinanceKit. | `Domain` |
 | `BudgetClient` | `ConnectBudgetAPI`, `Domain` values ↔ generated message conversion, and `Gen/`. The only target that imports Connect or SwiftProtobuf. | `Domain`, `connect-swift`, `swift-protobuf` |
-| `Storage` | App Group file stores (tokens, run log, wake log), the fixture file reader (`FixtureFile/`), the file lock, `SettingsStore` (Keychain). Conforms to `Domain` storage protocols. | `Domain` |
+| `Storage` | `StorageDatabase` (`GRDB.swift` SQLite in the App Group) and its stores (`TokenStore`, `ScheduleStore`, `WakeLog`, `RunLog`, `SyncLease`), the fixture file reader (`FixtureFile/`), `SettingsStore` (Keychain). Conforms to `Domain` storage protocols. | `Domain`, `GRDB.swift` |
 | `Sync` | `SyncEngine` actor, the background work around it (wake probe, live monitor and debounce, push registration), and the services screens use, such as `WalletHistoryReader`. Conforms to `SyncRunning` and reaches FinanceKit and the server only through `Domain` protocols. | `Domain`, `Storage` |
 | `Live` | `Dependencies` and `Dependencies.live(...)`: the one place real implementations are wired together, plus thin system adapters such as the UserNotifications `StaleNotifier`. | `Domain`, `Sync`, `Storage`, `FinanceKitSource`, `BudgetClient` |
 | `Features` | `@Observable` screen models, and the diagnostics export's own `Encodable` file structs. `MainActor` by default. Depends on `Domain` protocols only, never storage or `BudgetAPI`, keeping screen-model tests fully in-memory via `Fakes`. | `Domain` |
@@ -55,9 +55,9 @@ Fakes       ──► Storage ──► Domain
 ## Concurrency
 
 - Swift 6.4 (`// swift-tools-version: 6.4` in `Package.swift`, Swift 6 language mode with strict concurrency). Every target enables the `NonisolatedNonsendingByDefault`, `InferIsolatedConformances` and `MemberImportVisibility` upcoming features (matching the Xcode targets). `Features` and the app target set default actor isolation to `MainActor`; the extension and all other package targets stay explicitly `nonisolated`.
-- Shared mutable state lives in an `actor` (`SyncEngine`, each file store). No `NSLock`, `os_unfair_lock`, `DispatchQueue` or `@unchecked Sendable` to silence the compiler; `Synchronization.Mutex` is acceptable for tiny synchronous state (such as tracking active extension tasks).
+- Shared mutable state lives in an `actor` (`SyncEngine`, stores). No `NSLock`, `os_unfair_lock`, `DispatchQueue` or `@unchecked Sendable` to silence the compiler; `Synchronization.Mutex` is acceptable for tiny synchronous state (such as lazy database initialisation or tracking active extension tasks).
 - Mark CPU-heavy functions that must leave the caller's actor `@concurrent`. Do not use `Task.detached` for that.
-- Long work checks `Task.isCancelled` at each batch boundary, and cancellation leaves saved tokens consistent. Use Swift 6.4 `async defer` (SE-0493) paired with `withTaskCancellationShield` (SE-0504) for deterministic async cleanup on exit or cancellation (releasing `FileLock`, flushing run/wake logs) rather than spawning unstructured cleanup tasks. Do not leave throwing `Task` values unhandled (Swift 6.4 warns on unused throwing tasks): store the handle or catch inside the task.
+- Long work checks `Task.isCancelled` at each batch boundary, and cancellation leaves saved tokens consistent. Use Swift 6.4 `async defer` (SE-0493) paired with `withTaskCancellationShield` (SE-0504) for deterministic async cleanup on exit or cancellation (releasing `SyncLease`, flushing run/wake logs) rather than spawning unstructured cleanup tasks. Do not leave throwing `Task` values unhandled (Swift 6.4 warns on unused throwing tasks): store the handle or catch inside the task.
 - No Combine in new code. Use `async`/`await`, `AsyncStream`, and `Observations` to observe `@Observable` state outside SwiftUI.
 
 ## Composition and dependency injection
@@ -115,7 +115,7 @@ struct AccountsView: View {
 `make lint` checks these.
 
 - **Screen models never see storage or the network.** They depend on behaviour protocols such as `WalletHistoryReading`, never on a `*Storing` protocol or `BudgetAPI`. The `Sync` service behind the protocol decides when to read, save or call the server.
-- **Domain values are never `Codable`.** Each file or network format gets plain `Codable` structs that match it, plus a mapping to and from the `Domain` value. Server values are named for what they mean (`ChangeBatch`), not after RPC messages.
+- **Domain values are never `Codable`.** Each JSON file, SQLite table or network format gets private structs/rows that match it, plus a mapping to and from the `Domain` value. Server values are named for what they mean (`ChangeBatch`), not after RPC messages.
 - **Generated code stays in `BudgetClient`.** Only it imports Connect and SwiftProtobuf.
 
 ```swift
@@ -137,7 +137,7 @@ Data crosses these pure, unit-tested mapping steps, each in the one target that 
 |---|---|
 | FinanceKit values → wallet types | `FinanceKitSource` |
 | Chronological `ChangeSet` coalescing (deduplicating multi-chunk inserts/updates/deletes by ID) and wallet types → server values (the sync contract's mapping table: sign, name fallback, status) | `Domain` |
-| `Codable` file structs ↔ `Domain` values | the target that owns the file |
+| SQLite row shapes / `Codable` file structs ↔ `Domain` values | the target that owns the store or file |
 | Server values ↔ generated messages (including decimal strings) | `BudgetClient` |
 
 ## Networking
@@ -149,10 +149,11 @@ Data crosses these pure, unit-tested mapping steps, each in the one target that 
 
 ## Storage
 
-- One `actor` per file. Each file is a private `Codable` struct mapped to and from `Domain` values, wrapped in a versioned envelope (`schemaVersion: Int`), and written with `Data.write(to:options: .atomic)`. Define corrupt or incompatible recovery per store: `RunLog` and `WakeLog` wipe and recreate cleanly with a warning; `TokenStore` clears affected tokens so the next sync recovers via full resync.
+- Shared App Group state lives in one SQLite database (`StorageDatabase` via `GRDB.swift` `DatabaseQueue`), opened lazily under `NSFileCoordinator` with `FileProtectionType.completeUntilFirstUserAuthentication`, `busyMode = .timeout(5)`, `observesSuspensionNotifications = true`, and `PRAGMA journal_mode = DELETE` (releasing file locks on commit and avoiding `-wal`/`-shm` suspension traps across app and extension). Schema evolves via additive `DatabaseMigrator` migrations added alongside each store's first caller; each store maps private row shapes to and from `Domain` values. If the SQLite file is corrupt (`SQLITE_CORRUPT` / `SQLITE_NOTADB`), `StorageDatabase` logs a warning, removes the database files and recreates them cleanly (so `TokenStore` starts fresh on the next run), whereas unreadable paths throw without deleting; log stores skip malformed rows with a warning.
+- Sub-millisecond synchronous SQLite writes run inside `ExpiringActivity` (`ProcessInfo.processInfo.performExpiringActivity` paired with `Database.suspendNotification` on expiration) so iOS holds a background task assertion when available and interrupts in-flight statements before suspension to avoid `0xdead10cc`, while still executing when RunningBoard denies a new assertion (such as unhosted `xctest` runners or `willTerminate()` cleanup). Never hold a database transaction across `await`.
 - All paths come from one `AppGroupDirectory` value so tests point it at a temporary directory.
-- The cross-process `FileLock` uses an atomic lease file (`O_CREAT | O_EXCL` with a timestamp and stale-lock timeout), never a kernel `flock`/`fcntl` lock held across `await` calls—holding a kernel lock in an App Group container on suspension triggers iOS `0xdead10cc` termination, and blocking locks stall Swift's cooperative thread pool. `FileLock` supports `renew()` to extend its expiry between batches during long foreground runs (such as a full resync) while keeping the stale-lock TTL short (~45 s) after a crash, and is released inside `async defer` + `withTaskCancellationShield`. `SyncEngine` takes the lock non-blocking and exits if held; short shared-file appends such as `WakeLog` retry briefly with `Task.sleep` rather than dropping entries.
-- The extension runs while the phone is locked. Keychain items use `kSecAttrAccessibleAfterFirstUnlock` (never the `WhenUnlocked` default, and intentionally not `ThisDeviceOnly` so encrypted device backups and phone upgrades carry the key over), and App Group files never use `.completeFileProtection`. A "locked" failure from FinanceKit means retry later, not an error.
+- Cross-process sync coordination uses `SyncLease` (`sync_lease` single-row table in `StorageDatabase` claimed and renewed via atomic conditional SQL `WHERE expires_at < ?`), never a kernel `flock`/`fcntl` lock held across `await` calls. `SyncLease` supports `renew(_:)` to extend its ~45 s TTL between batches during long foreground runs and `release(_:)` inside `async defer` + `withTaskCancellationShield`; `SyncEngine` takes the lease non-blocking and exits if held.
+- The extension runs while the phone is locked. Keychain items use `kSecAttrAccessibleAfterFirstUnlock` (never the `WhenUnlocked` default, and intentionally not `ThisDeviceOnly` so encrypted device backups and phone upgrades carry the key over), and App Group files use `.completeUntilFirstUserAuthentication` (never `.completeFileProtection`). A "locked" failure from FinanceKit means retry later, not an error.
 - The API key lives only in the Keychain, shared with the extension by passing the App Group identifier (`group.net.carsonnetworks.OpenPersonalFinance`) as `kSecAttrAccessGroup` (included automatically by iOS, so no separate `keychain-access-groups` entitlement or Team ID prefix is needed): never `UserDefaults`, files, logs or the run log.
 
 ## Errors
@@ -179,7 +180,7 @@ Data crosses these pure, unit-tested mapping steps, each in the one target that 
 - Zero warnings. The project sets `SWIFT_TREAT_WARNINGS_AS_ERRORS` and `GCC_TREAT_WARNINGS_AS_ERRORS`, every package target uses `.treatAllWarnings(as: .error)`, and the Makefile fails `build` and `test` on any remaining `warning:` line (linker, asset catalog, build system). The only allowlisted line is the App Intents metadata notice, which Xcode prints for every target that does not link AppIntents. `make lint` runs `ast-grep scan --error`, so warning-level rules fail too.
 - Add API with its caller: a task adds only what its own code or the next task calls, conformances included (see the working rules).
 - Comments are one-line "why" only.
-- No third-party dependencies beyond `connect-swift` and `swift-protobuf` without asking.
+- No third-party dependencies beyond `GRDB.swift`, `connect-swift` and `swift-protobuf` without asking.
 
 ## Not used here
 
