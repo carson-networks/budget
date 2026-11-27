@@ -31,7 +31,7 @@ jobs:
     outputs:
       ios: ${{ steps.diff.outputs.ios }}
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -63,7 +63,7 @@ jobs:
         shell: bash
     steps:
       - name: Checkout selected ref
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-tags: true
 
@@ -117,7 +117,7 @@ jobs:
           echo "number=${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
 
       - name: Import distribution certificate
-        uses: apple-actions/import-codesign-certs@v7.1.0
+        uses: apple-actions/import-codesign-certs@288b8ec97b82c66b6f2a6baaf7acc8dfbcbe331c # v7.2.0
         with:
           p12-file-base64: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_BASE64 }}
           p12-password: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
@@ -250,7 +250,7 @@ jobs:
           echo "IOS_IPA_PATH=${ipas[0]}" >> "$GITHUB_ENV"
 
       - name: Save IPA and debug symbols
-        uses: actions/upload-artifact@v7.0.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: openpersonalfinance-ios-${{ steps.version.outputs.name }}-${{ steps.version.outputs.number }}
           path: |
@@ -260,7 +260,7 @@ jobs:
           retention-days: 30
 
       - name: Upload to App Store Connect
-        uses: apple-actions/upload-testflight-build@v5.6.0
+        uses: apple-actions/upload-testflight-build@665328adbecbc3ad929d3da710696d928b8a7ba9 # v5.9.0
         with:
           app-path: ${{ env.IOS_IPA_PATH }}
           app-type: ios
