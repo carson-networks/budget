@@ -26,6 +26,9 @@ let package = Package(
         .library(name: "Live", targets: ["Live"]),
         .library(name: "Fakes", targets: ["Fakes"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/groue/GRDB.swift.git", from: "7.12.0")
+    ],
     targets: [
         .target(
             name: "Domain",
@@ -43,7 +46,10 @@ let package = Package(
         ),
         .target(
             name: "Storage",
-            dependencies: ["Domain"],
+            dependencies: [
+                "Domain",
+                .product(name: "GRDB", package: "GRDB.swift"),
+            ],
             swiftSettings: nonisolatedSwiftSettings
         ),
         .target(

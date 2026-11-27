@@ -9,9 +9,10 @@ public struct Dependencies: Sendable {
 
     public static func live(financeData: (any FinanceDataSource)? = nil) -> Dependencies {
         let financeData = financeData ?? FinanceKitDataSource()
+        let database = StorageDatabase(directory: .live())
         return Dependencies(
             financeData: financeData,
-            history: WalletHistoryReader(source: financeData, tokens: TokenStore(directory: .live()))
+            history: WalletHistoryReader(source: financeData, tokens: TokenStore(database: database))
         )
     }
 }
